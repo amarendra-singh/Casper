@@ -1,0 +1,51 @@
+.dashboard { max-width: 1100px; }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px;
+  display: flex; flex-direction: column; gap: 6px;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.stat-card:hover { border-color: var(--surface-3); transform: translateY(-2px); }
+.stat-card--accent {
+  border-color: var(--gold);
+  background: linear-gradient(135deg, var(--surface), var(--gold-glow));
+}
+.stat-icon { font-size: 20px; color: var(--gold); line-height: 1; }
+.stat-value { font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--text); line-height: 1; }
+.stat-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); }
+.stat-sub { font-size: 11px; color: var(--text-3); }
+
+.section-title {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text-3); margin-bottom: 14px;
+}
+.section-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+}
+
+.platform-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px; margin-bottom: 32px;
+}
+.platform-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; transition: border-color 0.15s;
+}
+.platform-card:hover { border-color: var(--gold); }
+.platform-name { font-family: var(--font-display); font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 10px; }
+.platform-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.platform-key { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.04em; }
+.platform-val { font-size: 13px; color: var(--text-2); font-weight: 600; }
+.platform-tiers { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.tier-badge {
+  font-family: var(--font-mono); font-size: 10px; padding: 2px 6px;
+  border-radius: 4px; background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border);
+}
