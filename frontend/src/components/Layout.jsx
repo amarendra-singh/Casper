@@ -6,6 +6,10 @@ const NAV = [
   { to: '/',        label: 'Dashboard', icon: '◈' },
   { to: '/skus',    label: 'SKUs',      icon: '◇' },
   { to: '/pricing', label: 'Pricing',   icon: '◆' },
+  { to: '/',        label: 'Dashboard', icon: '◈' },
+  { to: '/skus',    label: 'SKUs',      icon: '◇' },
+  { to: '/entries', label: 'Entries',   icon: '▦' },  // ← add this
+  { to: '/pricing', label: 'Pricing',   icon: '◆' },
 ]
 
 export default function Layout() {

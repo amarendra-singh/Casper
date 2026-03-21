@@ -5,3 +5,4 @@ from app.models.category import Category
 from app.models.misc_item import MiscItem
 from app.models.global_settings import GlobalSettings
 from app.models.sku import Sku, SkuPricing
+from app.models.hsn_code import HsnCode

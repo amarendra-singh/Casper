@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getSkus, createSku, updateSku, deleteSku, getVendors, getCategories } from '../api/client'
+import {
+  getSkus, createSku, updateSku, deleteSku,
+  getVendors, getCategories, searchHsn, createHsnCode
+} from '../api/client'
 import './SKUs.css'
 
 function Toast({ msg, type, onClose }) {
@@ -8,7 +11,144 @@ function Toast({ msg, type, onClose }) {
   return <div className={`toast toast-${type}`}>{msg}</div>
 }
 
-const EMPTY = { shringar_sku: '', description: '', vendor_id: '', category_id: '', is_active: true }
+function HsnSearch({ value, onChange }) {
+  const [query, setQuery]       = useState('')
+  const [results, setResults]   = useState([])
+  const [open, setOpen]         = useState(false)
+  const [loading, setLoading]   = useState(false)
+  const [selected, setSelected] = useState(value || null)
+  const [showAdd, setShowAdd]   = useState(false)
+  const [custom, setCustom]     = useState({ code:'', description:'', gst_rate:'' })
+  const ref = useRef()
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const handleSearch = async (q) => {
+    setQuery(q)
+    if (q.length < 2) { setResults([]); setOpen(false); return }
+    setLoading(true)
+    try {
+      const data = await searchHsn(q)
+      setResults(data)
+      setOpen(true)
+      setShowAdd(data.length === 0)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSelect = (hsn) => {
+    setSelected(hsn)
+    setQuery(`${hsn.code} — ${hsn.description}`)
+    setOpen(false)
+    onChange(hsn)
+  }
+
+  const handleAddCustom = async () => {
+    try {
+      const hsn = await createHsnCode({
+        code: custom.code,
+        description: custom.description,
+        gst_rate: parseFloat(custom.gst_rate),
+        category: 'Custom'
+      })
+      handleSelect(hsn)
+      setShowAdd(false)
+      setCustom({ code:'', description:'', gst_rate:'' })
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Error adding HSN')
+    }
+  }
+
+  const handleClear = () => {
+    setSelected(null)
+    setQuery('')
+    setResults([])
+    onChange(null)
+  }
+
+  return (
+    <div ref={ref} className="hsn-wrap">
+      {selected ? (
+        <div className="hsn-selected">
+          <div className="hsn-selected-info">
+            <span className="hsn-code-badge">{selected.code}</span>
+            <span className="hsn-desc">{selected.description}</span>
+            <span className="hsn-gst-badge">GST {selected.gst_rate}%</span>
+          </div>
+          <button className="hsn-clear" onClick={handleClear}>✕</button>
+        </div>
+      ) : (
+        <>
+          <div className="hsn-input-wrap">
+            <input
+              className="input"
+              placeholder="Search HSN by code or description…"
+              value={query}
+              onChange={e => handleSearch(e.target.value)}
+              onFocus={() => query.length >= 2 && setOpen(true)}
+            />
+            {loading && <span className="loader" style={{ width:14, height:14, borderWidth:2, position:'absolute', right:10, top:'50%', transform:'translateY(-50%)' }} />}
+          </div>
+
+          {open && results.length > 0 && (
+            <div className="hsn-dropdown">
+              {results.map(hsn => (
+                <div key={hsn.id} className="hsn-option" onClick={() => handleSelect(hsn)}>
+                  <div className="hsn-option-top">
+                    <span className="hsn-code-badge">{hsn.code}</span>
+                    <span className="hsn-gst-badge">GST {hsn.gst_rate}%</span>
+                    {hsn.category && <span className="hsn-cat">{hsn.category}</span>}
+                  </div>
+                  <div className="hsn-option-desc">{hsn.description}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {open && showAdd && query.length >= 2 && (
+            <div className="hsn-dropdown">
+              <div className="hsn-noresult">No HSN found for "{query}"</div>
+              {!custom.code ? (
+                <div className="hsn-addnew" onClick={() => setCustom(c => ({ ...c, code: query }))}>
+                  + Add "{query}" as custom HSN code
+                </div>
+              ) : (
+                <div className="hsn-custom-form">
+                  <input className="input" placeholder="HSN Code"
+                    value={custom.code}
+                    onChange={e => setCustom(c => ({ ...c, code: e.target.value }))} />
+                  <input className="input" placeholder="Description"
+                    value={custom.description}
+                    onChange={e => setCustom(c => ({ ...c, description: e.target.value }))} />
+                  <div style={{ display:'flex', gap:8 }}>
+                    <input className="input" type="number" placeholder="GST %"
+                      value={custom.gst_rate}
+                      onChange={e => setCustom(c => ({ ...c, gst_rate: e.target.value }))} />
+                    <button className="btn btn-gold btn-sm" onClick={handleAddCustom}
+                      disabled={!custom.code || !custom.description || !custom.gst_rate}>
+                      Add
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+const EMPTY = {
+  shringar_sku: '', description: '', vendor_id: '',
+  category_id: '', hsn_code_id: null, is_active: true
+}
 
 export default function SKUs() {
   const navigate              = useNavigate()
@@ -23,6 +163,7 @@ export default function SKUs() {
   const [saving, setSaving]   = useState(false)
   const [toast, setToast]     = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [selectedHsn, setSelectedHsn]     = useState(null)
 
   const load = () => {
     setLoading(true)
@@ -35,15 +176,23 @@ export default function SKUs() {
 
   const showToast = (msg, type = 'success') => setToast({ msg, type })
 
-  const openCreate = () => { setForm(EMPTY); setEditId(null); setModal('create') }
+  const openCreate = () => {
+    setForm(EMPTY)
+    setSelectedHsn(null)
+    setEditId(null)
+    setModal('create')
+  }
+
   const openEdit = (sku) => {
     setForm({
       shringar_sku: sku.shringar_sku,
       description:  sku.description || '',
       vendor_id:    sku.vendor_id || '',
       category_id:  sku.category_id || '',
+      hsn_code_id:  sku.hsn_code_id || null,
       is_active:    sku.is_active,
     })
+    setSelectedHsn(sku.hsn_code || null)
     setEditId(sku.id)
     setModal('edit')
   }
@@ -55,6 +204,7 @@ export default function SKUs() {
         ...form,
         vendor_id:   form.vendor_id   ? parseInt(form.vendor_id)   : null,
         category_id: form.category_id ? parseInt(form.category_id) : null,
+        hsn_code_id: selectedHsn?.id || null,
       }
       if (modal === 'create') {
         await createSku(payload)
@@ -122,6 +272,8 @@ export default function SKUs() {
                   <th>Description</th>
                   <th>Vendor</th>
                   <th>Category</th>
+                  <th>HSN</th>
+                  <th>GST %</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -129,7 +281,7 @@ export default function SKUs() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ textAlign:'center', padding:'40px', color:'var(--text-3)' }}>
+                    <td colSpan={9} style={{ textAlign:'center', padding:'40px', color:'var(--text-3)' }}>
                       {search ? 'No SKUs match your search' : 'No SKUs yet — create one!'}
                     </td>
                   </tr>
@@ -145,6 +297,16 @@ export default function SKUs() {
                     <td>{sku.description || <span style={{ color:'var(--text-3)' }}>—</span>}</td>
                     <td>{sku.vendor?.name || <span style={{ color:'var(--text-3)' }}>—</span>}</td>
                     <td>{sku.category?.name || <span style={{ color:'var(--text-3)' }}>—</span>}</td>
+                    <td>
+                      {sku.hsn_code
+                        ? <span className="mono" style={{ color:'var(--gold)', fontSize:11 }}>{sku.hsn_code.code}</span>
+                        : <span style={{ color:'var(--text-3)' }}>—</span>}
+                    </td>
+                    <td>
+                      {sku.hsn_code
+                        ? <span className="badge badge-gold">{sku.hsn_code.gst_rate}%</span>
+                        : <span style={{ color:'var(--text-3)' }}>—</span>}
+                    </td>
                     <td>
                       <span className={`badge ${sku.is_active ? 'badge-green' : 'badge-red'}`}>
                         {sku.is_active ? 'Active' : 'Inactive'}
@@ -183,12 +345,14 @@ export default function SKUs() {
                   Format: SHJ-CATEGORY-VENDOR-PRODUCT
                 </span>
               </div>
+
               <div className="input-group span-2">
                 <label>Description</label>
                 <input className="input" placeholder="Product description"
                   value={form.description}
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
               </div>
+
               <div className="input-group">
                 <label>Vendor</label>
                 <select className="input" value={form.vendor_id}
@@ -199,6 +363,7 @@ export default function SKUs() {
                   ))}
                 </select>
               </div>
+
               <div className="input-group">
                 <label>Category</label>
                 <select className="input" value={form.category_id}
@@ -209,6 +374,19 @@ export default function SKUs() {
                   ))}
                 </select>
               </div>
+
+              {/* HSN Search */}
+              <div className="input-group span-2">
+                <label>HSN Code</label>
+                <HsnSearch
+                  value={selectedHsn}
+                  onChange={(hsn) => setSelectedHsn(hsn)}
+                />
+                <span style={{ fontSize:11, color:'var(--text-3)', marginTop:3 }}>
+                  HSN auto-fills GST rate in Entries page
+                </span>
+              </div>
+
               <div className="input-group span-2">
                 <label>Status</label>
                 <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontSize:13, color:'var(--text-2)' }}>
@@ -219,6 +397,7 @@ export default function SKUs() {
                 </label>
               </div>
             </div>
+
             <div className="form-actions">
               <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
               <button className="btn btn-gold" onClick={handleSave}

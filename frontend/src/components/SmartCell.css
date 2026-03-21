@@ -1,0 +1,99 @@
+.sc-wrap {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+  
+  /* The input */
+  .sc-input {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    padding: 0 8px;
+    font-size: 12px;
+    font-family: var(--font-ui);
+    color: var(--text);
+    outline: none;
+  }
+  .sc-input:focus {
+    background: rgba(201, 153, 58, 0.06);
+    box-shadow: inset 0 0 0 1.5px var(--gold);
+  }
+  .sc-input::placeholder { color: var(--text-3); }
+  
+  /* Dropdown */
+  .sc-dropdown {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0;
+    min-width: 100%;
+    max-width: 320px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    z-index: 999;
+    box-shadow: var(--shadow);
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  
+  /* Hint bar */
+  .sc-hint {
+    padding: 4px 10px;
+    font-size: 10px;
+    color: var(--text-3);
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    letter-spacing: 0.03em;
+  }
+  
+  /* Option */
+  .sc-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 10px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-2);
+    transition: background 0.1s;
+  }
+  .sc-option:last-of-type { border-bottom: none; }
+  .sc-option:hover,
+  .sc-option.sc-active {
+    background: var(--gold-dim);
+    color: var(--text);
+  }
+  .sc-option strong { color: var(--gold); font-weight: 600; }
+  
+  .sc-option-label { flex: 1; }
+  .sc-option-sub {
+    font-size: 10px;
+    color: var(--text-3);
+    font-family: var(--font-mono);
+    margin-left: 8px;
+    flex-shrink: 0;
+  }
+  
+  /* Add new */
+  .sc-addnew {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--gold);
+    border-top: 1px solid var(--border);
+    background: var(--gold-glow);
+    transition: background 0.1s;
+  }
+  .sc-addnew:hover,
+  .sc-addnew.sc-active { background: var(--gold-dim); }
+  .sc-plus {
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+  }

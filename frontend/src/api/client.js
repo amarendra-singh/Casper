@@ -87,4 +87,25 @@ export const createUser = (data) => api.post('/users/', data).then(r => r.data)
 export const updateUser = (id, data) => api.patch(`/users/${id}`, data).then(r => r.data)
 export const deleteUser = (id) => api.delete(`/users/${id}`).then(r => r.data)
 
+// Entries
+export const getEntries = () =>
+  api.get('/entries/').then(r => r.data)
+
+export const upsertBatch = (rows) =>
+  api.post('/entries/upsert-batch', { rows }).then(r => r.data)
+
+
+
+// HSN Codes
+export const searchHsn = (q) =>
+  api.get(`/hsn/search?q=${q}`).then(r => r.data)
+
+export const getHsnList = () =>
+  api.get('/hsn/').then(r => r.data)
+
+export const createHsnCode = (data) =>
+  api.post('/hsn/', data).then(r => r.data)
+
+
+
 export default api

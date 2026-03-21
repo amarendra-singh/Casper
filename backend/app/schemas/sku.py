@@ -1,9 +1,10 @@
 # BaseModel is Pydantic's base class — it gives us automatic 
 # data validation, type checking, and JSON parsing for free.
 from pydantic import BaseModel, field_validator
-
+from typing import Optional
 # Optional datetime for response models
 from datetime import datetime
+from app.schemas.hsn_code import HsnCodeResponse
 
 
 # ── SKU Schemas ───────────────────────────────────────────
@@ -14,6 +15,7 @@ class SkuCreate(BaseModel):
     vendor_sku: str          # vendor's own SKU code
     vendor_id: int           # foreign key — which vendor
     category_id: int         # foreign key — which category
+    hsn_code_id: Optional[int] = None
     description: str | None = None  # optional field, defaults to None
 
     # field_validator lets us run custom logic on a field before saving
@@ -45,6 +47,8 @@ class SkuResponse(BaseModel):
     description: str | None
     is_active: bool
     created_at: datetime
+    hsn_code_id: Optional[int] = None
+    hsn_code: Optional[HsnCodeResponse] = None  # or HsnCodeResponse if imported
 
     # from_attributes=True tells Pydantic to read data from 
     # SQLAlchemy model attributes instead of a plain dict

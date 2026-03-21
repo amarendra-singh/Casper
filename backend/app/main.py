@@ -4,7 +4,7 @@ from sqlalchemy import text
 
 from app.core.config import settings
 from app.core.database import engine
-from app.routes import auth, users, platforms, vendors, categories, misc_items, global_settings
+from app.routes import entries,auth, users, platforms, vendors, categories, misc_items, global_settings, hsn_codes
 from app.routes.skus import sku_router, pricing_router
 
 
@@ -32,6 +32,7 @@ def create_app() -> FastAPI:
         print("✅ Database connected successfully")
 
     prefix = "/api/v1"
+
     app.include_router(auth.router, prefix=prefix)
     app.include_router(users.router, prefix=prefix)
     app.include_router(platforms.router, prefix=prefix)
@@ -41,6 +42,8 @@ def create_app() -> FastAPI:
     app.include_router(global_settings.router, prefix=prefix)
     app.include_router(sku_router, prefix=prefix)
     app.include_router(pricing_router, prefix=prefix)
+    app.include_router(hsn_codes.router, prefix=prefix)
+    app.include_router(entries.router, prefix=prefix)
 
     @app.get("/health", tags=["Health"])
     async def health_check():

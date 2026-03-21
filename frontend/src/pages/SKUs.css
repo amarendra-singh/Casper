@@ -1,6 +1,64 @@
-.skus-page { max-width: 1100px; }
+/* HSN Search */
+.hsn-wrap { position: relative; }
 
-.sku-code {
-  color: var(--gold); cursor: pointer; font-weight: 500;
+.hsn-input-wrap { position: relative; }
+
+.hsn-dropdown {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); z-index: 50;
+  max-height: 260px; overflow-y: auto;
+  box-shadow: var(--shadow);
 }
-.sku-code:hover { text-decoration: underline; }
+
+.hsn-option {
+  padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border);
+  transition: background 0.12s;
+}
+.hsn-option:last-child { border-bottom: none; }
+.hsn-option:hover { background: var(--surface-2); }
+
+.hsn-option-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.hsn-option-desc { font-size: 12px; color: var(--text-2); }
+
+.hsn-code-badge {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+  padding: 2px 7px; border-radius: 4px;
+  background: var(--gold-dim); color: var(--gold);
+}
+
+.hsn-gst-badge {
+  font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px;
+  background: var(--green-dim); color: var(--green);
+}
+
+.hsn-cat { font-size: 11px; color: var(--text-3); }
+
+.hsn-noresult { padding: 10px 14px; font-size: 12px; color: var(--text-3); }
+
+.hsn-addnew {
+  padding: 10px 14px; font-size: 12px; color: var(--gold);
+  cursor: pointer; border-top: 1px solid var(--border);
+}
+.hsn-addnew:hover { background: var(--gold-glow); }
+
+.hsn-custom-form {
+  padding: 12px 14px; display: flex; flex-direction: column;
+  gap: 8px; border-top: 1px solid var(--border);
+}
+
+.hsn-selected {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; background: var(--surface-2);
+  border: 1px solid var(--gold-dim); border-radius: var(--radius-sm);
+}
+
+.hsn-selected-info { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hsn-desc { font-size: 12px; color: var(--text-2); }
+
+.hsn-clear {
+  background: none; border: none; color: var(--text-3);
+  cursor: pointer; font-size: 13px; padding: 2px 6px;
+  border-radius: 4px; flex-shrink: 0;
+}
+.hsn-clear:hover { color: var(--red); }

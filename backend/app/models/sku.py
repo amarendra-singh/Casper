@@ -16,7 +16,8 @@ class Sku(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
+    hsn_code_id: Mapped[int] = mapped_column(Integer, ForeignKey("hsn_codes.id"), nullable=True)
+    hsn_code: Mapped["HsnCode"] = relationship("HsnCode", lazy="joined")
     # Relationships
     vendor: Mapped["Vendor"] = relationship("Vendor", back_populates="skus")
     category: Mapped["Category"] = relationship("Category", back_populates="skus")
