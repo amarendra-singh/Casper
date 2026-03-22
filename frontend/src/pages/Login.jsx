@@ -4,17 +4,16 @@ import { useAuth } from '../context/AuthContext'
 import './Login.css'
 
 export default function Login() {
-  const [email, setEmail]     = useState('')
+  const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError]     = useState('')
-  const [loading, setLoading] = useState(false)
-  const { login }             = useAuth()
-  const navigate              = useNavigate()
+  const [error,    setError]    = useState('')
+  const [loading,  setLoading]  = useState(false)
+  const { login }  = useAuth()
+  const navigate   = useNavigate()
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault()
-    setError('')
-    setLoading(true)
+    setError(''); setLoading(true)
     try {
       await login(email, password)
       navigate('/')
@@ -27,25 +26,15 @@ export default function Login() {
 
   return (
     <div className="login-page">
-      <div className="login-bg">
-        <div className="bg-orb orb-1" />
-        <div className="bg-orb orb-2" />
-        <div className="bg-grid" />
-      </div>
-
       <div className="login-box">
-        <div className="login-brand">
-          <div className="login-brand-icon">◈</div>
-          <div className="login-brand-name">Casper</div>
-          <div className="login-brand-sub">Shringar Jewellery — Admin Portal</div>
-        </div>
-
-        <div className="divider" />
+        <div className="login-logo">C</div>
+        <div className="login-brand">Casper</div>
+        <div className="login-tagline">Pricing intelligence for ecommerce sellers</div>
 
         <form onSubmit={handleSubmit} className="login-form">
           <div className="input-group">
             <label>Email</label>
-            <input className="input" type="email" placeholder="admin@casperv2.com"
+            <input className="input" type="email" placeholder="admin@casper.com"
               value={email} onChange={e => setEmail(e.target.value)} required autoFocus />
           </div>
           <div className="input-group">
@@ -53,16 +42,17 @@ export default function Login() {
             <input className="input" type="password" placeholder="••••••••"
               value={password} onChange={e => setPassword(e.target.value)} required />
           </div>
-
           {error && <div className="login-error">{error}</div>}
-
-          <button className="btn btn-gold login-submit" type="submit" disabled={loading}>
-            {loading && <span className="loader" style={{ width:16, height:16, borderWidth:2 }} />}
-            {loading ? 'Signing in…' : 'Sign In'}
+          <button className="btn btn-primary login-submit" type="submit" disabled={loading}>
+            {loading && (
+              <span className="loader" style={{ width:13, height:13, borderWidth:2,
+                borderTopColor:'rgba(255,255,255,0.8)', borderColor:'rgba(255,255,255,0.2)' }}/>
+            )}
+            {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
 
-        <div className="login-footer">Jewelry Pricing & Profitability Management</div>
+        <div className="login-footer">Casper · Ecommerce Pricing Platform</div>
       </div>
     </div>
   )
