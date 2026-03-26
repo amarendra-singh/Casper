@@ -38,74 +38,65 @@ api.interceptors.response.use(
 )
 
 // Auth
-export const login = (email, password) =>
-  api.post('/auth/login', { email, password }).then(r => r.data)
-export const getMe = () =>
-  api.get('/auth/me').then(r => r.data)
+export const login         = (email, password) => api.post('/auth/login', { email, password }).then(r => r.data)
+export const getMe         = ()                => api.get('/auth/me').then(r => r.data)
+export const changePassword= (data)            => api.post('/auth/change-password', data).then(r => r.data)
 
 // Platforms
-export const getPlatforms = () => api.get('/platforms/').then(r => r.data)
-export const createPlatform = (data) => api.post('/platforms/', data).then(r => r.data)
-export const updatePlatform = (id, data) => api.patch(`/platforms/${id}`, data).then(r => r.data)
-export const deletePlatform = (id) => api.delete(`/platforms/${id}`).then(r => r.data)
+export const getPlatforms  = ()        => api.get('/platforms/').then(r => r.data)
+export const createPlatform= (data)    => api.post('/platforms/', data).then(r => r.data)
+export const updatePlatform= (id,data) => api.patch(`/platforms/${id}`, data).then(r => r.data)
+export const deletePlatform= (id)      => api.delete(`/platforms/${id}`).then(r => r.data)
 
 // Vendors
-export const getVendors = () => api.get('/vendors/').then(r => r.data)
-export const createVendor = (data) => api.post('/vendors/', data).then(r => r.data)
-export const updateVendor = (id, data) => api.patch(`/vendors/${id}`, data).then(r => r.data)
-export const deleteVendor = (id) => api.delete(`/vendors/${id}`).then(r => r.data)
+export const getVendors    = ()        => api.get('/vendors/').then(r => r.data)
+export const createVendor  = (data)    => api.post('/vendors/', data).then(r => r.data)
+export const updateVendor  = (id,data) => api.patch(`/vendors/${id}`, data).then(r => r.data)
+export const deleteVendor  = (id)      => api.delete(`/vendors/${id}`).then(r => r.data)
 
 // Categories
-export const getCategories = () => api.get('/categories/').then(r => r.data)
-export const createCategory = (data) => api.post('/categories/', data).then(r => r.data)
-export const updateCategory = (id, data) => api.patch(`/categories/${id}`, data).then(r => r.data)
+export const getCategories  = ()        => api.get('/categories/').then(r => r.data)
+export const createCategory = (data)    => api.post('/categories/', data).then(r => r.data)
+export const updateCategory = (id,data) => api.patch(`/categories/${id}`, data).then(r => r.data)
+export const deleteCategory = (id)      => api.delete(`/categories/${id}`).then(r => r.data)
 
 // Misc Items
-export const getMiscItems = () => api.get('/misc-items/').then(r => r.data)
-export const getMiscTotal = () => api.get('/misc-items/total').then(r => r.data)
+export const getMiscItems  = ()        => api.get('/misc-items/').then(r => r.data)
+export const getMiscTotal  = ()        => api.get('/misc-items/total').then(r => r.data)
+export const createMiscItem= (data)    => api.post('/misc-items/', data).then(r => r.data)
+export const updateMiscItem= (id,data) => api.patch(`/misc-items/${id}`, data).then(r => r.data)
+export const deleteMiscItem= (id)      => api.delete(`/misc-items/${id}`).then(r => r.data)
 
 // Settings
-export const getSettings = () => api.get('/settings/').then(r => r.data)
-export const updateSetting = (key, value) => api.patch(`/settings/${key}`, { value }).then(r => r.data)
+export const getSettings   = ()        => api.get('/settings/').then(r => r.data)
+export const updateSetting = (key,val) => api.patch(`/settings/${key}`, { value: val }).then(r => r.data)
 
 // SKUs
-export const getSkus = () => api.get('/skus/').then(r => r.data)
-export const getSku = (id) => api.get(`/skus/${id}`).then(r => r.data)
-export const createSku = (data) => api.post('/skus/', data).then(r => r.data)
-export const updateSku = (id, data) => api.patch(`/skus/${id}`, data).then(r => r.data)
-export const deleteSku = (id) => api.delete(`/skus/${id}`).then(r => r.data)
+export const getSkus       = ()        => api.get('/skus/').then(r => r.data)
+export const getSku        = (id)      => api.get(`/skus/${id}`).then(r => r.data)
+export const createSku     = (data)    => api.post('/skus/', data).then(r => r.data)
+export const updateSku     = (id,data) => api.patch(`/skus/${id}`, data).then(r => r.data)
+export const deleteSku     = (id)      => api.delete(`/skus/${id}`).then(r => r.data)
 
 // Pricing
-export const getPricingForSku = (skuId) => api.get(`/pricing/sku/${skuId}`).then(r => r.data)
-export const createPricing = (data) => api.post('/pricing/', data).then(r => r.data)
-export const updatePricing = (id, data) => api.patch(`/pricing/${id}`, data).then(r => r.data)
-export const deletePricing = (id) => api.delete(`/pricing/${id}`).then(r => r.data)
+export const getPricingForSku = (skuId)   => api.get(`/pricing/sku/${skuId}`).then(r => r.data)
+export const createPricing    = (data)    => api.post('/pricing/', data).then(r => r.data)
+export const updatePricing    = (id,data) => api.patch(`/pricing/${id}`, data).then(r => r.data)
+export const deletePricing    = (id)      => api.delete(`/pricing/${id}`).then(r => r.data)
 
 // Users
-export const getUsers = () => api.get('/users/').then(r => r.data)
-export const createUser = (data) => api.post('/users/', data).then(r => r.data)
-export const updateUser = (id, data) => api.patch(`/users/${id}`, data).then(r => r.data)
-export const deleteUser = (id) => api.delete(`/users/${id}`).then(r => r.data)
+export const getUsers      = ()        => api.get('/users/').then(r => r.data)
+export const createUser    = (data)    => api.post('/users/', data).then(r => r.data)
+export const updateUser    = (id,data) => api.patch(`/users/${id}`, data).then(r => r.data)
+export const deleteUser    = (id)      => api.delete(`/users/${id}`).then(r => r.data)
 
-// Entries
-export const getEntries = () =>
-  api.get('/entries/').then(r => r.data)
+// Entries — backend route stays /entries/ (batch operations for SKU page)
+export const getEntries    = ()     => api.get('/entries/').then(r => r.data)
+export const upsertBatch   = (rows) => api.post('/entries/upsert-batch', { rows }).then(r => r.data)
 
-export const upsertBatch = (rows) =>
-  api.post('/entries/upsert-batch', { rows }).then(r => r.data)
-
-
-
-// HSN Codes
-export const searchHsn = (q) =>
-  api.get(`/hsn/search?q=${q}`).then(r => r.data)
-
-export const getHsnList = () =>
-  api.get('/hsn/').then(r => r.data)
-
-export const createHsnCode = (data) =>
-  api.post('/hsn/', data).then(r => r.data)
-
-
+// HSN Codes — fixed from /hsn/ to /hsn-codes/
+export const searchHsn     = (q)    => api.get(`/hsn-codes/search?q=${q}`).then(r => r.data)
+export const getHsnList    = ()     => api.get('/hsn-codes/').then(r => r.data)
+export const createHsnCode = (data) => api.post('/hsn-codes/', data).then(r => r.data)
 
 export default api

@@ -5,7 +5,6 @@ import './Layout.css'
 
 const WORKSPACE = [
   { to: '/',        label: 'Dashboard', end: true  },
-  { to: '/entries', label: 'Entries',   end: false },
   { to: '/skus',    label: 'SKUs',      end: false },
   { to: '/pricing', label: 'Pricing',   end: false },
 ]
@@ -19,7 +18,6 @@ const COMPANIES = [
 ]
 const ALL_SEARCH = [
   { label:'Dashboard',            sub:'Workspace',      to:'/' },
-  { label:'Entries',              sub:'Workspace',      to:'/entries' },
   { label:'SKUs',                 sub:'Workspace',      to:'/skus' },
   { label:'Pricing',              sub:'Workspace',      to:'/pricing' },
   { label:'Overview',             sub:'Analytics',      to:null },
@@ -35,7 +33,6 @@ const ALL_SEARCH = [
 ]
 const ICON_BTNS = [
   { icon:'⊞', title:'Dashboard', to:'/' },
-  { icon:'▦', title:'Entries',   to:'/entries' },
   { icon:'◇', title:'SKUs',      to:'/skus' },
   { icon:'◆', title:'Pricing',   to:'/pricing' },
   { icon:'📊', title:'Analytics', to:null },

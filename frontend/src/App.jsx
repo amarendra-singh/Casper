@@ -5,7 +5,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import SKUs from './pages/SKUs'
 import Pricing from './pages/Pricing'
-import Entries from './pages/Entries'
+// import Entries from './pages/Entries'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -21,7 +21,7 @@ function AppRoutes() {
   const { user } = useAuth()
   return (
     <Routes>
-      <Route path="entries" element={<Entries />} />
+      {/* <Route path="entries" element={<Entries />} /> */}
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />

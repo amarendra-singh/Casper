@@ -1,0 +1,326 @@
+{
+  "_meta": {
+    "file": "casper_context.json",
+    "purpose": "AI-readable project context. Paste this at the start of any AI conversation to instantly onboard the AI to the Casper project.",
+    "last_updated": "2026-03-22",
+    "maintained_by": "Amarendra Singh",
+    "companion": "casper_ledger.md — full human-readable details"
+  },
+
+  "project": {
+    "name": "Casper",
+    "tagline": "Pricing intelligence for ecommerce sellers",
+    "description": "SaaS web app for ecommerce sellers to calculate exact profit per SKU across multiple platforms. Eliminates manual Excel pricing.",
+    "status": "Active Development",
+    "testing_with": "Shringar House Jewellery (SHJ)",
+    "owner": "Amarendra Singh",
+    "repo": "https://github.com/amarendra-singh/Casper",
+    "local_path": "C:\\WorkStation\\Projects\\Python\\Casper",
+    "backend_url": "http://localhost:8000",
+    "frontend_url": "http://localhost:5173",
+    "api_prefix": "/api/v1",
+    "api_docs": "http://localhost:8000/docs (debug only)"
+  },
+
+  "backend": {
+    "language": "Python 3.13",
+    "framework": "FastAPI 0.111",
+    "database": "SQLite (aiosqlite) local, MySQL planned for production",
+    "orm": "SQLAlchemy 2.0 async",
+    "migrations": "Alembic — current head: 69a98e6c92d7",
+    "auth": "JWT Bearer (python-jose), bcrypt passwords",
+    "config": "python-decouple (.env file)",
+    "run": "cd backend && venv\\Scripts\\activate && uvicorn app.main:app --reload --port 8000",
+    "architecture": "Thin routes, fat services. Business logic in services/, not routes/",
+
+    "folder_structure": {
+      "app/main.py": "FastAPI entry point, registers all routers",
+      "app/core/config.py": "Settings class with lru_cache singleton",
+      "app/core/database.py": "Async SQLAlchemy engine + session + Base",
+      "app/core/security.py": "bcrypt + JWT create/decode",
+      "app/core/dependencies.py": "Auth guards: get_current_user, require_roles",
+      "app/models/": "User, Platform, PlatformTier, Vendor, Category, MiscItem, GlobalSettings, HsnCode, Sku, SkuPricing",
+      "app/schemas/": "Pydantic schemas for all models + entries.py for batch ops",
+      "app/routes/": "auth, users, platforms, vendors, categories, misc_items, global_settings, hsn_codes, skus, entries",
+      "app/services/pricing.py": "resolve_pricing_inputs, calculate_pricing",
+      "app/services/entries.py": "upsert_row, upsert_batch, get_all_entries"
+    },
+
+    "models": {
+      "User": "id, name, email, password_hash, role(super_admin|admin|viewer), is_active",
+      "Platform": "id, name, cr_charge:float, cr_percentage:float, is_active",
+      "PlatformTier": "id, platform_id(FK), tier_name, fee:float",
+      "Vendor": "id, name, short_code, is_active",
+      "Category": "id, name, is_active",
+      "MiscItem": "id, name, amount:float, is_active",
+      "GlobalSettings": "id, key, value, description — CLASS NAME IS GlobalSettings (plural)",
+      "HsnCode": "id, code, description, gst_rate:float, category, is_custom",
+      "Sku": "id, shringar_sku(UPPERCASE,unique), vendor_id(FK), category_id(FK), hsn_code_id(FK), description, is_active",
+      "SkuPricing": "id, sku_id(FK), platform_id(FK), price, package, logistics, addons, misc_total, cr_percentage, cr_cost, damage_percentage, damage_cost, gst, breakeven, net_profit_20, bs_wo_gst, bank_settlement, is_active"
+    },
+
+    "api_routes": {
+      "POST /auth/login": "{email,password} → {access_token, refresh_token, role, name}",
+      "POST /auth/refresh": "{refresh_token} → new tokens",
+      "GET /auth/me": "current user",
+      "POST /auth/change-password": "{current_password, new_password}",
+      "GET/POST/PATCH/DELETE /users/": "super_admin write only",
+      "GET/POST /platforms/": "includes tiers[]",
+      "POST /platforms/{id}/tiers": "add tier",
+      "PATCH /platforms/{id}/tiers/{tid}": "update tier",
+      "GET/POST/PATCH/DELETE /vendors/": "",
+      "GET/POST/PATCH/DELETE /categories/": "",
+      "GET/POST/PATCH/DELETE /misc-items/": "",
+      "GET /misc-items/total": "{total: float}",
+      "GET/PATCH /settings/": "key-value settings",
+      "GET /hsn-codes/": "all HSN codes",
+      "GET /hsn-codes/search?q=": "search codes",
+      "POST /hsn-codes/": "create custom",
+      "GET/POST/PATCH/DELETE /skus/": "",
+      "POST /pricing/": "create + auto-calculate",
+      "PATCH /pricing/{id}": "update + recalculate",
+      "GET /pricing/sku/{sku_id}": "all platforms for a SKU",
+      "GET /entries/": "all SKUs with latest pricing for SKU page",
+      "POST /entries/upsert-batch": "{rows:[...]} create/update multiple rows"
+    },
+
+    "auth_details": {
+      "access_token_expires": "60 minutes",
+      "refresh_token_expires": "7 days",
+      "algorithm": "HS256",
+      "roles": {"super_admin": "full", "admin": "manage data", "viewer": "read only"}
+    },
+
+    "default_credentials": {
+      "email": "admin@casperv2.com",
+      "password": "Admin@1234",
+      "note": "CHANGE AFTER FIRST LOGIN"
+    },
+
+    "env_template": {
+      "APP_NAME": "CasperV2",
+      "APP_ENV": "development",
+      "APP_DEBUG": "True",
+      "APP_PORT": "8000",
+      "DATABASE_URL": "sqlite+aiosqlite:///./casperv2.db",
+      "DATABASE_URL_SYNC": "sqlite:///./casperv2.db",
+      "SECRET_KEY": "CHANGE-THIS",
+      "ALGORITHM": "HS256",
+      "ACCESS_TOKEN_EXPIRE_MINUTES": "60",
+      "REFRESH_TOKEN_EXPIRE_DAYS": "7",
+      "ALLOWED_ORIGINS": "http://localhost:5173,http://localhost:3000",
+      "DEFAULT_DAMAGE_PERCENT": "15.0"
+    },
+
+    "alembic_notes": [
+      "Always use batch_alter_table() for ALTER TABLE (SQLite limitation)",
+      "Multiple heads: alembic merge heads → alembic upgrade heads",
+      "Current head: 69a98e6c92d7"
+    ]
+  },
+
+  "frontend": {
+    "framework": "React 18 + Vite",
+    "routing": "React Router v6",
+    "http": "Axios (api/client.js)",
+    "styling": "Plain CSS + CSS Variables (no Tailwind, no CSS-in-JS)",
+    "state": "useState, useContext (no Redux)",
+    "fonts": ["Plus Jakarta Sans (UI)", "JetBrains Mono (numbers)"],
+    "run": "cd frontend && npm install && npm run dev → http://localhost:5173",
+
+    "folder_structure": {
+      "src/main.jsx": "React root — wraps BrowserRouter + AuthProvider",
+      "src/App.jsx": "Route definitions — protected routes via ProtectedRoute",
+      "src/index.css": "ALL CSS variables + global styles + utility classes",
+      "src/api/client.js": "Axios instance + all API functions",
+      "src/context/AuthContext.jsx": "JWT auth state, login/logout, token refresh interceptor",
+      "src/components/Layout.jsx": "Sidebar + topbar shell",
+      "src/components/SmartCell.jsx": "Autocomplete cell for vendor/category",
+      "src/components/AddVendorModal.jsx": "Create vendor + auto short_code",
+      "src/components/AddCategoryModal.jsx": "Create category",
+      "src/pages/Login.jsx": "Login page",
+      "src/pages/Dashboard.jsx": "Dashboard (needs redesign)",
+      "src/pages/SKUs.jsx": "Main daily page — Excel-style pricing entry (was Entries.jsx)",
+      "src/pages/SKUAnalysis.jsx": "Insights page (was SKUs.jsx) — NOT YET BUILT",
+      "src/pages/Pricing.jsx": "Quick calculator (old design)"
+    },
+
+    "routes": {
+      "/login": "Login (public)",
+      "/": "Dashboard (protected)",
+      "/skus": "SKUs page — main daily working page",
+      "/sku-analysis": "SKU Analysis — insights + master list (not built)",
+      "/pricing/:skuId?": "Pricing calculator",
+      "/settings": "Settings (not built)"
+    },
+
+    "auth_context": {
+      "provides": ["user", "login()", "logout()", "loading"],
+      "storage": "access_token + refresh_token in localStorage",
+      "on_mount": "reads token → calls /auth/me → sets user",
+      "auto_refresh": "Axios interceptor catches 401 → calls /auth/refresh → retries"
+    },
+
+    "layout_structure": {
+      "outer": ".layout — flex row, 100vh, bg #ECEAE4, padding 10px",
+      "sidebar": "aside.sidebar — 240px, SAME bg as outer, no separator",
+      "icon_strip": ".ic-strip — 42px, icon buttons",
+      "nav_text": ".nav-text — text navigation, company switcher, scrollable sections",
+      "right_col": ".right-col — flex column, contains topbar + main-wrap",
+      "topbar": ".topbar — ON GRAY BG, outside white box, pill search bar",
+      "main_wrap": ".main-wrap — WHITE rounded box, border-radius:14px, shadow",
+      "page_content": "main.page-content — scrollable, padding 24px 28px"
+    },
+
+    "sku_page": {
+      "was": "Entries.jsx / Entries.css",
+      "now": "SKUs.jsx / SKUs.css",
+      "route": "/skus",
+      "description": "Main daily working page. Excel-style spreadsheet.",
+      "column_groups": {
+        "SKU": ["Vendor", "Shringar SKU", "V.Short", "Vendor SKU", "Category"],
+        "Unit Economics": ["Price", "Package", "Logistics", "Ad", "Addons", "Misc", "CR%", "CR₹", "Dmg%", "Dmg₹"],
+        "Profitability": ["Breakeven", "Profit%", "Profit₹", "BS w/o GST"],
+        "Tax": ["GST₹"],
+        "Bank Settlement": ["Final BS"],
+        "Platforms": "Per active platform: tier selector + BS amount"
+      },
+      "row_states": ["new", "dirty", "saving", "saved", "error"],
+      "save_endpoint": "POST /api/v1/entries/upsert-batch",
+      "load_endpoint": "GET /api/v1/entries/",
+      "auto_save_interval": "30 seconds",
+      "localStorage_key": "casper_col_visibility"
+    },
+
+    "css_variables": {
+      "--bg": "#ECEAE4",
+      "--surface": "#FFFFFF",
+      "--surface-2": "#F7F6F3",
+      "--surface-3": "#F0EEEA",
+      "--border": "#EBEBEB",
+      "--border-2": "#E0DDD6",
+      "--accent": "#E8365D",
+      "--accent-dim": "rgba(232,54,93,0.08)",
+      "--black-btn": "#1A1917",
+      "--text": "#111110",
+      "--text-2": "#6B6866",
+      "--text-3": "#A8A59F",
+      "--green": "#16A34A",
+      "--red": "#DC2626",
+      "--amber": "#D97706",
+      "--font-ui": "Plus Jakarta Sans",
+      "--font-mono": "JetBrains Mono"
+    },
+
+    "localStorage_keys": {
+      "access_token": "JWT access token",
+      "refresh_token": "JWT refresh token",
+      "casper_col_visibility": "column group toggle state (JSON)",
+      "casper-theme": "light/dark theme (future)"
+    }
+  },
+
+  "pricing_formula": {
+    "steps": {
+      "1": "cr_cost = platform.cr_charge × cr_percentage / 100",
+      "2": "damage_cost = price × damage_percentage / 100",
+      "3": "misc_total = SUM active MiscItem.amount",
+      "4": "breakeven = price + package + logistics + ad + addons + misc_total + cr_cost + damage_cost",
+      "5": "net_profit = breakeven × profit_percentage / 100",
+      "6": "bs_wo_gst = Math.round(breakeven + net_profit)",
+      "7": "gst_amt = bs_wo_gst × gst_rate / 100",
+      "8": "bank_settlement = bs_wo_gst + gst_amt",
+      "9": "platform_bs = bank_settlement + tier.fee"
+    },
+    "defaults": {
+      "damage_percentage": "15%",
+      "profit_percentage": "20%",
+      "misc_total": "₹12"
+    },
+    "bidirectional": ["CR%↔CR₹", "Dmg%↔Dmg₹", "Profit%↔Profit₹"],
+    "override_priority": "Manual entry > auto-calculated",
+    "verified_example": {
+      "price": 64, "package": 7, "logistics": 5, "addons": 6,
+      "misc": 12, "cr": 35, "damage": 9.6, "gst": 5,
+      "breakeven": 138.6, "bs_wo_gst": 166, "bank_settlement": 171
+    }
+  },
+
+  "seed_data": {
+    "platforms": [
+      {"name": "Meesho", "cr_charge": 160, "tiers": "Gold₹20,Silver₹15,Bronze₹10"},
+      {"name": "Flipkart", "cr_charge": 170, "tiers": "Gold₹25,Silver₹18,Bronze₹12"},
+      {"name": "Amazon", "cr_charge": 180, "tiers": "Gold₹30,Silver₹22,Bronze₹15"},
+      {"name": "Snapdeal", "cr_charge": 150, "tiers": "Gold₹18,Silver₹12"},
+      {"name": "Myntra", "cr_charge": 175, "tiers": "Gold₹22,Silver₹16"}
+    ],
+    "vendors": [
+      {"name": "Varni Sales", "short_code": "VRI"},
+      {"name": "Vesu Imitation", "short_code": "VIC"}
+    ],
+    "misc_items": [
+      {"name": "Rent", "amount": 4},
+      {"name": "Electricity", "amount": 4},
+      {"name": "Internet", "amount": 4}
+    ],
+    "hsn_codes": "46 codes, 5 categories. Run: python casper_hsn_import.py",
+    "sku_naming": "SHJ-{category_code}-{vendor_code}-{product_code} e.g. SHJ-JS-VRI-N5-GREEN"
+  },
+
+  "navigation": {
+    "sections": {
+      "WORKSPACE": ["Dashboard /", "SKUs /skus", "Pricing /pricing"],
+      "ANALYTICS": ["Overview (Soon)", "Revenue (Soon)", "Platform Performance (Soon)", "SKU Analysis (Soon)"],
+      "REPORTS": {
+        "badge": "count of ready-to-download reports",
+        "My Reports": ["Sales Report", "Profitability", "Platform Compare"],
+        "Shared with me": ["Weekly Summary", "Deal Duration"]
+      },
+      "SETTINGS": ["Settings /settings", "Users"]
+    },
+    "company_switcher": "Dropdown — switch between multiple companies/brands",
+    "search": "Pill input in topbar — searches all pages and sections"
+  },
+
+  "completed": [
+    "Backend: all models, migrations, auth, CRUD, pricing engine, HSN, batch upsert",
+    "Frontend: Login, Layout (sidebar+topbar), Dashboard (basic), SKU page (Excel-style with save/load/autosave)"
+  ],
+
+  "pending_high_priority": [
+    "Rename Entries→SKUs everywhere",
+    "Dashboard redesign with real data",
+    "Add HSN + Description + filter bar to SKU page",
+    "SKU Analysis page",
+    "Import/Export Excel",
+    "Settings page"
+  ],
+
+  "ideas_parked": {
+    "pricing_insight_simulator": "What-if price changes → impact on profit/competitiveness per platform",
+    "dark_mode": "CSS variable overrides. Add AFTER light theme complete on all pages.",
+    "sku_analysis_insights": "Return rates, best platform per SKU, margin ranking, below-breakeven warnings",
+    "reports_with_badge": "Backend generates Excel/PDF → badge on sidebar → user downloads"
+  },
+
+  "known_issues": {
+    "sqlite_alter_table": "Use batch_alter_table() in Alembic",
+    "multiple_alembic_heads": "alembic merge heads → alembic upgrade heads",
+    "windows_filenames": "main.jsx not main,jsx",
+    "vite_css_cache": "Ctrl+Shift+R or delete node_modules/.vite",
+    "globalSettings_class": "Class name is GlobalSettings (plural) not GlobalSetting"
+  },
+
+  "key_decisions": {
+    "CR_means": "Customer Return COST (not Commission Rate)",
+    "accent_color": "#E8365D red-pink (not gold — too jewelry-specific)",
+    "font": "Plus Jakarta Sans (neutral SaaS, replaced Cormorant Garamond)",
+    "sidebar_bg": "Same as outer #ECEAE4 — no visual separation",
+    "topbar": "Outside white box — search visible on gray background",
+    "entries_renamed": "Entries → SKUs (main page)",
+    "skus_renamed": "SKUs → SKU Analysis (insights page)",
+    "dark_mode_timing": "Add AFTER all pages complete in light theme"
+  },
+
+  "how_to_use": "Paste this entire file at the start of a new AI conversation, then say: 'This is my project context. Help me with [specific task]'. The AI will understand everything without re-explanation."
+}
