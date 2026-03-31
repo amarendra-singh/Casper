@@ -9,18 +9,40 @@ import AddVendorModal from '../components/AddVendorModal'
 import AddCategoryModal from '../components/AddCategoryModal'
 import './SKUs.css'
 
-// ─── Row status ───────────────────────────────────────────────────────────────
+// ─── Row status constants ─────────────────────────────────────────────────────
 const STATUS = {
-  NEW:    'new',
-  DIRTY:  'dirty',
-  SAVING: 'saving',
-  SAVED:  'saved',
-  ERROR:  'error',
+  NEW:    'new',     // never saved
+  DIRTY:  'dirty',   // has unsaved changes
+  SAVING: 'saving',  // being saved right now
+  SAVED:  'saved',   // saved successfully
+  ERROR:  'error',   // save failed
+}
+
+// ─── GST options ──────────────────────────────────────────────────────────────
+// These are the GST rate options shown in the dropdown
+const GST_OPTIONS = [
+  { value: '0',        label: '0%'      },
+  { value: '3',        label: '3%'      },
+  { value: '5',        label: '5%'      },
+  { value: '18',       label: '18%'     },
+  { value: '40',       label: '40%'     },
+  { value: 'apparel',  label: 'Apparel' },  // 5% if price ≤ ₹2500, else 18%
+  { value: 'footwear', label: 'Footwear'},  // same rule as apparel
+]
+
+// Resolves actual GST % based on type and price
+// Apparel/Footwear: ≤₹2500 = 5%, >₹2500 = 18%
+function resolveGst(gstType, price) {
+  const p = parseFloat(price) || 0
+  if (gstType === 'apparel' || gstType === 'footwear') {
+    return p <= 2500 ? 5 : 18
+  }
+  return parseFloat(gstType) || 0
 }
 
 // ─── Column groups ────────────────────────────────────────────────────────────
 const COL_GROUPS = {
-  skuDetails: { label: 'SKU Details', cols: ['vshort','vsku','category'] },
+  skuDetails:    { label: 'SKU Details',    cols: ['vshort','vsku','category'] },
   costBreakdown: { label: 'Cost Breakdown', cols: ['pkg','log','ad','addons','misc'] },
   calculations:  { label: 'Calculations',   cols: ['crpct','cramt','dmgpct','dmgamt','profpct','profamt','bsnogst','gst'] },
 }
@@ -62,7 +84,8 @@ function newRow(data = {}) {
     dmgAmt:     data.dmgAmt     || '',
     profPct:    data.profPct    || '',
     profAmt:    data.profAmt    || '',
-    gst:        data.gst        || '',
+    gstType:    data.gstType    || '5',  // GST dropdown selection, default 5%
+    gst:        data.gst        || '5',  // resolved GST amount/rate
     tiers:      data.tiers      || {},
   }
 }
@@ -88,11 +111,12 @@ function backendRowToFrontend(r) {
     crAmt:      r.cr_cost           != null ? String(r.cr_cost)           : '',
     dmgPct:     r.damage_percentage != null ? String(r.damage_percentage) : '',
     dmgAmt:     r.damage_cost       != null ? String(r.damage_cost)       : '',
-    gst:        r.gst               != null ? String(r.gst)               : '',
+    gstType:    '5',
+    gst:        r.gst               != null ? String(r.gst)               : '5',
   })
 }
 
-// ─── Compute ──────────────────────────────────────────────────────────────────
+// ─── Compute pricing ──────────────────────────────────────────────────────────
 function compute(row, miscDef, profDef, platforms) {
   const p      = parseFloat(row.price)  || 0
   const pkg    = parseFloat(row.pkg)    || 0
@@ -132,15 +156,20 @@ function compute(row, miscDef, profDef, platforms) {
   }
 
   const bsNoGst = Math.round(be + profAmt)
-  const gst     = parseFloat(row.gst) || 0
-  const finalBS = bsNoGst + gst
+
+  // Use resolveGst to get actual GST rate based on type + price
+  const gstRate = resolveGst(row.gstType || '5', row.price)
+  const gstAmt  = Math.round(bsNoGst * gstRate / 100)
+  const finalBS = bsNoGst + gstAmt
 
   return {
     crPct:   +crPct.toFixed(2),  crAmt:   +crAmt.toFixed(2),
     dmgPct:  +dmgPct.toFixed(2), dmgAmt:  +dmgAmt.toFixed(2),
     be:      +be.toFixed(2),
     profPct: +profPct.toFixed(2), profAmt: +profAmt.toFixed(2),
-    bsNoGst, finalBS,
+    bsNoGst,
+    gstAmt,
+    finalBS,
   }
 }
 
@@ -159,13 +188,14 @@ function platBS(row, pl, miscDef, profDef, platforms) {
   const misc   = row.misc !== '' ? parseFloat(row.misc) : miscDef
   const be     = p + pkg + log + ad + addons + misc + cr + c.dmgAmt
   const bsNoGst = Math.round(be + be * (c.profPct / 100))
-  const gst    = parseFloat(row.gst) || 0
-  const bs     = bsNoGst + gst + (tier.fee || 0)
+  const gstRate = resolveGst(row.gstType || '5', row.price)
+  const gstAmt  = Math.round(bsNoGst * gstRate / 100)
+  const bs      = bsNoGst + gstAmt + (tier.fee || 0)
   return { bs, tierIdx }
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
-export default function Entries() {
+// ─── Main component ───────────────────────────────────────────────────────────
+export default function SKUs() {
   const [vendors,     setVendors]     = useState([])
   const [categories,  setCategories]  = useState([])
   const [platforms,   setPlatforms]   = useState([])
@@ -197,7 +227,7 @@ export default function Entries() {
     }).finally(() => setLoading(false))
   }, [])
 
-  // ── Row update — marks dirty ───────────────────────────────────────────────
+  // ── Update row — marks dirty ───────────────────────────────────────────────
   const upd = useCallback((id, patch) =>
     setRows(prev => prev.map(r =>
       r.id === id ? { ...r, ...patch, status: STATUS.DIRTY } : r
@@ -214,13 +244,9 @@ export default function Entries() {
   // ── Save logic ─────────────────────────────────────────────────────────────
   const saveRows = useCallback(async (rowsToSave) => {
     if (!rowsToSave.length) return
-
-    // Mark as saving
     setRows(prev => prev.map(r =>
-      rowsToSave.find(s => s.id === r.id)
-        ? { ...r, status: STATUS.SAVING } : r
+      rowsToSave.find(s => s.id === r.id) ? { ...r, status: STATUS.SAVING } : r
     ))
-
     const payload = rowsToSave.map(row => ({
       shringar_sku:      row.sku,
       vendor_id:         row.vendorId   || null,
@@ -236,46 +262,52 @@ export default function Entries() {
       damage_percentage: row.dmgPct !== '' ? parseFloat(row.dmgPct) : null,
       damage_cost:       row.dmgAmt !== '' ? parseFloat(row.dmgAmt) : null,
       profit_percentage: row.profPct !== '' ? parseFloat(row.profPct) : null,
-      gst:               parseFloat(row.gst) || 0,
+      // Save the resolved GST amount
+      gst: resolveGst(row.gstType || '5', row.price),
     }))
-
     try {
       const result = await upsertBatch(payload)
       const savedSkus = new Set(result.saved.map(r => r.shringar_sku))
       const errorMap  = {}
       result.errors.forEach(r => { errorMap[r.shringar_sku] = r.error })
-
       setRows(prev => prev.map(r => {
         const match = rowsToSave.find(s => s.id === r.id)
         if (!match) return r
-        if (savedSkus.has(r.sku)) return { ...r, status: STATUS.SAVED,  errorMsg: '' }
-        if (errorMap[r.sku])      return { ...r, status: STATUS.ERROR,  errorMsg: errorMap[r.sku] }
+        if (savedSkus.has(r.sku)) return { ...r, status: STATUS.SAVED, errorMsg: '' }
+        if (errorMap[r.sku])      return { ...r, status: STATUS.ERROR, errorMsg: errorMap[r.sku] }
         return r
       }))
     } catch {
-      // Network error — revert to dirty
       setRows(prev => prev.map(r =>
-        rowsToSave.find(s => s.id === r.id)
-          ? { ...r, status: STATUS.DIRTY } : r
+        rowsToSave.find(s => s.id === r.id) ? { ...r, status: STATUS.DIRTY } : r
       ))
     }
   }, [])
 
   const saveAll = useCallback(() => {
     const dirty = rows.filter(r =>
-      (r.status === STATUS.DIRTY || r.status === STATUS.NEW) &&
-      r.sku && r.price
+      (r.status === STATUS.DIRTY || r.status === STATUS.NEW) && r.sku && r.price
     )
     saveRows(dirty)
   }, [rows, saveRows])
 
-  // ── Auto-save every 30 seconds ─────────────────────────────────────────────
+  // ── Debounce save: 2s after last change ─────────────────────────────────────
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const dirty = rows.filter(r =>
+        (r.status === STATUS.DIRTY || r.status === STATUS.NEW) && r.sku && r.price
+      )
+      if (dirty.length > 0) saveRows(dirty)
+    }, 2000)
+    return () => clearTimeout(timer)
+  }, [rows, saveRows])
+
+  // ── Hard fallback: save every 30s in case debounce is missed ─────────────
   useEffect(() => {
     const interval = setInterval(() => {
       setRows(current => {
         const dirty = current.filter(r =>
-          (r.status === STATUS.DIRTY || r.status === STATUS.NEW) &&
-          r.sku && r.price
+          (r.status === STATUS.DIRTY || r.status === STATUS.NEW) && r.sku && r.price
         )
         if (dirty.length > 0) saveRows(dirty)
         return current
@@ -323,10 +355,9 @@ export default function Entries() {
     setCategoryModal(null); setPendingRowId(null)
   }
 
-  // ── Derived save state ─────────────────────────────────────────────────────
-  const isSaving  = rows.some(r => r.status === STATUS.SAVING)
+  const isSaving   = rows.some(r => r.status === STATUS.SAVING)
   const dirtyCount = rows.filter(r => r.status === STATUS.DIRTY && r.sku && r.price).length
-  const allSaved  = rows.some(r => r.status === STATUS.SAVED) && dirtyCount === 0 && !isSaving
+  const allSaved   = rows.some(r => r.status === STATUS.SAVED) && dirtyCount === 0 && !isSaving
 
   if (loading) return (
     <div className="loader-page">
@@ -340,11 +371,10 @@ export default function Entries() {
       {/* ── Header ── */}
       <div className="page-header">
         <div>
-        <h1 className="page-title">SKUs</h1>
+          <h1 className="page-title">SKUs</h1>
           <p className="page-subtitle">{rows.length} rows</p>
         </div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-          {/* Save status */}
           <span className="save-status">
             {isSaving && <span className="save-saving">⟳ Saving...</span>}
             {!isSaving && dirtyCount > 0 && (
@@ -354,17 +384,17 @@ export default function Entries() {
           </span>
           <button className="btn btn-ghost">Import Excel</button>
           <button className="btn btn-ghost">Export</button>
-          <button className="btn btn-gold" onClick={saveAll} disabled={isSaving || dirtyCount === 0}>
+          <button className="btn btn-accent" onClick={saveAll} disabled={isSaving || dirtyCount === 0}>
             {isSaving
               ? <><span className="loader" style={{ width:12, height:12, borderWidth:2 }}/> Saving</>
               : '💾 Save All'
             }
           </button>
-          <button className="btn btn-ghost" onClick={addRow}>+ Add Row</button>
+          <button className="btn btn-primary" onClick={addRow}>+ Add Row</button>
         </div>
       </div>
 
-      {/* ── Global settings bar ── */}
+      {/* ── Settings bar ── */}
       <div className="e-bar">
         <div className="e-bar-item">
           <label>Global Profit %</label>
@@ -386,7 +416,10 @@ export default function Entries() {
                 prev.find(p=>p.id===pl.id)
                   ? prev.filter(p=>p.id!==pl.id)
                   : [...prev, pl])}>
-              {pl.name}
+              {/* shine + inner needed for running light effect */}
+              <div className="shine"/>
+              <div className="inner"/>
+              <span>{pl.name}</span>
             </button>
           ))}
         </div>
@@ -399,8 +432,9 @@ export default function Entries() {
           <button key={key}
             className={`col-toggle-btn ${colVis[key] ? 'on' : 'off'}`}
             onClick={() => toggleGroup(key)}>
-            <span>{colVis[key] ? '✓' : '○'}</span>
-            {group.label}
+            <div className="shine"/>
+            <div className="inner"/>
+            <span>{colVis[key] ? '✓' : '○'} {group.label}</span>
           </button>
         ))}
         <div className="col-toggle-sep"/>
@@ -412,20 +446,26 @@ export default function Entries() {
         <table className="e-tbl">
           <thead>
             <tr>
+              {/* SKU group header */}
               <th className="gh gh-sku"
                 colSpan={2 + (vis('vshort')?1:0) + (vis('vsku')?1:0) + (vis('category')?1:0)}>
                 SKU
               </th>
+              {/* Unit Economics group header */}
               <th className="gh gh-ue"
                 colSpan={1+(vis('pkg')?1:0)+(vis('log')?1:0)+(vis('ad')?1:0)+(vis('addons')?1:0)+(vis('misc')?1:0)+(vis('crpct')?1:0)+(vis('cramt')?1:0)+(vis('dmgpct')?1:0)+(vis('dmgamt')?1:0)}>
                 Unit Economics
               </th>
+              {/* Profitability group header */}
               <th className="gh gh-prof"
                 colSpan={1+(vis('profpct')?1:0)+(vis('profamt')?1:0)+(vis('bsnogst')?1:0)}>
                 Profitability
               </th>
+              {/* Tax group header — only show if GST column visible */}
               {vis('gst') && <th className="gh gh-tax">Tax</th>}
+              {/* Bank Settlement */}
               <th className="gh gh-bs">Bank Settlement</th>
+              {/* Platform columns */}
               {activePlats.map(pl => (
                 <th key={pl.id} className="gh gh-plat">
                   {pl.name}
@@ -436,9 +476,12 @@ export default function Entries() {
               <th className="gh" style={{ minWidth:28 }}/>
               <th className="gh" style={{ minWidth:28 }}/>
             </tr>
+
+            {/* Sub-headers row */}
             <tr>
               <th className="sh sh-sku w-vendor">Vendor</th>
-              <th className="sh sh-sku w-sku">Shringar SKU</th>
+              {/* Changed from "Shringar SKU" to "SKU" */}
+              <th className="sh sh-sku w-sku">SKU</th>
               {vis('vshort')   && <th className="sh sh-sku w-vshort">V.Short</th>}
               {vis('vsku')     && <th className="sh sh-sku w-vsku">Vendor SKU</th>}
               {vis('category') && <th className="sh sh-sku w-cat">Category</th>}
@@ -456,7 +499,8 @@ export default function Entries() {
               {vis('profpct') && <th className="sh sh-prof w-profpct">Profit %</th>}
               {vis('profamt') && <th className="sh sh-prof w-profamt">Profit ₹</th>}
               {vis('bsnogst') && <th className="sh sh-prof w-bsnogst">BS w/o GST</th>}
-              {vis('gst')     && <th className="sh sh-tax w-gst">GST ₹</th>}
+              {/* GST column header */}
+              {vis('gst') && <th className="sh sh-tax w-gst">GST</th>}
               <th className="sh sh-bs w-finalbs">Final BS</th>
               {activePlats.map(pl => (
                 <th key={pl.id} className="sh sh-plat w-plat">{pl.name}</th>
@@ -471,8 +515,8 @@ export default function Entries() {
               const c = compute(row, miscDef, profDef, platforms)
               return (
                 <tr key={row.id} className={`e-row ${row.status === STATUS.ERROR ? 'row-error' : ''}`}>
- 
-                  {/* Vendor */}
+
+                  {/* Vendor — SmartCell autocomplete */}
                   <td className="ec ec-smart w-vendor sh-sku">
                     <SmartCell
                       value={row.vendor} options={vendorOpts} placeholder="Vendor"
@@ -486,7 +530,7 @@ export default function Entries() {
                     />
                   </td>
 
-                  {/* Shringar SKU */}
+                  {/* SKU code — always uppercase */}
                   <td className="ec w-sku sh-sku">
                     <input className="ec-input mono" value={row.sku} placeholder="SHJ-JS-VRI-N6"
                       onChange={e => upd(row.id, { sku:e.target.value.toUpperCase() })} />
@@ -519,10 +563,16 @@ export default function Entries() {
                     </td>
                   )}
 
-                  {/* Price */}
+                  {/* Price — when price changes, re-resolve GST for apparel/footwear */}
                   <td className="ec w-price sh-ue">
                     <input className="ec-input right mono" type="number" value={row.price}
-                      placeholder="0" onChange={e => upd(row.id, { price:e.target.value })} />
+                      placeholder="0"
+                      onChange={e => {
+                        const newPrice = e.target.value
+                        // Re-resolve GST if type is apparel/footwear (price-dependent)
+                        const newGst = resolveGst(row.gstType || '5', newPrice)
+                        upd(row.id, { price: newPrice, gst: String(newGst) })
+                      }} />
                   </td>
 
                   {vis('pkg') && (
@@ -584,7 +634,7 @@ export default function Entries() {
                     </td>
                   )}
 
-                  {/* Breakeven */}
+                  {/* Breakeven — auto calculated, read only */}
                   <td className="ec ec-auto w-be sh-prof">
                     {row.price ? `₹${c.be}` : '—'}
                   </td>
@@ -608,19 +658,34 @@ export default function Entries() {
                     </td>
                   )}
 
+                  {/* ── GST dropdown ── 
+                      Instead of a number input, user picks from a dropdown.
+                      For Apparel/Footwear the rate is auto-calculated based on price.
+                  */}
                   {vis('gst') && (
                     <td className="ec w-gst sh-tax">
-                      <input className="ec-input right mono" type="number" value={row.gst}
-                        placeholder="0" onChange={e => upd(row.id, { gst:e.target.value })} />
+                      <select
+                        className="ec-input gst-select"
+                        value={row.gstType || '5'}
+                        onChange={e => {
+                          const newType = e.target.value
+                          // Resolve actual rate for this type + current price
+                          const newGst = resolveGst(newType, row.price)
+                          upd(row.id, { gstType: newType, gst: String(newGst) })
+                        }}>
+                        {GST_OPTIONS.map(o => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
                     </td>
                   )}
 
-                  {/* Final BS */}
+                  {/* Final BS — auto calculated, highlighted */}
                   <td className="ec ec-auto ec-gold w-finalbs sh-bs">
                     {row.price ? `₹${c.finalBS}` : '—'}
                   </td>
 
-                  {/* Platforms */}
+                  {/* Platform columns */}
                   {activePlats.map(pl => {
                     const { bs, tierIdx } = platBS(row, pl, miscDef, profDef, platforms)
                     return (
@@ -640,7 +705,7 @@ export default function Entries() {
                     )
                   })}
 
-                  {/* Status dot */}
+                  {/* Row save status indicator */}
                   <td className="ec-status">
                     {row.status === STATUS.SAVING && (
                       <span className="loader" style={{ width:10, height:10, borderWidth:1.5 }}/>
@@ -653,7 +718,7 @@ export default function Entries() {
                     )}
                   </td>
 
-                  {/* Delete */}
+                  {/* Delete row button */}
                   <td className="ec-del">
                     <button onClick={() => delRow(row.id)} className="del-btn">×</button>
                   </td>
@@ -681,7 +746,7 @@ export default function Entries() {
             />
           )
         })}
-        <button className="btn btn-gold"
+        <button className="btn btn-accent"
           style={{ margin:'12px', width:'calc(100% - 24px)' }}
           onClick={addRow}>
           + Add Row
@@ -737,7 +802,7 @@ function MobileCard({ row, calc:c, vendorOpts, catOpts, miscDef, profDef,
               <input className="m-input mono" value={row.vsku} placeholder="N6-WHITE"
                 onChange={e => onUpd(row.id,{vsku:e.target.value})}/>
             </div>
-            <div className="m-field"><label>Shringar SKU</label>
+            <div className="m-field"><label>SKU</label>
               <input className="m-input mono" value={row.sku} placeholder="SHJ-JS-VRI-N6"
                 onChange={e => onUpd(row.id,{sku:e.target.value.toUpperCase()})}/>
             </div>
@@ -775,8 +840,7 @@ function MobileCard({ row, calc:c, vendorOpts, catOpts, miscDef, profDef,
           <div className="m-section">Profitability</div>
           <div className="m-grid">
             <div className="m-field"><label>Breakeven</label>
-              <input className="m-input mono right" readOnly
-                value={row.price?`₹${c.be}`:''} placeholder="—"/>
+              <input className="m-input mono right" readOnly value={row.price?`₹${c.be}`:''} placeholder="—"/>
             </div>
             <div className="m-field"><label>Profit %</label>
               <input className="m-input mono right" type="number" value={row.profPct}
@@ -787,18 +851,25 @@ function MobileCard({ row, calc:c, vendorOpts, catOpts, miscDef, profDef,
                 placeholder={c.profAmt} onChange={e=>onUpd(row.id,{profAmt:e.target.value,profPct:''})}/>
             </div>
             <div className="m-field"><label>BS w/o GST</label>
-              <input className="m-input mono right" readOnly
-                value={row.price?`₹${c.bsNoGst}`:''} placeholder="—"/>
+              <input className="m-input mono right" readOnly value={row.price?`₹${c.bsNoGst}`:''} placeholder="—"/>
             </div>
-            <div className="m-field"><label>GST ₹</label>
-              <input className="m-input mono right" type="number" value={row.gst}
-                placeholder="0" onChange={e=>onUpd(row.id,{gst:e.target.value})}/>
+            <div className="m-field"><label>GST Type</label>
+              <select className="m-input" value={row.gstType || '5'}
+                onChange={e => {
+                  const newType = e.target.value
+                  const newGst  = resolveGst(newType, row.price)
+                  onUpd(row.id, { gstType: newType, gst: String(newGst) })
+                }}>
+                {GST_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
             </div>
             <div className="m-field">
-              <label style={{color:'var(--gold)'}}>Final BS</label>
+              <label style={{color:'var(--accent)'}}>Final BS</label>
               <input className="m-input mono right" readOnly
                 value={row.price?`₹${c.finalBS}`:''} placeholder="—"
-                style={{color:'var(--gold)',fontWeight:600}}/>
+                style={{color:'var(--accent)',fontWeight:600}}/>
             </div>
           </div>
           {activePlats.length > 0 && <>

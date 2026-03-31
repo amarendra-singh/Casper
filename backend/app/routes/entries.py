@@ -18,8 +18,8 @@ async def upsert_entries_batch(
     db: AsyncSession = Depends(get_db),
     _=Depends(require_any),
 ):
-    async with db.begin():
-        saved, errors = await upsert_batch(db, request.rows)
+    # No db.begin() here — get_db() already handles commit/rollback
+    saved, errors = await upsert_batch(db, request.rows)
 
     return UpsertBatchResponse(
         saved       = saved,
@@ -28,6 +28,7 @@ async def upsert_entries_batch(
         saved_count = len(saved),
         error_count = len(errors),
     )
+
 
 # Add this route
 @router.get("/", response_model=list[EntryRowResponse])

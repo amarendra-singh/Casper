@@ -2,16 +2,17 @@ from datetime import datetime
 from sqlalchemy import String, Float, Boolean, DateTime, Integer, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
-
+from typing import Optional  # ← add this if not already there
 
 class Sku(Base):
     __tablename__ = "skus"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     shringar_sku: Mapped[str] = mapped_column(String(150), unique=True, nullable=False, index=True)
-    vendor_sku: Mapped[str] = mapped_column(String(150), nullable=False)
-    vendor_id: Mapped[int] = mapped_column(Integer, ForeignKey("vendors.id", ondelete="RESTRICT"), nullable=False)
-    category_id: Mapped[int] = mapped_column(Integer, ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False)
+    vendor_sku: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
+    vendor_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("vendors.id", ondelete="RESTRICT"), nullable=True)
+    category_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("categories.id", ondelete="RESTRICT"), nullable=True)
+
     description: Mapped[str] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -35,9 +36,11 @@ class SkuPricing(Base):
     price: Mapped[float] = mapped_column(Float, nullable=False)
     package: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     logistics: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    ad: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     addons: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     misc_total: Mapped[float] = mapped_column(Float, nullable=False, default=0, comment="Sum of misc items, overridable")
     gst: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    profit_percentage: Mapped[float] = mapped_column(Float, nullable=False, default=20)
 
     # ── CR (Customer Return) ──────────────────────────────
     cr_percentage: Mapped[float] = mapped_column(Float, nullable=False, comment="From platform, overridable")

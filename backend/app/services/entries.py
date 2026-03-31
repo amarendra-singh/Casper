@@ -52,16 +52,17 @@ def calculate_pricing(
     damage_percentage: float,
     damage_cost: float,
     profit_percentage: float,
-    gst: float,
+    gst_rate: float,          # GST rate in % (e.g. 5 means 5%)
 ) -> dict:
     """
     Core pricing formula — mirrors the existing pricing service.
     Returns all calculated fields.
     """
-    breakeven = price + package + logistics + ad + addons + misc_total + cr_cost + damage_cost
-    net_profit = breakeven * (profit_percentage / 100)
-    bs_wo_gst  = round(breakeven + net_profit)
-    bank_settlement = bs_wo_gst + gst
+    breakeven   = price + package + logistics + ad + addons + misc_total + cr_cost + damage_cost
+    net_profit  = breakeven * (profit_percentage / 100)
+    bs_wo_gst   = round(breakeven + net_profit)
+    gst_amount  = round(bs_wo_gst * gst_rate / 100)   # calculate actual ₹ amount
+    bank_settlement = bs_wo_gst + gst_amount
 
     return {
         'breakeven':        round(breakeven, 2),
@@ -102,6 +103,7 @@ async def upsert_row(
             # Create new SKU
             sku = Sku(
                 shringar_sku = row.shringar_sku,
+                vendor_sku   = '',
                 vendor_id    = row.vendor_id,
                 category_id  = row.category_id,
                 hsn_code_id  = row.hsn_code_id,
@@ -151,7 +153,7 @@ async def upsert_row(
             damage_percentage = dmg_pct,
             damage_cost       = damage_cost,
             profit_percentage = profit_pct,
-            gst               = gst,
+            gst_rate          = gst,          # pass rate, formula calculates ₹ amount
         )
 
         # ── 4. Upsert pricing record ───────────────────────────────────────
@@ -171,6 +173,7 @@ async def upsert_row(
                 price             = row.price,
                 package           = row.package or 0,
                 logistics         = row.logistics or 0,
+                ad                = row.ad or 0,
                 addons            = row.addons or 0,
                 misc_total        = misc_total,
                 cr_percentage     = cr_pct,
@@ -178,6 +181,7 @@ async def upsert_row(
                 damage_percentage = dmg_pct,
                 damage_cost       = damage_cost,
                 gst               = gst,
+                profit_percentage = profit_pct,
                 breakeven         = calc['breakeven'],
                 net_profit_20     = calc['net_profit_amt'],
                 bs_wo_gst         = calc['bs_wo_gst'],
@@ -319,14 +323,14 @@ async def get_all_entries(session: AsyncSession) -> list:
             'price':            pricing.price        if pricing else None,
             'package':          pricing.package      if pricing else None,
             'logistics':        pricing.logistics    if pricing else None,
-            'ad':               None,
+            'ad':               pricing.ad              if pricing else None,
             'addons':           pricing.addons       if pricing else None,
             'misc_total':       pricing.misc_total   if pricing else None,
             'cr_percentage':    pricing.cr_percentage   if pricing else None,
             'cr_cost':          pricing.cr_cost         if pricing else None,
             'damage_percentage':pricing.damage_percentage if pricing else None,
             'damage_cost':      pricing.damage_cost      if pricing else None,
-            'profit_percentage':None,
+            'profit_percentage': pricing.profit_percentage if pricing else None,
             'gst':              pricing.gst          if pricing else None,
             'breakeven':        pricing.breakeven    if pricing else None,
             'bs_wo_gst':        pricing.bs_wo_gst    if pricing else None,

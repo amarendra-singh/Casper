@@ -1,9 +1,25 @@
+# Python
 .env
 *.env
 __pycache__/
 *.py[cod]
 .venv/
 venv/
+env/
 *.log
 .idea/
 .vscode/
+
+# Database — never commit real data
+*.db
+*.sqlite
+
+# Node
+node_modules/
+frontend/dist/
+
+# Claude internal
+.claude/
+
+# Temp scripts
+backend/Script/

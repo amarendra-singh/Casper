@@ -351,6 +351,25 @@
 .ec-input.right { text-align: right; }
 .ec-input::placeholder { color: var(--text-3); }
 
+/* ── GST dropdown select ──
+   Styles the select element to look like the other input cells
+   appearance:none = removes browser default arrow
+   We add our own custom arrow using background-image
+*/
+select.ec-input,
+.gst-select {
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='%23A8A59F' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 10px;
+  padding-right: 20px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+}
+
 /* ── Platform cell ── */
 .plat-cell {
   display: flex; align-items: center; justify-content: space-between;
@@ -425,3 +444,4 @@
   .col-toggle-bar { display: none; }
   .e-bar          { gap: 8px; }
 }
+

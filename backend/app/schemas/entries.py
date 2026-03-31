@@ -1,9 +1,10 @@
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, Field
 from typing import Optional, List
 
 class EntryRowInput(BaseModel):
-    # SKU fields
-    shringar_sku:  str
+    # Accept both 'sku' (new frontend name) and 'shringar_sku' (old name)
+    # The frontend now sends 'sku' so we alias it here
+    shringar_sku:  str = Field(..., alias='sku')
     vendor_id:     Optional[int] = None
     category_id:   Optional[int] = None
     hsn_code_id:   Optional[int] = None
@@ -25,11 +26,15 @@ class EntryRowInput(BaseModel):
     # Profit override
     profit_percentage: Optional[float] = None  # None = use global (20%)
 
+    # Allow both 'sku' and 'shringar_sku' field names
+    class Config:
+        populate_by_name = True
+
     @validator('shringar_sku')
     def sku_must_not_be_empty(cls, v):
         v = v.strip().upper()
         if not v:
-            raise ValueError('Shringar SKU cannot be empty')
+            raise ValueError('SKU cannot be empty')
         return v
 
     @validator('price')
@@ -44,6 +49,7 @@ class EntryRowResult(BaseModel):
     sku_id:       int
     success:      bool
     error:        Optional[str] = None
+
 
 class EntryRowResponse(BaseModel):
     id:            int
