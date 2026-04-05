@@ -6,6 +6,7 @@ import './Layout.css'
 const WORKSPACE = [
   { to: '/',        label: 'Dashboard', end: true  },
   { to: '/skus',    label: 'SKUs',      end: false },
+  { to: '/vendors', label: 'Vendors',   end: false },
   { to: '/pricing', label: 'Pricing',   end: false },
 ]
 const ANALYTICS      = ['Overview','Revenue','Platform Performance','SKU Analysis']
@@ -45,6 +46,8 @@ export default function Layout() {
   const initials = user?.name?.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase() || 'U'
   const handleLogout = () => { logout(); navigate('/login') }
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === 'true')
+  const toggleSidebar = () => setSidebarCollapsed(p => { localStorage.setItem('sidebarCollapsed', !p); return !p })
   const [open,      setOpen]      = useState({ workspace:true, analytics:true, reports:true, settings:true })
   const [treeOpen,  setTreeOpen]  = useState({ my:true, shared:true })
   const [company,   setCompany]   = useState(COMPANIES[0])
@@ -82,11 +85,14 @@ export default function Layout() {
     <div className="layout">
 
       {/* ── Sidebar — same warm gray as outer bg ── */}
-      <aside className="sidebar">
+      <aside className={`sidebar${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
 
         {/* Icon strip */}
         <div className="ic-strip">
           <div className="ic-logo" onClick={() => navigate('/')}>C</div>
+          <div className="ic-collapse" onClick={toggleSidebar} title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+            {sidebarCollapsed ? '›' : '‹'}
+          </div>
           <div className="ic-nav">
             {ICON_BTNS.map((b, i) => (
               <div key={i} className="ic-btn" title={b.title}

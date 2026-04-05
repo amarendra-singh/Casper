@@ -22,6 +22,7 @@ export default function SmartCell({
   onSelect,
   onAddNew,
   addNewLabel = 'Add as new item',
+  onManage,
   readOnly = false,
   className = '',
 }) {
@@ -158,6 +159,12 @@ export default function SmartCell({
             >
               <span className="sc-plus">+</span>
               {addNewLabel} "{value.trim()}"
+            </div>
+          )}
+          {/* Manage link */}
+          {onManage && (
+            <div className="sc-manage" onMouseDown={() => { onManage(); setOpen(false) }}>
+              ⚙ Manage categories →
             </div>
           )}
         </div>

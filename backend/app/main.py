@@ -29,7 +29,7 @@ def create_app() -> FastAPI:
     async def startup():
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-        print("✅ Database connected successfully")
+        print("Database connected successfully")
 
     prefix = "/api/v1"
 

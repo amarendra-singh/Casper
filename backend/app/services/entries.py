@@ -1,6 +1,7 @@
 """
 Entry upsert service.
 Handles create-or-update of SKU + Pricing in a single transaction.
+AD is now per-platform via SkuPlatformConfig; the base breakeven excludes AD.
 """
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,11 +9,10 @@ from sqlalchemy import select
 from typing import List, Tuple
 
 from app.schemas.entries import EntryRowInput, EntryRowResult
-from app.models.sku import Sku, SkuPricing
+from app.models.sku import Sku, SkuPricing, SkuPlatformConfig
 from app.models.platform import Platform
 from app.models.global_settings import GlobalSettings
 from app.models.misc_item import MiscItem
-from app.schemas.entries import EntryRowInput, EntryRowResult
 
 
 async def get_misc_total(session: AsyncSession) -> float:
@@ -33,7 +33,7 @@ async def get_damage_percent(session: AsyncSession) -> float:
 
 
 async def get_platforms(session: AsyncSession) -> List[Platform]:
-    """Get all active platforms with tiers."""
+    """Get all active platforms."""
     result = await session.execute(
         select(Platform).where(Platform.is_active == True)
     )
@@ -44,7 +44,6 @@ def calculate_pricing(
     price: float,
     package: float,
     logistics: float,
-    ad: float,
     addons: float,
     misc_total: float,
     cr_percentage: float,
@@ -52,16 +51,17 @@ def calculate_pricing(
     damage_percentage: float,
     damage_cost: float,
     profit_percentage: float,
-    gst: float,
+    gst_rate: float,          # GST rate in % (e.g. 5 means 5%)
 ) -> dict:
     """
-    Core pricing formula — mirrors the existing pricing service.
+    Core pricing formula — base breakeven excludes AD (AD is per-platform).
     Returns all calculated fields.
     """
-    breakeven = price + package + logistics + ad + addons + misc_total + cr_cost + damage_cost
-    net_profit = breakeven * (profit_percentage / 100)
-    bs_wo_gst  = round(breakeven + net_profit)
-    bank_settlement = bs_wo_gst + gst
+    breakeven   = price + package + logistics + addons + misc_total + cr_cost + damage_cost
+    net_profit  = breakeven * (profit_percentage / 100)
+    bs_wo_gst   = round(breakeven + net_profit)
+    gst_amount  = round(bs_wo_gst * gst_rate / 100)
+    bank_settlement = bs_wo_gst + gst_amount
 
     return {
         'breakeven':        round(breakeven, 2),
@@ -82,8 +82,7 @@ async def upsert_row(
 ) -> EntryRowResult:
     """
     Upsert a single entry row.
-    Creates or updates SKU record.
-    Returns result with success/error.
+    Creates or updates SKU + SkuPricing (base, no AD) + SkuPlatformConfig (per-platform AD overrides).
     """
     try:
         # ── 1. Upsert SKU ──────────────────────────────────────────────────
@@ -93,15 +92,14 @@ async def upsert_row(
         sku = result.scalar_one_or_none()
 
         if sku:
-            # Update existing SKU
             if row.vendor_id   is not None: sku.vendor_id   = row.vendor_id
             if row.category_id is not None: sku.category_id = row.category_id
             if row.hsn_code_id is not None: sku.hsn_code_id = row.hsn_code_id
             if row.description is not None: sku.description = row.description
         else:
-            # Create new SKU
             sku = Sku(
                 shringar_sku = row.shringar_sku,
+                vendor_sku   = '',
                 vendor_id    = row.vendor_id,
                 category_id  = row.category_id,
                 hsn_code_id  = row.hsn_code_id,
@@ -109,27 +107,24 @@ async def upsert_row(
                 is_active    = True,
             )
             session.add(sku)
-            await session.flush()  # get sku.id without committing
+            await session.flush()
 
         # ── 2. Resolve inputs ──────────────────────────────────────────────
         misc_total  = row.misc_total if row.misc_total is not None else misc_default
         dmg_pct     = row.damage_percentage if row.damage_percentage is not None else damage_default
         profit_pct  = row.profit_percentage if row.profit_percentage is not None else profit_default
 
-        # CR — use first platform as default reference
         pl0 = platforms[0] if platforms else None
         cr_pct = row.cr_percentage if row.cr_percentage is not None else (
             pl0.cr_percentage if pl0 else 10.0
         )
 
-        # Bidirectional: if cr_cost given, back-calculate cr_pct
         if row.cr_cost is not None:
             cr_cost = row.cr_cost
             cr_pct  = (cr_cost / pl0.cr_charge * 100) if pl0 and pl0.cr_charge else cr_pct
         else:
             cr_cost = (pl0.cr_charge * cr_pct / 100) if pl0 else 0
 
-        # Bidirectional: if damage_cost given, back-calculate damage_pct
         if row.damage_cost is not None:
             damage_cost = row.damage_cost
             dmg_pct     = (damage_cost / row.price * 100) if row.price else dmg_pct
@@ -138,12 +133,11 @@ async def upsert_row(
 
         gst = row.gst or 0
 
-        # ── 3. Calculate pricing ───────────────────────────────────────────
+        # ── 3. Calculate base pricing (no AD — AD is per-platform) ─────────
         calc = calculate_pricing(
             price             = row.price,
             package           = row.package or 0,
             logistics         = row.logistics or 0,
-            ad                = row.ad or 0,
             addons            = row.addons or 0,
             misc_total        = misc_total,
             cr_percentage     = cr_pct,
@@ -151,11 +145,11 @@ async def upsert_row(
             damage_percentage = dmg_pct,
             damage_cost       = damage_cost,
             profit_percentage = profit_pct,
-            gst               = gst,
+            gst_rate          = gst,
         )
 
-        # ── 4. Upsert pricing record ───────────────────────────────────────
-        # Use first active platform for the main pricing record
+        # ── 4. Upsert base SkuPricing record ──────────────────────────────
+        pricing = None
         if pl0:
             pricing_result = await session.execute(
                 select(SkuPricing).where(
@@ -178,18 +172,46 @@ async def upsert_row(
                 damage_percentage = dmg_pct,
                 damage_cost       = damage_cost,
                 gst               = gst,
+                profit_percentage = profit_pct,
                 breakeven         = calc['breakeven'],
                 net_profit_20     = calc['net_profit_amt'],
                 bs_wo_gst         = calc['bs_wo_gst'],
                 bank_settlement   = calc['bank_settlement'],
-                is_active         = True,
             )
 
             if pricing:
                 for k, v in pricing_data.items():
                     setattr(pricing, k, v)
             else:
-                session.add(SkuPricing(**pricing_data))
+                pricing = SkuPricing(**pricing_data)
+                session.add(pricing)
+                await session.flush()  # need pricing.id for configs
+
+        # ── 5. Upsert per-platform overrides (SkuPlatformConfig) ──────────
+        if pricing and row.platform_overrides:
+            for override in row.platform_overrides:
+                # Skip if nothing to override
+                if override.ad_pct is None and override.profit_pct is None:
+                    continue
+
+                cfg_result = await session.execute(
+                    select(SkuPlatformConfig).where(
+                        SkuPlatformConfig.sku_pricing_id == pricing.id,
+                        SkuPlatformConfig.platform_id    == override.platform_id,
+                    )
+                )
+                cfg = cfg_result.scalar_one_or_none()
+
+                if cfg:
+                    cfg.ad_pct     = override.ad_pct
+                    cfg.profit_pct = override.profit_pct
+                else:
+                    session.add(SkuPlatformConfig(
+                        sku_pricing_id = pricing.id,
+                        platform_id    = override.platform_id,
+                        ad_pct         = override.ad_pct,
+                        profit_pct     = override.profit_pct,
+                    ))
 
         return EntryRowResult(
             shringar_sku = row.shringar_sku,
@@ -213,11 +235,7 @@ async def upsert_batch(
     """
     Upsert a batch of entry rows in a single transaction.
     Returns (saved_rows, error_rows).
-    
-    Key design: errors on individual rows don't rollback the whole batch.
-    Each row is attempted independently.
     """
-    # Load shared data once (not per row)
     misc_default   = await get_misc_total(session)
     damage_default = await get_damage_percent(session)
     profit_default = 20.0
@@ -242,16 +260,16 @@ async def upsert_batch(
 
     return saved, errors
 
+
 async def get_all_entries(session: AsyncSession) -> list:
     """
-    Load all SKUs with their latest pricing.
-    Returns data shaped for the Entries page.
+    Load all SKUs with their latest pricing and per-platform configs.
+    Returns data shaped for the SKUs page.
     """
     from app.models.vendor import Vendor
     from app.models.category import Category
     from app.models.hsn_code import HsnCode
 
-    # Load all active SKUs
     sku_result = await session.execute(
         select(Sku)
         .where(Sku.is_active == True)
@@ -261,7 +279,6 @@ async def get_all_entries(session: AsyncSession) -> list:
 
     rows = []
     for sku in skus:
-        # Get latest pricing for this SKU
         pricing_result = await session.execute(
             select(SkuPricing)
             .where(SkuPricing.sku_id == sku.id)
@@ -270,7 +287,15 @@ async def get_all_entries(session: AsyncSession) -> list:
         )
         pricing = pricing_result.scalar_one_or_none()
 
-        # Get vendor info
+        # Load per-platform configs for this pricing record
+        platform_configs = []
+        if pricing:
+            cfg_result = await session.execute(
+                select(SkuPlatformConfig)
+                .where(SkuPlatformConfig.sku_pricing_id == pricing.id)
+            )
+            platform_configs = cfg_result.scalars().all()
+
         vendor_name  = None
         vendor_short = None
         if sku.vendor_id:
@@ -282,7 +307,6 @@ async def get_all_entries(session: AsyncSession) -> list:
                 vendor_name  = vendor.name
                 vendor_short = vendor.short_code
 
-        # Get category info
         category_name = None
         if sku.category_id:
             c_result = await session.execute(
@@ -292,7 +316,6 @@ async def get_all_entries(session: AsyncSession) -> list:
             if category:
                 category_name = category.name
 
-        # Get HSN info
         hsn_code = None
         gst_rate = None
         if sku.hsn_code_id:
@@ -316,21 +339,29 @@ async def get_all_entries(session: AsyncSession) -> list:
             'hsn_code':         hsn_code,
             'gst_rate':         gst_rate,
             'description':      sku.description,
-            'price':            pricing.price        if pricing else None,
-            'package':          pricing.package      if pricing else None,
-            'logistics':        pricing.logistics    if pricing else None,
-            'ad':               None,
-            'addons':           pricing.addons       if pricing else None,
-            'misc_total':       pricing.misc_total   if pricing else None,
-            'cr_percentage':    pricing.cr_percentage   if pricing else None,
-            'cr_cost':          pricing.cr_cost         if pricing else None,
+            'price':            pricing.price             if pricing else None,
+            'package':          pricing.package           if pricing else None,
+            'logistics':        pricing.logistics         if pricing else None,
+            'addons':           pricing.addons            if pricing else None,
+            'misc_total':       pricing.misc_total        if pricing else None,
+            'cr_percentage':    pricing.cr_percentage     if pricing else None,
+            'cr_cost':          pricing.cr_cost           if pricing else None,
             'damage_percentage':pricing.damage_percentage if pricing else None,
-            'damage_cost':      pricing.damage_cost      if pricing else None,
-            'profit_percentage':None,
-            'gst':              pricing.gst          if pricing else None,
-            'breakeven':        pricing.breakeven    if pricing else None,
-            'bs_wo_gst':        pricing.bs_wo_gst    if pricing else None,
-            'bank_settlement':  pricing.bank_settlement if pricing else None,
+            'damage_cost':      pricing.damage_cost       if pricing else None,
+            'profit_percentage':pricing.profit_percentage if pricing else None,
+            'gst':              pricing.gst               if pricing else None,
+            'breakeven':        pricing.breakeven         if pricing else None,
+            'bs_wo_gst':        pricing.bs_wo_gst         if pricing else None,
+            'bank_settlement':  pricing.bank_settlement   if pricing else None,
+            # Per-platform overrides
+            'platform_configs': [
+                {
+                    'platform_id': cfg.platform_id,
+                    'ad_pct':      cfg.ad_pct,
+                    'profit_pct':  cfg.profit_pct,
+                }
+                for cfg in platform_configs
+            ],
         })
 
     return rows
