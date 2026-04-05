@@ -3,11 +3,13 @@ import * as XLSX from 'xlsx'
 import {
   getVendors, getCategories, getPlatforms,
   getMiscTotal, getSettings,
-  getEntries, upsertBatch
+  getEntries, upsertBatch, deleteSku,
+  updateCategory, deleteCategory
 } from '../api/client'
 import SmartCell from '../components/SmartCell'
 import AddVendorModal from '../components/AddVendorModal'
 import AddCategoryModal from '../components/AddCategoryModal'
+import ManageCategoriesModal from '../components/ManageCategoriesModal'
 import './SKUs.css'
 
 // ─── Row status constants ─────────────────────────────────────────────────────
@@ -241,7 +243,8 @@ export default function SKUs() {
   const [rows,        setRows]        = useState(() => [newRow(), newRow(), newRow()])
   const [colVis,      setColVis]      = useState(loadVisibility)
   const [density,     setDensity]     = useState(() => localStorage.getItem('skuDensity') || 'normal')
-  const [importOpen,  setImportOpen]  = useState(false)
+  const [importOpen,      setImportOpen]      = useState(false)
+  const [manageCatOpen,   setManageCatOpen]   = useState(false)
   const [importRows,  setImportRows]  = useState([])
   const [showImportModal, setShowImportModal] = useState(false)
   const importRef  = useRef(null)
@@ -285,7 +288,13 @@ export default function SKUs() {
     )), [])
 
   const addRow = () => setRows(p => [...p, newRow()])
-  const delRow = id  => setRows(p => p.filter(r => r.id !== id))
+  const delRow = async id => {
+    const row = rows.find(r => r.id === id)
+    if (row?.skuId) {
+      try { await deleteSku(row.skuId) } catch(e) { console.error('Delete failed', e) }
+    }
+    setRows(p => p.filter(r => r.id !== id))
+  }
 
   const handleTier = useCallback((rowId, plId, ti) =>
     setRows(prev => prev.map(r =>
@@ -743,6 +752,7 @@ export default function SKUs() {
                         }}
                         onAddNew={name => { setPendingRowId(row.id); setCategoryModal(name) }}
                         addNewLabel="Add as new category"
+                        onManage={() => setManageCatOpen(true)}
                       />
                     </td>
                   )}
@@ -1015,6 +1025,22 @@ export default function SKUs() {
             </div>
           </div>
         </div>
+      )}
+
+      {manageCatOpen && (
+        <ManageCategoriesModal
+          categories={categories}
+          rows={rows}
+          onClose={() => setManageCatOpen(false)}
+          onUpdate={async (id, name) => {
+            await updateCategory(id, { name })
+            setCategories(p => p.map(c => c.id === id ? { ...c, name } : c))
+          }}
+          onDelete={async id => {
+            await deleteCategory(id)
+            setCategories(p => p.filter(c => c.id !== id))
+          }}
+        />
       )}
 
       {/* Modals */}

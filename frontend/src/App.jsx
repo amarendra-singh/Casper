@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import SKUs from './pages/SKUs'
 import Pricing from './pages/Pricing'
+import Vendors from './pages/Vendors'
 // import Entries from './pages/Entries'
 
 function ProtectedRoute({ children }) {
@@ -26,6 +27,7 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="skus" element={<SKUs />} />
+        <Route path="vendors" element={<Vendors />} />
         <Route path="pricing/:skuId?" element={<Pricing />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

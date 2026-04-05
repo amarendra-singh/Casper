@@ -6,6 +6,7 @@ import './Layout.css'
 const WORKSPACE = [
   { to: '/',        label: 'Dashboard', end: true  },
   { to: '/skus',    label: 'SKUs',      end: false },
+  { to: '/vendors', label: 'Vendors',   end: false },
   { to: '/pricing', label: 'Pricing',   end: false },
 ]
 const ANALYTICS      = ['Overview','Revenue','Platform Performance','SKU Analysis']
