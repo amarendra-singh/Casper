@@ -112,6 +112,7 @@ function backendRowToFrontend(r) {
     vendor:     r.vendor_name   || '',
     vendorId:   r.vendor_id     || null,
     vshort:     r.vendor_short  || '',
+    vsku:       r.vendor_sku    || '',
     sku:        r.shringar_sku  || '',
     category:   r.category_name || '',
     categoryId: r.category_id   || null,
@@ -344,6 +345,7 @@ export default function SKUs() {
 
       return {
         sku:               row.sku,
+        vendor_sku:        row.vsku       || null,
         vendor_id:         row.vendorId   || null,
         category_id:       row.categoryId || null,
         price:             parseFloat(row.price),

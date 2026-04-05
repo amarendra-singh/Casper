@@ -27,6 +27,8 @@ class EntryRowInput(BaseModel):
     hsn_code_id:   Optional[int] = None
     description:   Optional[str] = None
 
+    vendor_sku:    Optional[str] = None
+
     # Unit economics
     price:         float
     package:       Optional[float] = 0
@@ -76,6 +78,7 @@ class EntryRowResponse(BaseModel):
     vendor_id:     Optional[int] = None
     vendor_name:   Optional[str] = None
     vendor_short:  Optional[str] = None
+    vendor_sku:    Optional[str] = None
     category_id:   Optional[int] = None
     category_name: Optional[str] = None
     hsn_code_id:   Optional[int] = None
