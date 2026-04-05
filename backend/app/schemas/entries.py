@@ -1,9 +1,26 @@
 from pydantic import BaseModel, validator, Field
 from typing import Optional, List
 
+
+class PlatformOverride(BaseModel):
+    """Per-platform AD and profit overrides sent from the frontend."""
+    platform_id: int
+    ad_pct:      Optional[float] = None   # None = inherit platform.default_ad_pct
+    profit_pct:  Optional[float] = None   # None = inherit platform.default_profit_pct
+
+
+class PlatformConfigResponse(BaseModel):
+    """Per-platform config returned to the frontend."""
+    platform_id: int
+    ad_pct:      Optional[float] = None
+    profit_pct:  Optional[float] = None
+
+    class Config:
+        from_attributes = True
+
+
 class EntryRowInput(BaseModel):
     # Accept both 'sku' (new frontend name) and 'shringar_sku' (old name)
-    # The frontend now sends 'sku' so we alias it here
     shringar_sku:  str = Field(..., alias='sku')
     vendor_id:     Optional[int] = None
     category_id:   Optional[int] = None
@@ -14,7 +31,6 @@ class EntryRowInput(BaseModel):
     price:         float
     package:       Optional[float] = 0
     logistics:     Optional[float] = 0
-    ad:            Optional[float] = 0
     addons:        Optional[float] = 0
     misc_total:    Optional[float] = None   # None = use global setting
     cr_percentage: Optional[float] = None   # None = use platform default
@@ -23,8 +39,11 @@ class EntryRowInput(BaseModel):
     damage_cost:   Optional[float] = None   # None = auto from damage_percentage
     gst:           Optional[float] = 0
 
-    # Profit override
+    # Global profit fallback (applies to all platforms unless overridden per-platform)
     profit_percentage: Optional[float] = None  # None = use global (20%)
+
+    # Per-platform AD and profit overrides
+    platform_overrides: List[PlatformOverride] = []
 
     # Allow both 'sku' and 'shringar_sku' field names
     class Config:
@@ -66,7 +85,6 @@ class EntryRowResponse(BaseModel):
     price:         Optional[float] = None
     package:       Optional[float] = None
     logistics:     Optional[float] = None
-    ad:            Optional[float] = None
     addons:        Optional[float] = None
     misc_total:    Optional[float] = None
     cr_percentage: Optional[float] = None
@@ -78,6 +96,9 @@ class EntryRowResponse(BaseModel):
     breakeven:     Optional[float] = None
     bs_wo_gst:     Optional[float] = None
     bank_settlement: Optional[float] = None
+
+    # Per-platform overrides loaded from sku_platform_config
+    platform_configs: List[PlatformConfigResponse] = []
 
     class Config:
         from_attributes = True

@@ -41,9 +41,9 @@ class SkuUpdate(BaseModel):
 class SkuResponse(BaseModel):
     id: int
     shringar_sku: str
-    vendor_sku: str
-    vendor_id: int
-    category_id: int
+    vendor_sku:  Optional[str] = None
+    vendor_id:   Optional[int] = None
+    category_id: Optional[int] = None
     description: str | None
     is_active: bool
     created_at: datetime

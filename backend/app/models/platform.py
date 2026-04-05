@@ -11,6 +11,8 @@ class Platform(Base):
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
     cr_charge: Mapped[float] = mapped_column(Float, nullable=False, comment="Flat customer return charge in INR")
     cr_percentage: Mapped[float] = mapped_column(Float, nullable=False, comment="Customer return % for reporting")
+    default_ad_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, comment="Default AD % of selling price for this platform")
+    default_profit_pct: Mapped[float] = mapped_column(Float, nullable=False, default=20.0, comment="Default profit % for this platform")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

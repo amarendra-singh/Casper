@@ -41,6 +41,8 @@ async def create_platform(
         name=payload.name,
         cr_charge=payload.cr_charge,
         cr_percentage=payload.cr_percentage,
+        default_ad_pct=payload.default_ad_pct,
+        default_profit_pct=payload.default_profit_pct,
     )
     db.add(platform)
     await db.flush()  # get platform.id before adding tiers
