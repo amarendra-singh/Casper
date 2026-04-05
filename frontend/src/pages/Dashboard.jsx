@@ -130,7 +130,7 @@ export default function Dashboard() {
       />
 
       {/* ── 2-column grid ── */}
-      <div className="grid gap-4" style={{ gridTemplateColumns: '1.65fr 1fr' }}>
+      <div className="dash-grid">
 
         {/* ═══════════ LEFT COLUMN ═══════════ */}
         <div className="flex flex-col gap-4 min-w-0">

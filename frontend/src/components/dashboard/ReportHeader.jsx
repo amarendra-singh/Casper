@@ -14,6 +14,7 @@
  */
 
 import { useNavigate } from 'react-router-dom'
+import '../../pages/Dashboard.css'
 
 // ── Avatar circle ────────────────────────────────────────────────────────────
 function Av({ ini, color, size = 24 }) {
@@ -170,7 +171,6 @@ export default function ReportHeader({
     <div style={{
       background: '#fff',
       borderRadius: 16,
-      border: '1px solid #EBEBEB',
       boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.03)',
       padding: '18px 20px 20px',
       marginBottom: 16,
@@ -263,10 +263,10 @@ export default function ReportHeader({
       </div>
 
       {/* ── Row 3: Revenue hero (left) + 5 Stat cards (right) ── */}
-      <div style={{ display: 'flex', gap: 16, alignItems: 'stretch' }}>
+      <div className="rh-row3">
 
         {/* Revenue section */}
-        <div style={{ flexShrink: 0, width: 280 }}>
+        <div className="rh-revenue">
           {/* Label */}
           <div style={{
             fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
@@ -311,15 +311,10 @@ export default function ReportHeader({
         </div>
 
         {/* Vertical divider */}
-        <div style={{ width: 1, background: '#F0EEEA', flexShrink: 0, alignSelf: 'stretch' }} />
+        <div className="rh-divider" />
 
         {/* 5 Stat cards — alignItems:stretch makes all cards same height */}
-        <div style={{
-          flex: 1, display: 'grid',
-          gridTemplateColumns: 'repeat(5, 1fr)',
-          gap: 8, minWidth: 0,
-          alignItems: 'stretch',
-        }}>
+        <div className="rh-stats-grid">
           {/* Top sales — PLUG-IN: person with most total from /api/v1/entries */}
           <StatCard
             label="Top sales"
