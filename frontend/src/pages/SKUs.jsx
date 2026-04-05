@@ -245,16 +245,20 @@ export default function SKUs() {
   const [colVis,      setColVis]      = useState(loadVisibility)
   const [density,     setDensity]     = useState(() => localStorage.getItem('skuDensity') || 'normal')
   const [importOpen,      setImportOpen]      = useState(false)
+  const [exportOpen,      setExportOpen]      = useState(false)
   const [manageCatOpen,   setManageCatOpen]   = useState(false)
   const [importRows,  setImportRows]  = useState([])
   const [showImportModal, setShowImportModal] = useState(false)
   const importRef  = useRef(null)
+  const exportRef  = useRef(null)
   const fileInputRef = useRef(null)
 
   useEffect(() => {
     const handler = e => {
       if (importRef.current && !importRef.current.contains(e.target))
         setImportOpen(false)
+      if (exportRef.current && !exportRef.current.contains(e.target))
+        setExportOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -538,6 +542,62 @@ export default function SKUs() {
   const updImportRow = (i, field, val) =>
     setImportRows(prev => { const u = [...prev]; u[i] = { ...u[i], [field]: val }; return u })
 
+  // ── Export helpers ─────────────────────────────────────────────────────────
+  const buildExportData = () => {
+    const platHeaders = activePlats.map(pl => `${pl.name} BS`)
+    const headers = [
+      'Vendor','SKU','V.Short','Vendor SKU','Category',
+      'Price ₹','Package ₹','Logistics ₹','Addons ₹','Misc ₹',
+      'CR %','CR ₹','Dmg %','Dmg ₹','Breakeven',
+      'Profit %','Profit ₹','BS w/o GST','GST %','Final BS',
+      ...platHeaders
+    ]
+    const data = rows.map(row => {
+      const base = compute(row, miscDef, profDef, activePlats)
+      const platBSes = activePlats.map(pl => {
+        const res = computePlatform(row, pl, base, miscDef)
+        return res.bs ?? ''
+      })
+      return [
+        row.vendor, row.sku, row.vshort, row.vsku, row.category,
+        row.price, row.pkg, row.log, row.addons, row.misc,
+        base.crPct, base.crAmt, base.dmgPct, base.dmgAmt, base.be,
+        base.profPct, base.profAmt, base.bsNoGst,
+        resolveGst(row.gstType || '5', row.price),
+        base.finalBS,
+        ...platBSes
+      ]
+    })
+    return { headers, data }
+  }
+
+  const exportXLSX = () => {
+    const { headers, data } = buildExportData()
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...data])
+    // Bold header row
+    const range = XLSX.utils.decode_range(ws['!ref'])
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const cell = ws[XLSX.utils.encode_cell({ r: 0, c })]
+      if (cell) cell.s = { font: { bold: true } }
+    }
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'SKUs')
+    XLSX.writeFile(wb, `casper_skus_${new Date().toISOString().slice(0,10)}.xlsx`)
+  }
+
+  const exportCSV = () => {
+    const { headers, data } = buildExportData()
+    const escape = v => (v === null || v === undefined) ? '' : String(v).includes(',') ? `"${v}"` : String(v)
+    const csv = [headers, ...data].map(row => row.map(escape).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = `casper_skus_${new Date().toISOString().slice(0,10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className={`entries-page density-${density}`}>
 
@@ -577,7 +637,17 @@ export default function SKUs() {
               </div>
             )}
           </div>
-          <button className="btn btn-ghost">Export</button>
+          <div className="import-dd" ref={exportRef}>
+            <button className="btn btn-ghost" onClick={() => setExportOpen(p => !p)}>
+              ↑ Export ▾
+            </button>
+            {exportOpen && (
+              <div className="import-dd-menu">
+                <button className="import-dd-item" onClick={() => { exportXLSX(); setExportOpen(false) }}>📤 Export as .xlsx</button>
+                <button className="import-dd-item" onClick={() => { exportCSV(); setExportOpen(false) }}>📤 Export as .csv</button>
+              </div>
+            )}
+          </div>
           <button className="btn btn-accent" onClick={saveAll} disabled={isSaving || dirtyCount === 0}>
             {isSaving
               ? <><span className="loader" style={{ width:12, height:12, borderWidth:2 }}/> Saving</>
