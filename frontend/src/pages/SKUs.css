@@ -232,12 +232,12 @@
 .e-tbl { border-collapse: collapse; width: max-content; }
 
 /* ── Column widths ── */
-.w-vendor  { min-width: 100px; max-width: 130px; }
-.w-series  { min-width:  88px; max-width: 130px; }
-.w-vshort  { min-width:  44px; max-width:  60px; }
-.w-vsku    { min-width:  72px; max-width:  92px; }
-.w-sku     { min-width:  96px; max-width: 120px; }
-.w-cat     { min-width:  80px; max-width: 104px; }
+.w-vendor  { min-width:  70px; max-width: 110px; }
+.w-series  { min-width:  60px; max-width: 100px; }
+.w-vshort  { min-width:  36px; max-width:  50px; }
+.w-vsku    { min-width:  56px; max-width:  80px; }
+.w-sku     { min-width:  70px; max-width: 100px; }
+.w-cat     { min-width:  60px; max-width:  90px; }
 .w-price   { min-width:  58px; max-width:  70px; }
 .w-pkg     { min-width:  46px; max-width:  56px; }
 .w-log     { min-width:  46px; max-width:  56px; }
