@@ -757,7 +757,7 @@ export default function SKUs() {
             {/* Sub-headers row */}
             <tr>
               <th className="sh sh-sku w-vendor sticky-col-hdr">Vendor</th>
-              <th className="sh sh-sku w-sku sticky-col-hdr" style={{left:'var(--vendor-w,110px)'}}>SKU</th>
+              <th className="sh sh-sku w-sku sticky-col-hdr" style={{left:90}}>SKU</th>
               {vis('series')   && <th className="sh sh-sku w-series">Series</th>}
               {vis('vshort')   && <th className="sh sh-sku w-vshort">V.Short</th>}
               {vis('vsku')     && <th className="sh sh-sku w-vsku">Vendor SKU</th>}
@@ -843,7 +843,7 @@ export default function SKUs() {
                   </td>
 
                   {/* SKU code */}
-                  <td className="ec w-sku sh-sku sticky-col" style={{left:'var(--vendor-w,110px)'}}>
+                  <td className="ec w-sku sh-sku sticky-col" style={{left:90}}>
                     <input className="ec-input mono" value={row.sku} placeholder="SHJ-JS-VRI-N6"
                       onChange={e => upd(row.id, { sku:e.target.value.toUpperCase() })} />
                   </td>

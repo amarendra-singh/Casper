@@ -1,16 +1,18 @@
 .sc-wrap {
     position: relative;
     width: 100%;
+    min-width: 0;
     height: 100%;
   }
   
   /* The input */
   .sc-input {
     width: 100%;
+    min-width: 0;
     height: 100%;
     border: none;
     background: transparent;
-    padding: 0 8px;
+    padding: 0 5px;
     font-size: 12px;
     font-family: var(--font-ui);
     color: var(--text);
