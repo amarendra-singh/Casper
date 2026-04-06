@@ -229,7 +229,7 @@
 .e-scroll::-webkit-scrollbar-track { background: transparent; }
 .e-scroll::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
 .e-scroll::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
-.e-tbl { border-collapse: collapse; width: 100%; min-width: max-content; }
+.e-tbl { border-collapse: collapse; width: max-content; }
 
 /* ── Column widths ── */
 .w-vendor  { min-width: 100px; max-width: 130px; }
