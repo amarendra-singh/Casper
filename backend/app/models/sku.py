@@ -13,6 +13,7 @@ class Sku(Base):
     vendor_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("vendors.id", ondelete="RESTRICT"), nullable=True)
     category_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("categories.id", ondelete="RESTRICT"), nullable=True)
 
+    series: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
