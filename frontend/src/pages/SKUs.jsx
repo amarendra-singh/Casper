@@ -43,7 +43,7 @@ function resolveGst(gstType, price) {
 // ─── Column groups ────────────────────────────────────────────────────────────
 // Note: 'ad' removed from costBreakdown — AD is now per-platform
 const COL_GROUPS = {
-  skuDetails:    { label: 'SKU Details',    cols: ['vshort','vsku','category'] },
+  skuDetails:    { label: 'SKU Details',    cols: ['series','vshort','vsku','category'] },
   costBreakdown: { label: 'Cost Breakdown', cols: ['pkg','log','addons','misc'] },
   calculations:  { label: 'Calculations',   cols: ['crpct','cramt','dmgpct','dmgamt','profpct','profamt','bsnogst','gst'] },
 }
@@ -70,6 +70,7 @@ function newRow(data = {}) {
     vendorId:     data.vendorId     || null,
     vshort:       data.vshort       || '',
     vsku:         data.vsku         || '',
+    series:       data.series       || '',
     sku:          data.sku          || '',
     category:     data.category     || '',
     categoryId:   data.categoryId   || null,
@@ -113,6 +114,7 @@ function backendRowToFrontend(r) {
     vendorId:   r.vendor_id     || null,
     vshort:     r.vendor_short  || '',
     vsku:       r.vendor_sku    || '',
+    series:     r.series        || '',
     sku:        r.shringar_sku  || '',
     category:   r.category_name || '',
     categoryId: r.category_id   || null,
@@ -350,6 +352,7 @@ export default function SKUs() {
       return {
         sku:               row.sku,
         vendor_sku:        row.vsku       || null,
+        series:            row.series     || null,
         vendor_id:         row.vendorId   || null,
         category_id:       row.categoryId || null,
         price:             parseFloat(row.price),
@@ -443,8 +446,16 @@ export default function SKUs() {
     return true
   }
 
+  const [collapsedSeries, setCollapsedSeries] = useState(new Set())
+  const toggleSeries = name => setCollapsedSeries(prev => {
+    const next = new Set(prev)
+    next.has(name) ? next.delete(name) : next.add(name)
+    return next
+  })
+
   const vendorOpts = vendors.map(v => ({ label: v.name, sublabel: v.short_code }))
   const catOpts    = categories.map(c => ({ label: c.name }))
+  const seriesOpts = [...new Set(rows.map(r => r.series).filter(Boolean))].map(s => ({ label: s }))
 
   const handleVendorSaved = v => {
     setVendors(p => [...p, v])
@@ -711,7 +722,7 @@ export default function SKUs() {
             <tr>
               {/* SKU group header */}
               <th className="gh gh-sku"
-                colSpan={2 + (vis('vshort')?1:0) + (vis('vsku')?1:0) + (vis('category')?1:0)}>
+                colSpan={2 + (vis('series')?1:0) + (vis('vshort')?1:0) + (vis('vsku')?1:0) + (vis('category')?1:0)}>
                 SKU
               </th>
               {/* Unit Economics group header (no AD column) */}
@@ -747,6 +758,7 @@ export default function SKUs() {
             <tr>
               <th className="sh sh-sku w-vendor sticky-col-hdr">Vendor</th>
               <th className="sh sh-sku w-sku sticky-col-hdr" style={{left:'var(--vendor-w,110px)'}}>SKU</th>
+              {vis('series')   && <th className="sh sh-sku w-series">Series</th>}
               {vis('vshort')   && <th className="sh sh-sku w-vshort">V.Short</th>}
               {vis('vsku')     && <th className="sh sh-sku w-vsku">Vendor SKU</th>}
               {vis('category') && <th className="sh sh-sku w-cat">Category</th>}
@@ -776,9 +788,44 @@ export default function SKUs() {
           </thead>
 
           <tbody>
-            {rows.map(row => {
-              const c = compute(row, miscDef, profDef, platforms)
-              return (
+            {(() => {
+              // Group rows by series — ungrouped rows go under ''
+              const groups = {}
+              rows.forEach(row => {
+                const key = row.series || ''
+                if (!groups[key]) groups[key] = []
+                groups[key].push(row)
+              })
+              // Named series first (sorted), then ungrouped at end
+              const keys = [
+                ...Object.keys(groups).filter(k => k).sort((a,b) => a.toLowerCase().localeCompare(b.toLowerCase())),
+                ...(groups[''] ? [''] : [])
+              ]
+              const totalCols = 2
+                + (vis('series')?1:0) + (vis('vshort')?1:0) + (vis('vsku')?1:0) + (vis('category')?1:0)
+                + 1+(vis('pkg')?1:0)+(vis('log')?1:0)+(vis('addons')?1:0)+(vis('misc')?1:0)
+                + (vis('crpct')?1:0)+(vis('cramt')?1:0)+(vis('dmgpct')?1:0)+(vis('dmgamt')?1:0)
+                + 1+(vis('profpct')?1:0)+(vis('profamt')?1:0)+(vis('bsnogst')?1:0)
+                + (vis('gst')?1:0) + 1 + activePlats.length + 2
+
+              return keys.flatMap(seriesKey => {
+                const groupRows = groups[seriesKey]
+                const collapsed = collapsedSeries.has(seriesKey)
+                const headerRow = seriesKey ? (
+                  <tr key={`series-hdr-${seriesKey}`} className="series-hdr-row">
+                    <td colSpan={totalCols}>
+                      <button className="series-hdr-btn" onClick={() => toggleSeries(seriesKey)}>
+                        <span className="series-hdr-arrow">{collapsed ? '▶' : '▼'}</span>
+                        <span className="series-hdr-name">{seriesKey}</span>
+                        <span className="series-hdr-count">{groupRows.length}</span>
+                      </button>
+                    </td>
+                  </tr>
+                ) : null
+
+                const dataRows = collapsed ? [] : groupRows.map(row => {
+                  const c = compute(row, miscDef, profDef, platforms)
+                  return (
                 <tr key={row.id} className={`e-row ${row.status === STATUS.ERROR ? 'row-error' : ''}`}>
 
                   {/* Vendor */}
@@ -801,6 +848,15 @@ export default function SKUs() {
                       onChange={e => upd(row.id, { sku:e.target.value.toUpperCase() })} />
                   </td>
 
+                  {vis('series') && (
+                    <td className="ec ec-smart w-series sh-sku">
+                      <SmartCell
+                        value={row.series} options={seriesOpts} placeholder="Series"
+                        onChange={v => upd(row.id, { series: v })}
+                        onSelect={opt => upd(row.id, { series: opt.label })}
+                      />
+                    </td>
+                  )}
                   {vis('vshort') && (
                     <td className="ec w-vshort sh-sku">
                       <input className="ec-input mono" value={row.vshort} placeholder="VRI"
@@ -1005,8 +1061,11 @@ export default function SKUs() {
                     <button onClick={() => delRow(row.id)} className="del-btn">×</button>
                   </td>
                 </tr>
-              )
-            })}
+                  )
+                })
+                return [headerRow, ...dataRows].filter(Boolean)
+              })
+            })()}
           </tbody>
         </table>
       </div>

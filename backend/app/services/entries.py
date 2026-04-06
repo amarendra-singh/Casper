@@ -97,10 +97,12 @@ async def upsert_row(
             if row.hsn_code_id is not None: sku.hsn_code_id = row.hsn_code_id
             if row.description is not None: sku.description = row.description
             if row.vendor_sku  is not None: sku.vendor_sku  = row.vendor_sku
+            if row.series      is not None: sku.series      = row.series
         else:
             sku = Sku(
                 shringar_sku = row.shringar_sku,
                 vendor_sku   = row.vendor_sku or '',
+                series       = row.series,
                 vendor_id    = row.vendor_id,
                 category_id  = row.category_id,
                 hsn_code_id  = row.hsn_code_id,
@@ -331,6 +333,7 @@ async def get_all_entries(session: AsyncSession) -> list:
         rows.append({
             'id':               sku.id,
             'shringar_sku':     sku.shringar_sku,
+            'series':           sku.series,
             'vendor_id':        sku.vendor_id,
             'vendor_name':      vendor_name,
             'vendor_short':     vendor_short,

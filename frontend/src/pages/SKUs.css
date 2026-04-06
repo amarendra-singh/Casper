@@ -227,6 +227,7 @@
 
 /* ── Column widths ── */
 .w-vendor  { min-width:  80px; max-width: 110px; }
+.w-series  { min-width:  80px; max-width: 120px; }
 .w-vshort  { min-width:  38px; max-width:  48px; }
 .w-vsku    { min-width:  64px; max-width:  80px; }
 .w-sku     { min-width:  80px; max-width: 100px; }
@@ -666,4 +667,25 @@ select.ec-input,
 .imp-num { max-width: 78px; }
 .imp-inp:disabled { background: var(--surface-2); color: var(--text-3); cursor: not-allowed; }
 .imp-inp:focus { outline: 2px solid var(--accent); border-color: transparent; }
+
+/* ── Series group header row ── */
+.series-hdr-row td {
+  padding: 0;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  border-top: 2px solid var(--border);
+}
+.series-hdr-btn {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 5px 12px;
+  background: none; border: none; cursor: pointer;
+  text-align: left;
+}
+.series-hdr-arrow { font-size: 9px; color: var(--text-3); }
+.series-hdr-name { font-size: 11px; font-weight: 700; color: var(--text-2); letter-spacing: 0.5px; text-transform: uppercase; }
+.series-hdr-count {
+  font-size: 10px; color: var(--text-3);
+  background: var(--border); border-radius: 10px;
+  padding: 1px 6px;
+}
 
