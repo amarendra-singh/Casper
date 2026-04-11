@@ -1,7 +1,7 @@
 # CASPER — MEMORY FILE
 > Read this at the start of every session. Never re-derive facts already here.
 > Cross-ref: [DECISIONS](DECISIONS.md) · [PROGRESS](PROGRESS.md) · [ROADMAP](ROADMAP.md)
-> Last updated: 2026-04-11
+> Last updated: 2026-04-11 (verified against actual codebase)
 
 ---
 
@@ -9,73 +9,178 @@
 
 | Key | Value |
 |-----|-------|
-| Backend path | `C:\WorkStation\Projects\Python\Casper\backend\` |
-| Frontend path | `C:\WorkStation\Projects\Python\Casper\frontend\` |
-| Worktree path | `C:\WorkStation\Projects\Python\Casper\.claude\worktrees\hungry-kepler\` |
-| **Worktree is what runs** — always edit worktree files, not main project files |
+| Worktree (SERVERS RUN HERE) | `C:\WorkStation\Projects\Python\Casper\.claude\worktrees\hungry-kepler\` |
+| Main project | `C:\WorkStation\Projects\Python\Casper\` |
+| **Rule** | Always edit worktree, never main project dir |
 | Backend URL | http://localhost:8000 |
 | Frontend URL | http://localhost:5173 |
 | Venv | `backend\env\Scripts\python.exe` |
-| Default login | admin@casper.com / Admin@1234 |
+| Login | admin@casper.com / Admin@1234 |
 | GitHub | https://github.com/amarendra-singh/Casper |
 | DB | SQLite — `backend/casper.db` |
-| Launch config | `.claude/launch.json` (absolute paths) |
+| Launch config | `.claude/launch.json` |
 
 ---
 
 ## ARCHITECTURE
 
-### Backend (FastAPI + SQLAlchemy + Alembic + SQLite)
+### Backend
 ```
 backend/app/
-  models/         # SQLAlchemy ORM models
-  schemas/        # Pydantic request/response schemas
-  routes/         # FastAPI routers (entries, skus, vendors, platforms, etc.)
-  services/       # Business logic (entries.py, pricing.py)
-  core/           # database.py, config.py, auth.py
-alembic/versions/ # Migration files — run in order
+  core/           database.py, config.py, security.py, dependencies.py
+  models/         user.py, platform.py, sku.py, vendor.py, category.py,
+                  misc_item.py, global_settings.py, hsn_code.py
+  schemas/        entries.py (batch ops), sku.py, vendor.py, platform.py ...
+  routes/         auth.py, users.py, platforms.py, vendors.py, categories.py,
+                  misc_items.py, global_settings.py, hsn_codes.py, hsn_code.py,
+                  skus.py, entries.py
+  services/       entries.py (upsert_row, upsert_batch, get_all_entries)
+                  pricing.py (resolve_pricing_inputs, calculate_pricing)
+alembic/versions/ 8 migration files — see Migrations section
 ```
 
-### Frontend (React + Vite)
+### Frontend
 ```
 frontend/src/
-  pages/          # SKUs.jsx, Dashboard.jsx, Vendors.jsx, Pricing.jsx
-  components/     # SmartCell, Layout, modals
-  api/client.js   # Axios wrapper — all API calls here
+  pages/          SKUs.jsx/.css         ← main daily page
+                  SKUs_OLD.jsx/.css     ← archived, ignore
+                  Dashboard.jsx/.css
+                  Vendors.jsx/.css
+                  Pricing.jsx/.css
+                  Login.jsx/.css
+  components/     Layout.jsx/.css
+                  SmartCell.jsx/.css
+                  AddVendorModal.jsx
+                  AddCategoryModal.jsx
+                  ManageCategoriesModal.jsx/.css
+                  dashboard/ReportHeader.jsx
+  api/client.js   All API calls — single source of truth
+  App.jsx         Route definitions
+  index.css       ALL CSS variables + global styles
 ```
 
-### Key Models
-| Model | Table | Notes |
-|-------|-------|-------|
-| Platform | platforms | `default_ad_pct`, `default_profit_pct`, `cr_charge`, `tiers` (JSON) |
-| SkuPlatformConfig | sku_platform_configs | Per-SKU per-platform AD override — `ad_pct`, `profit_pct`, `platform_sku_name` |
-| SkuPricing | sku_pricings | Main pricing row per SKU |
-| GlobalSettings | global_settings | `misc_total`, `profit_pct` defaults |
+### Actual Routes (App.jsx — verified)
+| Path | Component | Status |
+|------|-----------|--------|
+| `/login` | Login | ✅ |
+| `/` | Dashboard | ✅ |
+| `/skus` | SKUs | ✅ |
+| `/vendors` | Vendors | ✅ |
+| `/pricing/:skuId?` | Pricing | ✅ |
+| `/sku-analysis` | — | ❌ Not built |
+| `/settings` | — | ❌ Not built |
+
+---
+
+## MODELS (verified against actual code)
+
+### Sku (`skus` table)
+```python
+id, shringar_sku (unique, UPPERCASE), vendor_sku,
+vendor_id (Optional FK), category_id (Optional FK),
+hsn_code_id (Optional FK), series, description,
+is_active, created_at, updated_at
+```
+
+### SkuPricing (`sku_pricing` table)
+```python
+id, sku_id (FK), platform_id (FK),
+# Inputs
+price, package, logistics, addons, misc_total, gst, profit_percentage,
+cr_percentage, cr_cost, damage_percentage, damage_cost,
+# Computed outputs (stored)
+breakeven, net_profit_20, bs_wo_gst, bank_settlement,
+# Relationship
+platform_configs → [SkuPlatformConfig]
+```
+
+### SkuPlatformConfig (`sku_platform_config` table)
+```python
+id, sku_pricing_id (FK), platform_id (FK),
+ad_pct (Optional float),        # None = inherit platform.default_ad_pct
+profit_pct (Optional float),    # None = inherit platform.default_profit_pct
+platform_sku_name (Optional str),
+created_at
+```
+
+### Platform (`platforms` table)
+```python
+id, name, cr_charge (float), cr_percentage (float),
+default_ad_pct (float, default=0.0),
+default_profit_pct (float, default=20.0),
+is_active, tiers → [PlatformTier]
+```
+
+### Other Models
+```
+User:          id, name, email, password_hash, role, is_active
+PlatformTier:  id, platform_id, tier_name, fee
+Vendor:        id, name, short_code (unique, e.g. VRI), is_active
+Category:      id, name, is_active
+MiscItem:      id, name, amount, is_active
+GlobalSettings: id, key, value  ← CLASS NAME GlobalSettings (plural!)
+HsnCode:       id, code, description, gst_rate, category, is_custom
+```
 
 ---
 
 ## PRICING FORMULA (DO NOT DEVIATE)
 
 ```
-breakeven     = price + package + logistics + addons + misc + cr_cost + damage_cost
-cr_cost       = platform.cr_charge × (cr_percentage / 100)
-damage_cost   = price × (damage_percentage / 100)
-ad_amt        = price × (ad_pct / 100)          ← per-platform, inherits platform.default_ad_pct
-plat_be       = breakeven + ad_amt
-profit_amt    = plat_be × (profit_pct / 100)
-bs_no_gst     = round(plat_be + profit_amt)
-gst_amt       = round(bs_no_gst × gst_rate / 100)
-bank_settle   = bs_no_gst + gst_amt + tier.fee
+cr_cost      = platform.cr_charge × (cr_percentage / 100)
+damage_cost  = price × (damage_percentage / 100)
+breakeven    = price + package + logistics + addons + misc + cr_cost + damage_cost
+               ← NO AD in base breakeven (AD is per-platform)
+
+ad_amt       = price × (ad_pct / 100)
+               ad_pct priority: SKU adAmt override → SKU adPct override → platform.default_ad_pct
+
+plat_be      = breakeven + ad_amt
+profit_amt   = plat_be × (profit_pct / 100)
+bs_no_gst    = round(plat_be + profit_amt)
+gst_amt      = round(bs_no_gst × gst_rate / 100)
+bank_settle  = bs_no_gst + gst_amt + tier.fee
 ```
 
-**AD inheritance order:** SKU override (adAmt) → SKU override (adPct) → platform.default_ad_pct
+**GST special cases:** `apparel`/`footwear` → ≤₹2500 = 5%, >₹2500 = 18%
 
 ---
 
-## GST RULES
-- `apparel` → 5% if price ≤ 2500, else 18%
-- `footwear` → same as apparel
-- All others → numeric value stored (0, 3, 5, 18, 40)
+## API CLIENT (client.js — all exports, verified)
+```js
+// Auth
+login, getMe, changePassword
+
+// Platforms / Tiers
+getPlatforms, createPlatform, updatePlatform, deletePlatform
+
+// Vendors
+getVendors, createVendor, updateVendor, deleteVendor
+
+// Categories
+getCategories, createCategory, updateCategory, deleteCategory
+
+// Misc Items
+getMiscItems, getMiscTotal, createMiscItem, updateMiscItem, deleteMiscItem
+
+// Settings
+getSettings, updateSetting
+
+// SKUs
+getSkus, getSku, createSku, updateSku, deleteSku
+
+// Pricing
+getPricingForSku, createPricing, updatePricing, deletePricing
+
+// Users
+getUsers, createUser, updateUser, deleteUser
+
+// Entries (batch ops for SKU page)
+getEntries, upsertBatch
+
+// HSN
+searchHsn, getHsnList, createHsnCode
+```
 
 ---
 
@@ -83,7 +188,6 @@ bank_settle   = bs_no_gst + gst_amt + tier.fee
 
 ### Dynamic column sizing (sizer pattern)
 ```jsx
-// Column width = widest text across all rows. Never use CSS min-width for text cols.
 <td className="ec w-sku">
   <div className="ec-sizer-wrap">
     <span className="ec-sizer mono">{row.sku || 'placeholder'}</span>
@@ -91,11 +195,11 @@ bank_settle   = bs_no_gst + gst_amt + tier.fee
   </div>
 </td>
 ```
-- `size={1}` on ALL inputs — removes browser's default size=20 (~170px inflation)
-- `ec-sizer-wrap`: `position:relative; display:inline-block; width:100%`
-- `ec-sizer`: `visibility:hidden; white-space:pre; position absolute` — drives width
-- `ec-input`: `position:absolute; inset:0`
-- `pointer-events:none` on wrappers, `pointer-events:auto` on inputs
+- `size={1}` on ALL inputs — removes browser default size=20 (~170px inflation)
+- `ec-sizer-wrap`: `position:relative; display:inline-block; width:100%; pointer-events:none`
+- `ec-sizer`: `visibility:hidden; white-space:pre` — drives column width
+- `ec-input`: `position:absolute; inset:0; pointer-events:auto`
+- SmartCell `sc-wrap` also needs `pointer-events:none`
 
 ### Number formatting — ALWAYS use `numStr()`
 ```js
@@ -106,83 +210,80 @@ function numStr(v) {
   return n.toFixed(6).replace(/\.?0+$/, '') || '0'
 }
 ```
-- Prevents scientific notation (e.g. `1.5e-9` → `0`)
-- Use in `backendRowToFrontend()` for all numeric fields
-- Use in sizer spans instead of `String(c.xxx)`
+Prevents `1.5e-9` → shows `0`. Use in `backendRowToFrontend()` + all sizer spans.
 
-### Table layout strategy
+### Table layout
 ```css
-.e-tbl { border-collapse: collapse; width: max-content; }  /* no min-width:100% */
-.e-scroll { flex:1; min-height:0; overflow-x:auto; overflow-y:auto; }
+.e-tbl      { border-collapse:collapse; width:max-content; }   /* NO min-width:100% */
+.e-scroll   { flex:1; min-height:0; overflow-x:auto; overflow-y:auto; }
 .entries-page { flex:1; display:flex; flex-direction:column; min-height:0; }
 ```
 
-### Platform columns — 3 cols per platform
+### Platform columns (3 per platform)
 | Sub-col | Class | Width | Content |
 |---------|-------|-------|---------|
 | AD inputs | `w-plat-ad` | 180px fixed | % input + ₹ input + alias btn |
 | Tier | `w-plat-tier` | 72px | Tier dropdown |
-| BS | `w-plat-bs` | min 62px, no max | Computed BS (gold) |
-- Group header: `colSpan={3}`
-- `totalCols` uses `activePlats.length * 3`
+| BS | `w-plat-bs` | min 62px, NO max-width | Computed BS (gold) |
+- Group header: `colSpan={3}`, `totalCols` uses `activePlats.length * 3`
+
+### Autosave
+- Debounced: 1.5s after last keystroke
+- Hard fallback: `setInterval` every 30s
+- Only saves rows with `status === DIRTY || NEW` AND has `sku` AND `price`
 
 ---
 
-## ALEMBIC MIGRATIONS (in order)
-1. `911d6ab0f0f3` — base
-2. `b8f3a91c2e54` — add sku_platform_config (default_ad_pct, default_profit_pct, SkuPlatformConfig table)
-3. `c3f7a8e1d924` — add platform_sku_name to sku_platform_configs
+## MIGRATIONS (all 8 files, verified)
+```
+620b24754aaf — initial_tables
+d334cae979e4 — add_all_tables
+fca2ca12d777 — sku_and_pricing_tables
+a413eb320126 — add_hsn_codes_table_and_link_to_skus
+70964a6904fb — add_series_to_skus
+69a98e6c92d7 — merge_heads
+b8f3a91c2e54 — add_sku_platform_config (default_ad_pct, default_profit_pct)
+c3f7a8e1d924 — add_platform_sku_name  ← CURRENT HEAD
+```
+- Always use `batch_alter_table()` for ALTER TABLE (SQLite limitation)
+- Multiple heads: `alembic merge heads` → `alembic upgrade heads`
 
 ---
 
-## KNOWN GOTCHAS / TRAPS
-1. **Always edit the WORKTREE**, not `C:\WorkStation\Projects\Python\Casper\` — the servers run from worktree
-2. **`vendor_id` / `category_id` in sku.py schema must be `Optional[int] = None`** — caused 500 errors when non-optional
-3. **`ec-sizer-wrap` needs `pointer-events:none`** — otherwise blocks click events on inputs underneath
-4. **SmartCell (`sc-wrap`) also needs `pointer-events:none`** — same issue
-5. **Group header sub-headers sticky offset = `top:24px`** (not 27px) — measured from actual DOM
-6. **`w-plat-bs` must NOT have `max-width`** — clips large BS values
-7. **Never use `String()` on computed floats in sizer spans** — use `numStr()` to prevent `1.5e-9` etc.
-8. **`size={1}` on all number inputs** — critical, removes 170px browser default size inflation
-
----
-
-## CSS VARIABLES (complete — from index.css)
+## CSS VARIABLES (complete, verified from index.css)
 ```css
---bg: #ECEAE4          --surface: #FFFFFF       --surface-2: #F7F6F3
---surface-3: #F0EEEA   --border: #EBEBEB         --border-2: #E0DDD6
---accent: #E8365D      --accent-dim: rgba(232,54,93,0.08)
---black-btn: #1A1917   --text: #111110           --text-2: #6B6866
---text-3: #A8A59F      --green: #16A34A          --red: #DC2626
---amber: #D97706       --gold: (warm yellow)
---font-ui: Plus Jakarta Sans    --font-mono: JetBrains Mono
+--bg:#ECEAE4        --surface:#FFFFFF      --surface-2:#F7F6F3   --surface-3:#F0EEEA
+--border:#EBEBEB    --border-2:#E0DDD6
+--accent:#E8365D    --accent-hover:#D42E52  --accent-dim:rgba(232,54,93,0.08)
+--gold:#C9A96E      --gold-dim:rgba(201,169,110,0.12)  --gold-glow:rgba(201,169,110,0.08)
+--black-btn:#1A1917
+--text:#111110      --text-2:#6B6866        --text-3:#A8A59F
+--green:#16A34A     --green-dim:#DCFCE7     --green-text:#166534
+--red:#DC2626       --red-dim:#FEE2E2       --red-text:#991B1B
+--amber:#D97706     --amber-dim:#FEF3C7     --amber-text:#92400E
+--font-ui:'Plus Jakarta Sans'   --font-display:'Plus Jakarta Sans'   --font-mono:'JetBrains Mono'
+--radius:12px       --radius-sm:8px         --radius-xs:6px        --radius-pill:99px
+--shadow-sm:0 1px 2px rgba(0,0,0,0.04)...
+--shadow:0 2px 8px rgba(0,0,0,0.06)...
+--shadow-lg:0 4px 24px rgba(0,0,0,0.08)...
 ```
 
-## LAYOUT STRUCTURE
-```
-.layout (flex row, 100vh, bg #ECEAE4, padding 10px)
-  aside.sidebar (240px, same bg — no separator)
-    .ic-strip (42px, icon buttons)
-    .nav-text (text nav, company switcher, sections)
-  .right-col (flex col)
-    .topbar (ON GRAY bg, outside white box, pill search)
-    .main-wrap (WHITE rounded box, border-radius:14px, shadow)
-      main.page-content (flex col, padding 24px 28px, height:100%, overflow:hidden)
-        → children use flex:1 to fill remaining height
-```
+---
 
-## KEY DESIGN DECISIONS (permanent — do not revisit)
-| Decision | Value | Why |
-|----------|-------|-----|
-| CR meaning | Customer Return COST (not Commission Rate) | Business terminology |
-| Accent color | `#E8365D` red-pink | Not gold — too jewelry-specific |
-| Font | Plus Jakarta Sans (UI) + JetBrains Mono (numbers) | Neutral SaaS feel |
-| Sidebar bg | Same as outer `#ECEAE4` — no separator | Seamless look |
-| Topbar | Outside white box, on gray bg | Search visible on gray |
-| Dark mode timing | Add AFTER all pages done in light | Avoid double work |
-| Page renamed | Entries → SKUs (main page), SKUs → SKU Analysis (insights) | Clearer naming |
+## KEY DESIGN DECISIONS (permanent)
+| Decision | Value |
+|----------|-------|
+| CR meaning | Customer Return COST (not Commission Rate) |
+| Accent | `#E8365D` red-pink (not gold — too jewelry-specific) |
+| Gold | `#C9A96E` — used for BS values, highlights |
+| Font | Plus Jakarta Sans + JetBrains Mono |
+| Sidebar bg | Same as outer `#ECEAE4` — no separator |
+| Dark mode | Add AFTER all pages complete in light |
+| Page naming | Entries → SKUs (main), SKUs → SKU Analysis (insights, not built) |
 
-## SEED DATA (platforms)
+---
+
+## SEED DATA
 | Platform | CR Charge | Tiers |
 |----------|-----------|-------|
 | Meesho | ₹160 | Gold ₹20, Silver ₹15, Bronze ₹10 |
@@ -192,25 +293,18 @@ function numStr(v) {
 | Myntra | ₹175 | Gold ₹22, Silver ₹16 |
 
 Vendors: Varni Sales (VRI), Vesu Imitation (VIC)
-HSN: 46 codes, 5 categories → run `python casper_hsn_import.py`
-SKU naming: `SHJ-{category_code}-{vendor_code}-{product_code}` e.g. `SHJ-JS-VRI-N5-GREEN`
+SKU format: `SHJ-{category_code}-{vendor_code}-{product_code}` e.g. `SHJ-JS-VRI-N5-GREEN`
 
-## AUTH DETAILS
-- Access token: 60 min | Refresh token: 7 days | Algorithm: HS256
-- Auto-refresh: Axios interceptor catches 401 → `/auth/refresh` → retries
-- Roles: `super_admin` (full), `admin` (manage data), `viewer` (read-only)
-- localStorage: `access_token`, `refresh_token`, `casper_col_visibility`, `casper-theme`
+---
 
-## ALEMBIC NOTES
-- Always use `batch_alter_table()` for ALTER TABLE (SQLite limitation)
-- Multiple heads: `alembic merge heads` → `alembic upgrade heads`
-- Current head: `c3f7a8e1d924`
-
-## REACT COMPONENT QUICK REF
-| Component | File | Purpose |
-|-----------|------|---------|
-| SKUs | `pages/SKUs.jsx` | Main SKU pricing table |
-| SmartCell | `components/SmartCell.jsx` | Autocomplete dropdown input (vendor, category) |
-| Layout | `components/Layout.css` | `page-content` flex column, height propagation |
-| AddVendorModal | `components/AddVendorModal.jsx` | Add new vendor inline |
-| ManageCategoriesModal | `components/ManageCategoriesModal.jsx` | Category CRUD |
+## KNOWN GOTCHAS / TRAPS
+1. Always edit **WORKTREE**, not main project dir
+2. `vendor_id`/`category_id` schema → must be `Optional[int] = None`
+3. `ec-sizer-wrap` → `pointer-events:none`, inputs inside → `pointer-events:auto`
+4. SmartCell `sc-wrap` → same pointer-events rule
+5. Group header sub-headers sticky offset = `top:24px` (not 27px)
+6. `w-plat-bs` must NOT have `max-width`
+7. Never `String()` on floats in sizer spans → use `numStr()`
+8. `size={1}` on all number inputs — removes 170px browser inflation
+9. `GlobalSettings` class name is plural (not `GlobalSetting`)
+10. `SKUs_OLD.jsx` exists — do not edit or import it

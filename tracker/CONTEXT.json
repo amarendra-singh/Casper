@@ -43,8 +43,8 @@
       "MiscItem": "id, name, amount:float, is_active",
       "GlobalSettings": "id, key, value — CLASS NAME IS GlobalSettings (plural)",
       "HsnCode": "id, code, description, gst_rate:float, category, is_custom",
-      "Sku": "id, shringar_sku(UPPERCASE,unique), vendor_id(FK), category_id(FK), is_active",
-      "SkuPricing": "id, sku_id(FK), price, package, logistics, addons, misc_total, cr_percentage, cr_cost, damage_percentage, damage_cost, profit_percentage, gst, platform_configs:relationship"
+      "Sku": "id, shringar_sku(unique,UPPERCASE), vendor_sku, vendor_id(Optional FK), category_id(Optional FK), hsn_code_id(Optional FK), series, description, is_active",
+      "SkuPricing": "id, sku_id(FK), platform_id(FK), price, package, logistics, addons, misc_total, gst, profit_percentage, cr_percentage, cr_cost, damage_percentage, damage_cost, breakeven(stored), net_profit_20(stored), bs_wo_gst(stored), bank_settlement(stored), platform_configs:relationship"
     },
 
     "schema_gotcha": "vendor_id and category_id in sku.py Pydantic schema MUST be Optional[int] = None — non-optional causes 500",
@@ -69,12 +69,13 @@
     "run": "cd frontend && npm run dev",
 
     "pages": {
-      "/login": "Login (public)",
-      "/": "Dashboard",
-      "/skus": "SKUs page — main daily working page (was Entries.jsx)",
-      "/sku-analysis": "SKU Analysis — insights (not built)",
-      "/pricing/:skuId?": "Pricing calculator",
-      "/settings": "Settings (not built)"
+      "/login": "Login (public) ✅",
+      "/": "Dashboard ✅",
+      "/skus": "SKUs page — main daily working page ✅",
+      "/vendors": "Vendors page ✅",
+      "/pricing/:skuId?": "Pricing calculator ✅",
+      "/sku-analysis": "SKU Analysis — NOT BUILT (no route exists)",
+      "/settings": "Settings — NOT BUILT (no route exists)"
     },
 
     "sku_page_columns": {
