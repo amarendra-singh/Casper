@@ -63,30 +63,31 @@ def calculate_pricing(
     misc_total: float,
     cr_cost: float,
     damage_cost: float,
-    gst: float,
+    gst: float,                      # GST rate in % (e.g. 5 means 5%)
+    profit_percentage: float = 20.0, # profit % on top of breakeven
 ) -> dict:
     """
     Core formula — pure function (no DB needed).
     Pure functions are easiest to test and debug.
-    
+
     Returns dict with all 4 calculated fields.
     """
     # All costs added to price to find minimum selling price
     breakeven = round(
         price + package + logistics + addons + misc_total + cr_cost + damage_cost,
-        2  # round to 2 decimal places
+        2
     )
 
-    # 20% profit on top of breakeven
-    net_profit_20 = round(breakeven * 0.20, 2)
+    # profit % on top of breakeven
+    net_profit_20 = round(breakeven * (profit_percentage / 100), 2)
 
-    # Bank settlement before GST — rounded to nearest integer (like your sheet)
+    # Bank settlement before GST — rounded to nearest integer
     bs_wo_gst = round(breakeven + net_profit_20)
 
-    # Final settlement after adding GST
-    bank_settlement = round(bs_wo_gst + gst, 2)
+    # GST is a rate (%), not a flat ₹ amount
+    gst_amount = round(bs_wo_gst * gst / 100, 2)
+    bank_settlement = round(bs_wo_gst + gst_amount, 2)
 
-    # Return as dict — easy to unpack into model fields
     return {
         "breakeven": breakeven,
         "net_profit_20": net_profit_20,

@@ -226,9 +226,9 @@ export default function Pricing() {
             ['CR Cost',         'platform.cr_charge × (cr_percentage / 100)'],
             ['Damage Cost',     'price × (damage_percentage / 100)'],
             ['Breakeven',       'price + package + logistics + addons + misc + cr_cost + damage_cost'],
-            ['Net Profit 20%',  'breakeven × 0.20'],
-            ['BS w/o GST',      'round(breakeven + net_profit_20)'],
-            ['Bank Settlement', 'bs_wo_gst + gst'],
+            ['Net Profit',      'breakeven × (profit_percentage / 100)'],
+            ['BS w/o GST',      'round(breakeven + net_profit)'],
+            ['Bank Settlement', 'bs_wo_gst + round(bs_wo_gst × gst_rate / 100)'],
           ].map(([name, formula]) => (
             <div key={name} className="formula-row">
               <span className="formula-name">{name}</span>

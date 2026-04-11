@@ -193,8 +193,8 @@ async def upsert_row(
         # ── 5. Upsert per-platform overrides (SkuPlatformConfig) ──────────
         if pricing and row.platform_overrides:
             for override in row.platform_overrides:
-                # Skip if nothing to override
-                if override.ad_pct is None and override.profit_pct is None:
+                # Skip if nothing to save for this platform
+                if override.ad_pct is None and override.profit_pct is None and not override.platform_sku_name:
                     continue
 
                 cfg_result = await session.execute(
@@ -206,14 +206,16 @@ async def upsert_row(
                 cfg = cfg_result.scalar_one_or_none()
 
                 if cfg:
-                    cfg.ad_pct     = override.ad_pct
-                    cfg.profit_pct = override.profit_pct
+                    cfg.ad_pct            = override.ad_pct
+                    cfg.profit_pct        = override.profit_pct
+                    cfg.platform_sku_name = override.platform_sku_name or None
                 else:
                     session.add(SkuPlatformConfig(
-                        sku_pricing_id = pricing.id,
-                        platform_id    = override.platform_id,
-                        ad_pct         = override.ad_pct,
-                        profit_pct     = override.profit_pct,
+                        sku_pricing_id    = pricing.id,
+                        platform_id       = override.platform_id,
+                        ad_pct            = override.ad_pct,
+                        profit_pct        = override.profit_pct,
+                        platform_sku_name = override.platform_sku_name or None,
                     ))
 
         return EntryRowResult(
@@ -361,9 +363,10 @@ async def get_all_entries(session: AsyncSession) -> list:
             # Per-platform overrides
             'platform_configs': [
                 {
-                    'platform_id': cfg.platform_id,
-                    'ad_pct':      cfg.ad_pct,
-                    'profit_pct':  cfg.profit_pct,
+                    'platform_id':       cfg.platform_id,
+                    'ad_pct':            cfg.ad_pct,
+                    'profit_pct':        cfg.profit_pct,
+                    'platform_sku_name': cfg.platform_sku_name,
                 }
                 for cfg in platform_configs
             ],

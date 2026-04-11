@@ -10,13 +10,12 @@ from app.schemas.hsn_code import HsnCodeResponse
 # ── SKU Schemas ───────────────────────────────────────────
 
 class SkuCreate(BaseModel):
-    # str = must be a string, FastAPI will reject if not
-    shringar_sku: str        # your internal unique SKU code
-    vendor_sku: str          # vendor's own SKU code
-    vendor_id: int           # foreign key — which vendor
-    category_id: int         # foreign key — which category
+    shringar_sku: str
+    vendor_sku: Optional[str] = None
+    vendor_id: Optional[int] = None
+    category_id: Optional[int] = None
     hsn_code_id: Optional[int] = None
-    description: str | None = None  # optional field, defaults to None
+    description: str | None = None
 
     # field_validator lets us run custom logic on a field before saving
     # 'shringar_sku' = which field to validate
@@ -80,9 +79,11 @@ class PricingCreate(BaseModel):
     damage_percentage: float | None = None  # pulled from global settings if None
     damage_cost: float | None = None        # auto = price × damage_percentage, overridable
 
+    profit_percentage: float = 20.0         # profit % on top of breakeven
+
 
 class PricingUpdate(BaseModel):
-    # Every field optional — user can update just price, 
+    # Every field optional — user can update just price,
     # and all calculations will recompute automatically
     price: float | None = None
     package: float | None = None
@@ -94,6 +95,7 @@ class PricingUpdate(BaseModel):
     cr_cost: float | None = None
     damage_percentage: float | None = None
     damage_cost: float | None = None
+    profit_percentage: float | None = None
 
 
 class PricingResponse(BaseModel):
@@ -112,6 +114,9 @@ class PricingResponse(BaseModel):
     cr_cost: float
     damage_percentage: float
     damage_cost: float
+
+    # Profit
+    profit_percentage: float
 
     # Auto-calculated outputs
     breakeven: float

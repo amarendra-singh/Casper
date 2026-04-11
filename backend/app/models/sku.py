@@ -78,8 +78,9 @@ class SkuPlatformConfig(Base):
     platform_id:    Mapped[int] = mapped_column(Integer, ForeignKey("platforms.id", ondelete="RESTRICT"), nullable=False)
 
     # None = inherit from platform default
-    ad_pct:     Mapped[Optional[float]] = mapped_column(Float, nullable=True, comment="Override AD% for this SKU on this platform")
-    profit_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True, comment="Override profit% for this SKU on this platform")
+    ad_pct:             Mapped[Optional[float]] = mapped_column(Float, nullable=True, comment="Override AD% for this SKU on this platform")
+    profit_pct:         Mapped[Optional[float]] = mapped_column(Float, nullable=True, comment="Override profit% for this SKU on this platform")
+    platform_sku_name:  Mapped[Optional[str]]   = mapped_column(String(250), nullable=True, comment="SKU name alias on this platform (e.g. Flipkart title)")
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

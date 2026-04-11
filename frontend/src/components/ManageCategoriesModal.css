@@ -23,7 +23,7 @@
   width: 28px; height: 28px; border-radius: 6px;
   display: flex; align-items: center; justify-content: center;
 }
-.mc-close:hover { background: var(--surface-2); color: var(--text-1); }
+.mc-close:hover { background: var(--surface-2); color: var(--text); }
 .mc-body { overflow-y: auto; padding: 8px; }
 .mc-empty { padding: 20px; text-align: center; color: var(--text-3); font-size: 13px; }
 .mc-row {
@@ -31,13 +31,13 @@
   padding: 6px 8px; border-radius: 8px;
 }
 .mc-row:hover { background: var(--surface-2); }
-.mc-name { flex: 1; font-size: 13px; color: var(--text-1); }
+.mc-name { flex: 1; font-size: 13px; color: var(--text); }
 .mc-input {
   flex: 1; font-size: 13px;
   border: 1px solid var(--accent);
   border-radius: 6px; padding: 4px 8px;
   outline: none; background: var(--surface);
-  color: var(--text-1);
+  color: var(--text);
 }
 .mc-actions { display: flex; align-items: center; gap: 4px; }
 .mc-badge {

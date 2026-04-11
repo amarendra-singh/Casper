@@ -204,6 +204,7 @@ async def create_pricing(
         cr_cost=resolved["cr_cost"],
         damage_cost=resolved["damage_cost"],
         gst=payload.gst,
+        profit_percentage=payload.profit_percentage,
     )
 
     # Step 3: Build and save the pricing record
@@ -216,6 +217,7 @@ async def create_pricing(
         logistics=payload.logistics,
         addons=payload.addons,
         gst=payload.gst,
+        profit_percentage=payload.profit_percentage,
         **resolved,   # cr_percentage, cr_cost, damage_percentage, damage_cost, misc_total
         **calcs,      # breakeven, net_profit_20, bs_wo_gst, bank_settlement
     )
@@ -276,6 +278,7 @@ async def update_pricing(
         cr_cost=pricing.cr_cost,
         damage_cost=pricing.damage_cost,
         gst=pricing.gst,
+        profit_percentage=pricing.profit_percentage,
     )
 
     # Apply calculated values

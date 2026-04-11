@@ -15,6 +15,10 @@
   --accent-hover:#D42E52;
   --accent-dim:  rgba(232,54,93,0.08);
 
+  --gold:        #C9A96E;
+  --gold-dim:    rgba(201,169,110,0.12);
+  --gold-glow:   rgba(201,169,110,0.08);
+
   --black-btn:   #1A1917;
   --text:        #111110;
   --text-2:      #6B6866;
@@ -30,8 +34,9 @@
   --amber-dim:   #FEF3C7;
   --amber-text:  #92400E;
 
-  --font-ui:   'Plus Jakarta Sans', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-ui:      'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
 
   --radius:    12px;
   --radius-sm: 8px;
@@ -151,7 +156,7 @@ tr:hover td { background: var(--surface-2); color: var(--text); }
 
 /* ── Page layout ── */
 .page-header {
-  display: flex; align-items: flex-start; justify-content: space-between;
+  display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 20px;
 }
 .page-title   { font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }

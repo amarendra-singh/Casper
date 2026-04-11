@@ -25,11 +25,12 @@ async def create_vendor(
     db: AsyncSession = Depends(get_db),
     _=Depends(require_admin_or_above),
 ):
-    existing = await db.execute(select(Vendor).where(Vendor.short_code == payload.short_code))
+    short_code = payload.short_code.strip().upper()
+    existing = await db.execute(select(Vendor).where(Vendor.short_code == short_code))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Vendor short code already exists")
 
-    vendor = Vendor(name=payload.name, short_code=payload.short_code.upper())
+    vendor = Vendor(name=payload.name, short_code=short_code)
     db.add(vendor)
     await db.commit()
     await db.refresh(vendor)

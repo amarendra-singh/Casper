@@ -1,4 +1,4 @@
-.entries-page { max-width: 100%; }
+.entries-page { max-width: 100%; flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
 /* ── Settings bar ── */
 .e-bar {
@@ -220,7 +220,9 @@
 
 /* ── Table scroll ── */
 .e-scroll {
-  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  flex: 1; min-height: 0;
+  overflow-x: auto; overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--border); border-radius: var(--radius);
   scrollbar-width: thin;
   scrollbar-color: var(--border-2) transparent;
@@ -231,49 +233,55 @@
 .e-scroll::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
 .e-tbl { border-collapse: collapse; width: max-content; }
 
-/* ── Column widths — sticky offsets: vendor=90px, sku=90+96=186px ── */
+/* ── Column widths ──
+   Text columns (vendor, sku, series, vsku, cat): flex to fill extra space
+   Number/calc columns: fixed — don't stretch, stay tight
+── */
 .w-vendor  { width:  90px; min-width: 90px; max-width:  90px; }
-.w-sku     { width:  96px; min-width: 72px; max-width:  96px; }
-.w-series  { min-width:  56px; max-width:  80px; }
-.w-vshort  { min-width:  36px; max-width:  48px; }
-.w-vsku    { min-width:  60px; max-width:  80px; }
-.w-cat     { min-width:  60px; max-width:  84px; }
-.w-price   { min-width:  58px; max-width:  70px; }
-.w-pkg     { min-width:  46px; max-width:  56px; }
-.w-log     { min-width:  46px; max-width:  56px; }
-.w-ad      { min-width:  46px; max-width:  56px; }
-.w-addons  { min-width:  46px; max-width:  56px; }
-.w-misc    { min-width:  46px; max-width:  56px; }
-.w-crpct   { min-width:  38px; max-width:  48px; }
-.w-cramt   { min-width:  46px; max-width:  56px; }
-.w-dmgpct  { min-width:  38px; max-width:  48px; }
-.w-dmgamt  { min-width:  46px; max-width:  56px; }
-.w-be      { min-width:  62px; max-width:  74px; }
-.w-profpct { min-width:  46px; max-width:  56px; }
-.w-profamt { min-width:  56px; max-width:  66px; }
-.w-bsnogst { min-width:  62px; max-width:  74px; }
-.w-gst     { min-width:  46px; max-width:  56px; }
-.w-finalbs { min-width:  62px; max-width:  74px; }
-.w-plat    { min-width: 140px; max-width: 160px; }
-.w-plat-ad { min-width: 144px; max-width: 164px; }
+.w-sku     { }
+.w-series  { }
+.w-vshort  { min-width: 36px; max-width: 52px; width: 48px; }
+.w-vsku    { }
+.w-cat     { }
+.w-price   { min-width: 28px; }
+.w-pkg     { min-width: 28px; }
+.w-log     { min-width: 28px; }
+.w-ad      { min-width: 28px; }
+.w-addons  { min-width: 28px; }
+.w-misc    { min-width: 28px; }
+.w-crpct   { min-width: 28px; }
+.w-cramt   { min-width: 28px; }
+.w-dmgpct  { min-width: 28px; }
+.w-dmgamt  { min-width: 28px; }
+.w-be      { min-width: 28px; }
+.w-profpct { min-width: 28px; }
+.w-profamt { min-width: 28px; }
+.w-bsnogst { min-width: 28px; }
+.w-gst     { min-width: 40px; }
+.w-finalbs { min-width: 28px; }
+.w-plat    { min-width: 140px; max-width: 160px; width: 160px; }
+.w-plat-ad { min-width: 160px; max-width: 180px; width: 180px; }
+.w-plat-tier { min-width: 52px; max-width: 90px; width: 72px; }
+.w-plat-bs { min-width: 62px; }
 
 /* ── Group headers — light colored tints ── */
 .gh {
   padding: 4px 6px;
   font-size: 9px; font-weight: 700;
-  text-align: left; letter-spacing: 0.08em; text-transform: uppercase;
+  text-align: center; letter-spacing: 0.08em; text-transform: uppercase;
   border-right: 1px solid rgba(255,255,255,0.6);
   border-bottom: 1px solid transparent;
   white-space: nowrap;
   position: sticky; top: 0; z-index: 3;
 }
 .gh:last-child { border-right: none; }
+.gh:not(.gh-sku):not(.gh-ue):not(.gh-prof):not(.gh-tax):not(.gh-bs):not(.gh-plat) { background: transparent; border-right: none; border-bottom-color: transparent; }
 .gh-sku  { background: #EFF6FF; color: #1E40AF; border-bottom-color: #BFDBFE; }
 .gh-ue   { background: #F0FDF4; color: #166534; border-bottom-color: #BBF7D0; }
 .gh-prof { background: #FAF5FF; color: #6B21A8; border-bottom-color: #E9D5FF; }
-.gh-tax  { background: #FFFBEB; color: #92400E; border-bottom-color: #FDE68A; text-align: center; }
-.gh-bs   { background: #FFF1F2; color: #BE123C; border-bottom-color: #FECDD3; text-align: center; }
-.gh-plat { background: var(--surface-2); color: var(--text-2); border-bottom: 1px solid var(--border-2); text-align: center; }
+.gh-tax  { background: #FFFBEB; color: #92400E; border-bottom-color: #FDE68A; }
+.gh-bs   { background: #FFF1F2; color: #BE123C; border-bottom-color: #FECDD3; }
+.gh-plat { background: var(--surface-2); color: var(--text-2); border-bottom: 1px solid var(--border-2); }
 .gh-x {
   background: none; border: none; cursor: pointer;
   color: var(--text-3); font-size: 10px; margin-left: 4px;
@@ -284,17 +292,17 @@
 /* ── Sub headers ── */
 .sh {
   padding: 4px 5px;
-  font-size: 9px; font-weight: 700; text-align: left;
+  font-size: 9px; font-weight: 700; text-align: center;
   letter-spacing: 0.05em; text-transform: uppercase;
   white-space: nowrap; border-bottom: 2px solid var(--border-2);
-  color: var(--text-3); position: sticky; top: 27px; z-index: 2;
+  color: var(--text-3); position: sticky; top: 24px; z-index: 2;
 }
 .sh-sku  { background: #F5F9FF; }
 .sh-ue   { background: #F5FDF7; }
 .sh-prof { background: #F8F4FF; }
-.sh-tax  { background: #FFFDF5; text-align: right; }
-.sh-bs   { background: #FFF8F9; text-align: right; }
-.sh-plat { background: var(--surface-2); text-align: center; }
+.sh-tax  { background: #FFFDF5; }
+.sh-bs   { background: #FFF8F9; }
+.sh-plat { background: var(--surface-2); }
 
 /* ── Data rows ── */
 .e-row { transition: background 0.1s; }
@@ -324,7 +332,8 @@
 /* Constrain SmartCell + plain inputs inside table cells — explicit px beats 100% circular ref */
 .ec .sc-wrap { height: 32px; overflow: hidden; }
 .ec .sc-input { height: 32px; }
-.ec-plat .plat-cell-a { height: 32px; overflow: hidden; }
+
+.ec-plat .plat-cell-a:not(.alias-open) { height: 32px; overflow: hidden; }
 .ec-auto {
   border: 0.5px solid var(--border); padding: 0 7px; height: 32px;
   font-family: var(--font-mono); font-size: 11px; color: var(--text-2);
@@ -354,6 +363,39 @@
 .ec.sh-sku, .ec-smart.sh-sku { background: #FAFCFF; }
 .e-row:hover .ec.sh-sku,
 .e-row:hover .ec-smart.sh-sku { background: #F4F7FF !important; }
+
+/* ── Dynamic sizer — drives column width from text content ──
+   The hidden span takes up exactly as much space as the text.
+   The input overlays it absolutely, filling 100% of that space.
+   Column width = widest span across all rows. No CSS min-width needed.
+── */
+.ec-sizer-wrap {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  min-width: 100%;
+  height: 32px;
+}
+.ec-sizer {
+  visibility: hidden;
+  white-space: pre;
+  display: block;
+  padding: 0 8px;
+  font-size: 12px;
+  font-family: var(--font-ui);
+  height: 32px;
+  line-height: 32px;
+  pointer-events: none;
+  min-width: 24px;
+}
+.ec-sizer.mono { font-family: var(--font-mono); font-size: 11px; }
+.ec-sizer-wrap .ec-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 32px;
+  pointer-events: auto;
+}
 
 /* ── Cell input ── */
 .ec-input {
@@ -406,6 +448,54 @@ select.ec-input,
   max-height: 32px;
   overflow: hidden;
 }
+.plat-cell-a.alias-open {
+  flex-wrap: wrap;
+  height: auto;
+  max-height: none;
+  padding-bottom: 4px;
+  align-items: center;
+}
+.ec-plat .plat-cell-a.alias-open { height: auto; overflow: visible; }
+
+/* Alias toggle button */
+.plat-alias-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0 1px;
+  color: var(--text-3);
+  line-height: 1;
+  opacity: 0.35;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+.plat-alias-btn:hover { opacity: 0.8; }
+.plat-alias-btn.has-alias { opacity: 1; color: var(--gold); }
+
+/* Alias input row (expands below the AD/BS row) */
+.plat-alias-row {
+  flex-basis: 100%;
+  width: 100%;
+  padding-top: 3px;
+  border-top: 1px solid var(--border);
+  margin-top: 2px;
+}
+.plat-alias-inp {
+  width: 100%;
+  height: 20px;
+  font-size: 11px;
+  border: 1px solid var(--border-2);
+  border-radius: 3px;
+  padding: 0 5px;
+  background: var(--surface);
+  color: var(--text);
+  min-width: 0;
+  box-sizing: border-box;
+  font-family: var(--font-ui);
+  outline: none;
+}
+.plat-alias-inp:focus { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
 
 /* Labelled input box: [ % | 0 ] */
 .plat-field {
@@ -416,8 +506,8 @@ select.ec-input,
   overflow: hidden;
   background: var(--surface);
   flex: 1;
-  min-width: 36px;
-  max-width: 48px;
+  min-width: 44px;
+  max-width: 60px;
   height: 22px;
   flex-shrink: 1;
 }
@@ -464,13 +554,11 @@ select.ec-input,
   font-size: 10px;
   font-family: var(--font-ui);
   border-radius: 3px;
-  padding: 0 2px;
-  height: 22px;
-  width: 30px;
-  min-width: 28px;
-  max-width: 34px;
+  padding: 0 4px;
+  height: 28px;
+  width: 100%;
+  min-width: 0;
   outline: none;
-  flex-shrink: 0;
   cursor: pointer;
   transition: border-color 0.12s;
 }
@@ -485,6 +573,7 @@ select.ec-input,
   min-width: 34px;
   text-align: right;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 .plat-bs-s.has-val { color: var(--accent); }
 
@@ -630,11 +719,11 @@ select.ec-input,
   border: none;
   border-radius: 6px;
   font-size: 13px;
-  color: var(--text-1);
+  color: var(--text);
   cursor: pointer;
   text-align: left;
 }
-.import-dd-item:hover { background: var(--hover); }
+.import-dd-item:hover { background: var(--surface-2); }
 .import-dd-sep {
   height: 1px;
   background: var(--border);
@@ -684,7 +773,7 @@ select.ec-input,
   padding: 4px 6px;
   font-size: 12px;
   background: var(--surface);
-  color: var(--text-1);
+  color: var(--text);
   box-sizing: border-box;
 }
 .imp-num { max-width: 78px; }

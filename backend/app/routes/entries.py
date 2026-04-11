@@ -3,8 +3,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import require_any
-from app.schemas.entries import UpsertBatchRequest, UpsertBatchResponse
-from app.services.entries import upsert_batch
 from app.schemas.entries import UpsertBatchRequest, UpsertBatchResponse, EntryRowResponse
 from app.services.entries import upsert_batch, get_all_entries
 
@@ -18,8 +16,7 @@ async def upsert_entries_batch(
     db: AsyncSession = Depends(get_db),
     _=Depends(require_any),
 ):
-    async with db.begin():
-        saved, errors = await upsert_batch(db, request.rows)
+    saved, errors = await upsert_batch(db, request.rows)
 
     return UpsertBatchResponse(
         saved       = saved,
@@ -29,11 +26,10 @@ async def upsert_entries_batch(
         error_count = len(errors),
     )
 
-# Add this route
+
 @router.get("/", response_model=list[EntryRowResponse])
 async def get_entries(
     db: AsyncSession = Depends(get_db),
     _=Depends(require_any),
 ):
-    """Load all saved entries for the Entries page."""
     return await get_all_entries(db)

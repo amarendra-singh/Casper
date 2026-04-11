@@ -109,12 +109,14 @@ export default function SmartCell({
 
   return (
     <div ref={cellRef} className={`sc-wrap ${className}`}>
+      <span className="ec-sizer">{value || placeholder}</span>
       <input
         ref={inputRef}
         className="sc-input"
         value={value}
         placeholder={placeholder}
         readOnly={readOnly}
+        size={1}
         onChange={e => {
           onChange && onChange(e.target.value)
           setOpen(true)

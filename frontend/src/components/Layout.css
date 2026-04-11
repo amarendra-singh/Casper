@@ -357,7 +357,10 @@
 .page-content {
   height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Mobile responsive ── */

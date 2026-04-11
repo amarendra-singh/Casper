@@ -40,6 +40,15 @@ function resolveGst(gstType, price) {
   return parseFloat(gstType) || 0
 }
 
+// ─── Safe number → string (never scientific notation) ────────────────────────
+function numStr(v) {
+  if (v == null || v === '') return ''
+  const n = parseFloat(v)
+  if (isNaN(n)) return ''
+  // toFixed(6) never produces sci notation; strip trailing zeros
+  return n.toFixed(6).replace(/\.?0+$/, '') || '0'
+}
+
 // ─── Column groups ────────────────────────────────────────────────────────────
 // Note: 'ad' removed from costBreakdown — AD is now per-platform
 const COL_GROUPS = {
@@ -91,19 +100,23 @@ function newRow(data = {}) {
     // Per-platform AD overrides: { [platformId]: { adPct: '', adAmt: '' } }
     // '' = inherit from platform.default_ad_pct
     platOverrides: data.platOverrides || {},
+    // Per-platform SKU name aliases: { [platformId]: string }
+    platAliases: data.platAliases || {},
   }
 }
 
 // Convert backend row → frontend row
 function backendRowToFrontend(r) {
-  // Rebuild platOverrides from platform_configs returned by the API
+  // Rebuild platOverrides and platAliases from platform_configs returned by the API
   const platOverrides = {}
+  const platAliases   = {}
   if (r.platform_configs) {
     r.platform_configs.forEach(cfg => {
       platOverrides[cfg.platform_id] = {
-        adPct: cfg.ad_pct  != null ? String(cfg.ad_pct)  : '',
+        adPct: cfg.ad_pct  != null ? numStr(cfg.ad_pct)  : '',
         adAmt: '',  // always blank on load; computed on render
       }
+      if (cfg.platform_sku_name) platAliases[cfg.platform_id] = cfg.platform_sku_name
     })
   }
 
@@ -118,19 +131,20 @@ function backendRowToFrontend(r) {
     sku:        r.shringar_sku  || '',
     category:   r.category_name || '',
     categoryId: r.category_id   || null,
-    price:      r.price             != null ? String(r.price)             : '',
-    pkg:        r.package           != null ? String(r.package)           : '',
-    log:        r.logistics         != null ? String(r.logistics)         : '',
-    addons:     r.addons            != null ? String(r.addons)            : '',
-    misc:       r.misc_total        != null ? String(r.misc_total)        : '',
-    crPct:      r.cr_percentage     != null ? String(r.cr_percentage)     : '',
-    crAmt:      r.cr_cost           != null ? String(r.cr_cost)           : '',
-    dmgPct:     r.damage_percentage != null ? String(r.damage_percentage) : '',
-    dmgAmt:     r.damage_cost       != null ? String(r.damage_cost)       : '',
-    profPct:    r.profit_percentage != null ? String(r.profit_percentage) : '',
+    price:      numStr(r.price),
+    pkg:        numStr(r.package),
+    log:        numStr(r.logistics),
+    addons:     numStr(r.addons),
+    misc:       numStr(r.misc_total),
+    crPct:      numStr(r.cr_percentage),
+    crAmt:      numStr(r.cr_cost),
+    dmgPct:     numStr(r.damage_percentage),
+    dmgAmt:     numStr(r.damage_cost),
+    profPct:    numStr(r.profit_percentage),
     gstType:    '5',
-    gst:        r.gst               != null ? String(r.gst)              : '5',
+    gst:        r.gst != null ? numStr(r.gst) : '5',
     platOverrides,
+    platAliases,
   })
 }
 
@@ -269,6 +283,7 @@ export default function SKUs() {
   const [categoryModal, setCategoryModal] = useState(null)
   const [pendingRowId,  setPendingRowId]  = useState(null)
   const [loading, setLoading] = useState(true)
+  const [aliasOpen,       setAliasOpen]       = useState(new Set())
 
   // ── Load data on mount ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -325,6 +340,24 @@ export default function SKUs() {
     }))
   }, [])
 
+  // ── Platform alias handlers ────────────────────────────────────────────────
+  const toggleAlias = useCallback((rowId, plId) => {
+    setAliasOpen(prev => {
+      const key = `${rowId}-${plId}`
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  }, [])
+
+  const handleAlias = useCallback((rowId, plId, value) => {
+    setRows(prev => prev.map(r =>
+      r.id === rowId
+        ? { ...r, status: STATUS.DIRTY, platAliases: { ...r.platAliases, [plId]: value } }
+        : r
+    ))
+  }, [])
+
   // ── Save logic ─────────────────────────────────────────────────────────────
   const saveRows = useCallback(async (rowsToSave) => {
     if (!rowsToSave.length) return
@@ -333,21 +366,31 @@ export default function SKUs() {
     ))
 
     const payload = rowsToSave.map(row => {
-      // Build platform_overrides — only send platforms with actual ad_pct overrides
-      const platform_overrides = Object.entries(row.platOverrides)
-        .filter(([, o]) => o.adPct !== '' || o.adAmt !== '')
-        .map(([plId, o]) => {
-          // Resolve the pct to send: if adAmt was entered, convert to pct
-          let ad_pct = null
-          if (o.adAmt !== '' && o.adAmt !== undefined) {
-            const price = parseFloat(row.price) || 0
-            const amt   = parseFloat(o.adAmt)   || 0
-            ad_pct = price > 0 ? +(amt / price * 100).toFixed(4) : null
-          } else if (o.adPct !== '' && o.adPct !== undefined) {
-            ad_pct = parseFloat(o.adPct) ?? null
-          }
-          return { platform_id: parseInt(plId), ad_pct, profit_pct: null }
-        })
+      // Build platform_overrides — include AD overrides + aliases
+      const overrideMap = {}
+      // AD overrides
+      Object.entries(row.platOverrides || {}).forEach(([plId, o]) => {
+        if (o.adPct === '' && o.adAmt === '') return
+        let ad_pct = null
+        if (o.adAmt !== '' && o.adAmt !== undefined) {
+          const price = parseFloat(row.price) || 0
+          const amt   = parseFloat(o.adAmt)   || 0
+          ad_pct = price > 0 ? +(amt / price * 100).toFixed(4) : null
+        } else if (o.adPct !== '' && o.adPct !== undefined) {
+          ad_pct = parseFloat(o.adPct) ?? null
+        }
+        overrideMap[plId] = { platform_id: parseInt(plId), ad_pct, profit_pct: null, platform_sku_name: null }
+      })
+      // Aliases — merge into overrideMap
+      Object.entries(row.platAliases || {}).forEach(([plId, alias]) => {
+        if (!alias) return
+        if (overrideMap[plId]) {
+          overrideMap[plId].platform_sku_name = alias
+        } else {
+          overrideMap[plId] = { platform_id: parseInt(plId), ad_pct: null, profit_pct: null, platform_sku_name: alias }
+        }
+      })
+      const platform_overrides = Object.values(overrideMap)
 
       return {
         sku:               row.sku,
@@ -737,9 +780,9 @@ export default function SKUs() {
               </th>
               {vis('gst') && <th className="gh gh-tax">Tax</th>}
               <th className="gh gh-bs">Bank Settlement</th>
-              {/* Platform columns — each shows AD input + tier + BS */}
+              {/* Platform columns — AD inputs + tier | AD ₹ | BS (3 cols each) */}
               {activePlats.map(pl => (
-                <th key={pl.id} className="gh gh-plat">
+                <th key={pl.id} className="gh gh-plat" colSpan={3}>
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:4 }}>
                     <span>{pl.name}</span>
                     <span style={{ fontSize:10, color:'var(--text-3)', fontWeight:400 }}>
@@ -777,11 +820,11 @@ export default function SKUs() {
               {vis('bsnogst') && <th className="sh sh-prof w-bsnogst">BS w/o GST</th>}
               {vis('gst') && <th className="sh sh-tax w-gst">GST</th>}
               <th className="sh sh-bs w-finalbs">Final BS</th>
-              {activePlats.map(pl => (
-                <th key={pl.id} className="sh sh-plat w-plat-ad">
-                  <span style={{ fontSize:10 }}>AD% / ₹ · Tier · BS</span>
-                </th>
-              ))}
+              {activePlats.map(pl => ([
+                <th key={`${pl.id}-ad`} className="sh sh-plat w-plat-ad">AD% / ₹</th>,
+                <th key={`${pl.id}-tier`} className="sh sh-plat w-plat-tier">Tier</th>,
+                <th key={`${pl.id}-bs`} className="sh sh-bs w-plat-bs">BS</th>
+              ]))}
               <th className="sh" style={{ minWidth:28 }}/>
               <th className="sh" style={{ minWidth:28 }}/>
             </tr>
@@ -806,7 +849,7 @@ export default function SKUs() {
                 + 1+(vis('pkg')?1:0)+(vis('log')?1:0)+(vis('addons')?1:0)+(vis('misc')?1:0)
                 + (vis('crpct')?1:0)+(vis('cramt')?1:0)+(vis('dmgpct')?1:0)+(vis('dmgamt')?1:0)
                 + 1+(vis('profpct')?1:0)+(vis('profamt')?1:0)+(vis('bsnogst')?1:0)
-                + (vis('gst')?1:0) + 1 + activePlats.length + 2
+                + (vis('gst')?1:0) + 1 + activePlats.length * 3 + 2
 
               return keys.flatMap(seriesKey => {
                 const groupRows = groups[seriesKey]
@@ -844,8 +887,11 @@ export default function SKUs() {
 
                   {/* SKU code */}
                   <td className="ec w-sku sh-sku sticky-col" style={{left:90}}>
-                    <input className="ec-input mono" value={row.sku} placeholder="SHJ-JS-VRI-N6"
-                      onChange={e => upd(row.id, { sku:e.target.value.toUpperCase() })} />
+                    <div className="ec-sizer-wrap">
+                      <span className="ec-sizer mono">{row.sku || 'SHJ-JS-VRI-N6'}</span>
+                      <input className="ec-input mono" size={1} value={row.sku} placeholder="SHJ-JS-VRI-N6"
+                        onChange={e => upd(row.id, { sku:e.target.value.toUpperCase() })} />
+                    </div>
                   </td>
 
                   {vis('series') && (
@@ -859,14 +905,20 @@ export default function SKUs() {
                   )}
                   {vis('vshort') && (
                     <td className="ec w-vshort sh-sku">
-                      <input className="ec-input mono" value={row.vshort} placeholder="VRI"
-                        onChange={e => upd(row.id, { vshort:e.target.value.toUpperCase() })} />
+                      <div className="ec-sizer-wrap">
+                        <span className="ec-sizer mono">{row.vshort || 'VRI'}</span>
+                        <input className="ec-input mono" size={1} value={row.vshort} placeholder="VRI"
+                          onChange={e => upd(row.id, { vshort:e.target.value.toUpperCase() })} />
+                      </div>
                     </td>
                   )}
                   {vis('vsku') && (
                     <td className="ec w-vsku sh-sku">
-                      <input className="ec-input mono" value={row.vsku} placeholder="N6-WHITE"
-                        onChange={e => upd(row.id, { vsku:e.target.value })} />
+                      <div className="ec-sizer-wrap">
+                        <span className="ec-sizer mono">{row.vsku || 'N6-WHITE'}</span>
+                        <input className="ec-input mono" size={1} value={row.vsku} placeholder="N6-WHITE"
+                          onChange={e => upd(row.id, { vsku:e.target.value })} />
+                      </div>
                     </td>
                   )}
                   {vis('category') && (
@@ -887,65 +939,92 @@ export default function SKUs() {
 
                   {/* Price */}
                   <td className="ec w-price sh-ue">
-                    <input className="ec-input right mono" type="number" value={row.price}
-                      placeholder="0"
-                      onChange={e => {
-                        const newPrice = e.target.value
-                        const newGst = resolveGst(row.gstType || '5', newPrice)
-                        upd(row.id, { price: newPrice, gst: String(newGst) })
-                      }} />
+                    <div className="ec-sizer-wrap">
+                      <span className="ec-sizer mono">{row.price || '0'}</span>
+                      <input className="ec-input right mono" type="number" size={1} value={row.price}
+                        placeholder="0"
+                        onChange={e => {
+                          const newPrice = e.target.value
+                          const newGst = resolveGst(row.gstType || '5', newPrice)
+                          upd(row.id, { price: newPrice, gst: String(newGst) })
+                        }} />
+                    </div>
                   </td>
 
                   {vis('pkg') && (
                     <td className="ec w-pkg sh-ue">
-                      <input className="ec-input right mono" type="number" value={row.pkg}
-                        placeholder="0" onChange={e => upd(row.id, { pkg:e.target.value })} />
+                      <div className="ec-sizer-wrap">
+                        <span className="ec-sizer mono">{row.pkg || '0'}</span>
+                        <input className="ec-input right mono" type="number" size={1} value={row.pkg}
+                          placeholder="0" onChange={e => upd(row.id, { pkg:e.target.value })} />
+                      </div>
                     </td>
                   )}
                   {vis('log') && (
                     <td className="ec w-log sh-ue">
-                      <input className="ec-input right mono" type="number" value={row.log}
-                        placeholder="0" onChange={e => upd(row.id, { log:e.target.value })} />
+                      <div className="ec-sizer-wrap">
+                        <span className="ec-sizer mono">{row.log || '0'}</span>
+                        <input className="ec-input right mono" type="number" size={1} value={row.log}
+                          placeholder="0" onChange={e => upd(row.id, { log:e.target.value })} />
+                      </div>
                     </td>
                   )}
                   {vis('addons') && (
                     <td className="ec w-addons sh-ue">
-                      <input className="ec-input right mono" type="number" value={row.addons}
-                        placeholder="0" onChange={e => upd(row.id, { addons:e.target.value })} />
+                      <div className="ec-sizer-wrap">
+                        <span className="ec-sizer mono">{row.addons || '0'}</span>
+                        <input className="ec-input right mono" type="number" size={1} value={row.addons}
+                          placeholder="0" onChange={e => upd(row.id, { addons:e.target.value })} />
+                      </div>
                     </td>
                   )}
                   {vis('misc') && (
                     <td className="ec w-misc sh-ue">
-                      <input className="ec-input right mono" type="number" value={row.misc}
-                        placeholder={miscDef} onChange={e => upd(row.id, { misc:e.target.value })} />
+                      <div className="ec-sizer-wrap">
+                        <span className="ec-sizer mono">{row.misc || String(miscDef)}</span>
+                        <input className="ec-input right mono" type="number" size={1} value={row.misc}
+                          placeholder={miscDef} onChange={e => upd(row.id, { misc:e.target.value })} />
+                      </div>
                     </td>
                   )}
                   {vis('crpct') && (
                     <td className="ec w-crpct sh-ue">
-                      <input className="ec-input right mono" type="number" value={row.crPct}
-                        placeholder={c.crPct}
-                        onChange={e => upd(row.id, { crPct:e.target.value, crAmt:'' })} />
+                      <div className="ec-sizer-wrap">
+                        <span className="ec-sizer mono">{row.crPct || numStr(c.crPct)}</span>
+                        <input className="ec-input right mono" type="number" size={1} value={row.crPct}
+                          placeholder={c.crPct}
+                          onChange={e => upd(row.id, { crPct:e.target.value, crAmt:'' })} />
+                      </div>
                     </td>
                   )}
                   {vis('cramt') && (
                     <td className="ec w-cramt sh-ue">
-                      <input className="ec-input right mono" type="number" value={row.crAmt}
-                        placeholder={c.crAmt}
-                        onChange={e => upd(row.id, { crAmt:e.target.value, crPct:'' })} />
+                      <div className="ec-sizer-wrap">
+                        <span className="ec-sizer mono">{row.crAmt || numStr(c.crAmt)}</span>
+                        <input className="ec-input right mono" type="number" size={1} value={row.crAmt}
+                          placeholder={c.crAmt}
+                          onChange={e => upd(row.id, { crAmt:e.target.value, crPct:'' })} />
+                      </div>
                     </td>
                   )}
                   {vis('dmgpct') && (
                     <td className="ec w-dmgpct sh-ue">
-                      <input className="ec-input right mono" type="number" value={row.dmgPct}
-                        placeholder={c.dmgPct}
-                        onChange={e => upd(row.id, { dmgPct:e.target.value, dmgAmt:'' })} />
+                      <div className="ec-sizer-wrap">
+                        <span className="ec-sizer mono">{row.dmgPct || numStr(c.dmgPct)}</span>
+                        <input className="ec-input right mono" type="number" size={1} value={row.dmgPct}
+                          placeholder={c.dmgPct}
+                          onChange={e => upd(row.id, { dmgPct:e.target.value, dmgAmt:'' })} />
+                      </div>
                     </td>
                   )}
                   {vis('dmgamt') && (
                     <td className="ec w-dmgamt sh-ue">
-                      <input className="ec-input right mono" type="number" value={row.dmgAmt}
-                        placeholder={c.dmgAmt}
-                        onChange={e => upd(row.id, { dmgAmt:e.target.value, dmgPct:'' })} />
+                      <div className="ec-sizer-wrap">
+                        <span className="ec-sizer mono">{row.dmgAmt || numStr(c.dmgAmt)}</span>
+                        <input className="ec-input right mono" type="number" size={1} value={row.dmgAmt}
+                          placeholder={c.dmgAmt}
+                          onChange={e => upd(row.id, { dmgAmt:e.target.value, dmgPct:'' })} />
+                      </div>
                     </td>
                   )}
 
@@ -955,16 +1034,22 @@ export default function SKUs() {
                   </td>
                   {vis('profpct') && (
                     <td className="ec w-profpct sh-prof">
-                      <input className="ec-input right mono" type="number" value={row.profPct}
-                        placeholder={c.profPct}
-                        onChange={e => upd(row.id, { profPct:e.target.value, profAmt:'' })} />
+                      <div className="ec-sizer-wrap">
+                        <span className="ec-sizer mono">{row.profPct || numStr(c.profPct)}</span>
+                        <input className="ec-input right mono" type="number" size={1} value={row.profPct}
+                          placeholder={c.profPct}
+                          onChange={e => upd(row.id, { profPct:e.target.value, profAmt:'' })} />
+                      </div>
                     </td>
                   )}
                   {vis('profamt') && (
                     <td className="ec w-profamt sh-prof">
-                      <input className="ec-input right mono" type="number" value={row.profAmt}
-                        placeholder={c.profAmt}
-                        onChange={e => upd(row.id, { profAmt:e.target.value, profPct:'' })} />
+                      <div className="ec-sizer-wrap">
+                        <span className="ec-sizer mono">{row.profAmt || numStr(c.profAmt)}</span>
+                        <input className="ec-input right mono" type="number" size={1} value={row.profAmt}
+                          placeholder={c.profAmt}
+                          onChange={e => upd(row.id, { profAmt:e.target.value, profPct:'' })} />
+                      </div>
                     </td>
                   )}
                   {vis('bsnogst') && (
@@ -996,13 +1081,16 @@ export default function SKUs() {
                     {row.price ? `₹${c.finalBS}` : '—'}
                   </td>
 
-                  {/* Platform columns — AD ↔ ₹ inputs + tier + BS ── */}
+                  {/* Platform columns — AD ↔ ₹ inputs + tier | BS (separate col) ── */}
                   {activePlats.map(pl => {
-                    const plc     = computePlatform(row, pl, c, miscDef)
+                    const plc      = computePlatform(row, pl, c, miscDef)
                     const override = row.platOverrides?.[pl.id] || {}
-                    return (
-                      <td key={pl.id} className="ec ec-plat w-plat-ad">
-                        <div className="plat-cell-a">
+                    const alias    = row.platAliases?.[pl.id] || ''
+                    const aliasKey = `${row.id}-${pl.id}`
+                    const isAliasOpen = aliasOpen.has(aliasKey)
+                    return ([
+                      <td key={`${pl.id}-ad`} className="ec ec-plat w-plat-ad">
+                        <div className={`plat-cell-a${isAliasOpen ? ' alias-open' : ''}`}>
                           {/* % input with inline label */}
                           <div className="plat-field">
                             <span className="plat-field-lbl">%</span>
@@ -1025,22 +1113,39 @@ export default function SKUs() {
                               onChange={e => handlePlatOverride(row.id, pl.id, 'adAmt', e.target.value)}
                             />
                           </div>
-                          {/* Tier */}
-                          <select className="plat-tier-s" value={plc.tierIdx}
-                            onChange={e => handleTier(row.id, pl.id, parseInt(e.target.value))}>
-                            {pl.tiers?.map((t, i) => (
-                              <option key={i} value={i}>
-                                {t.tier_name === 'None' ? '0' : t.tier_name}
-                              </option>
-                            ))}
-                          </select>
-                          {/* BS */}
-                          <span className={`plat-bs-s ${plc.bs ? 'has-val' : ''}`}>
-                            {plc.bs ? `₹${plc.bs}` : '—'}
-                          </span>
+                          {/* Alias toggle */}
+                          <button
+                            className={`plat-alias-btn${alias ? ' has-alias' : ''}`}
+                            title={alias ? `Alias: ${alias}` : 'Set platform SKU name'}
+                            onClick={() => toggleAlias(row.id, pl.id)}
+                          >🏷</button>
+                          {/* Alias input row */}
+                          {isAliasOpen && (
+                            <div className="plat-alias-row">
+                              <input
+                                className="plat-alias-inp"
+                                placeholder={`${pl.name} SKU name...`}
+                                value={alias}
+                                onChange={e => handleAlias(row.id, pl.id, e.target.value)}
+                              />
+                            </div>
+                          )}
                         </div>
+                      </td>,
+                      <td key={`${pl.id}-tier`} className="ec ec-plat w-plat-tier">
+                        <select className="plat-tier-s" value={plc.tierIdx}
+                          onChange={e => handleTier(row.id, pl.id, parseInt(e.target.value))}>
+                          {pl.tiers?.map((t, i) => (
+                            <option key={i} value={i}>
+                              {t.tier_name === 'None' ? '0' : t.tier_name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>,
+                      <td key={`${pl.id}-bs`} className="ec ec-auto ec-gold w-plat-bs">
+                        {plc.bs ? `₹${plc.bs}` : '—'}
                       </td>
-                    )
+                    ])
                   })}
 
                   {/* Row status */}
