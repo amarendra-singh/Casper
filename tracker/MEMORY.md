@@ -1,5 +1,6 @@
 # CASPER — MEMORY FILE
 > Read this at the start of every session. Never re-derive facts already here.
+> Cross-ref: [DECISIONS](DECISIONS.md) · [PROGRESS](PROGRESS.md) · [ROADMAP](ROADMAP.md)
 > Last updated: 2026-04-11
 
 ---
@@ -145,6 +146,65 @@ function numStr(v) {
 8. **`size={1}` on all number inputs** — critical, removes 170px browser default size inflation
 
 ---
+
+## CSS VARIABLES (complete — from index.css)
+```css
+--bg: #ECEAE4          --surface: #FFFFFF       --surface-2: #F7F6F3
+--surface-3: #F0EEEA   --border: #EBEBEB         --border-2: #E0DDD6
+--accent: #E8365D      --accent-dim: rgba(232,54,93,0.08)
+--black-btn: #1A1917   --text: #111110           --text-2: #6B6866
+--text-3: #A8A59F      --green: #16A34A          --red: #DC2626
+--amber: #D97706       --gold: (warm yellow)
+--font-ui: Plus Jakarta Sans    --font-mono: JetBrains Mono
+```
+
+## LAYOUT STRUCTURE
+```
+.layout (flex row, 100vh, bg #ECEAE4, padding 10px)
+  aside.sidebar (240px, same bg — no separator)
+    .ic-strip (42px, icon buttons)
+    .nav-text (text nav, company switcher, sections)
+  .right-col (flex col)
+    .topbar (ON GRAY bg, outside white box, pill search)
+    .main-wrap (WHITE rounded box, border-radius:14px, shadow)
+      main.page-content (flex col, padding 24px 28px, height:100%, overflow:hidden)
+        → children use flex:1 to fill remaining height
+```
+
+## KEY DESIGN DECISIONS (permanent — do not revisit)
+| Decision | Value | Why |
+|----------|-------|-----|
+| CR meaning | Customer Return COST (not Commission Rate) | Business terminology |
+| Accent color | `#E8365D` red-pink | Not gold — too jewelry-specific |
+| Font | Plus Jakarta Sans (UI) + JetBrains Mono (numbers) | Neutral SaaS feel |
+| Sidebar bg | Same as outer `#ECEAE4` — no separator | Seamless look |
+| Topbar | Outside white box, on gray bg | Search visible on gray |
+| Dark mode timing | Add AFTER all pages done in light | Avoid double work |
+| Page renamed | Entries → SKUs (main page), SKUs → SKU Analysis (insights) | Clearer naming |
+
+## SEED DATA (platforms)
+| Platform | CR Charge | Tiers |
+|----------|-----------|-------|
+| Meesho | ₹160 | Gold ₹20, Silver ₹15, Bronze ₹10 |
+| Flipkart | ₹170 | Gold ₹25, Silver ₹18, Bronze ₹12 |
+| Amazon | ₹180 | Gold ₹30, Silver ₹22, Bronze ₹15 |
+| Snapdeal | ₹150 | Gold ₹18, Silver ₹12 |
+| Myntra | ₹175 | Gold ₹22, Silver ₹16 |
+
+Vendors: Varni Sales (VRI), Vesu Imitation (VIC)
+HSN: 46 codes, 5 categories → run `python casper_hsn_import.py`
+SKU naming: `SHJ-{category_code}-{vendor_code}-{product_code}` e.g. `SHJ-JS-VRI-N5-GREEN`
+
+## AUTH DETAILS
+- Access token: 60 min | Refresh token: 7 days | Algorithm: HS256
+- Auto-refresh: Axios interceptor catches 401 → `/auth/refresh` → retries
+- Roles: `super_admin` (full), `admin` (manage data), `viewer` (read-only)
+- localStorage: `access_token`, `refresh_token`, `casper_col_visibility`, `casper-theme`
+
+## ALEMBIC NOTES
+- Always use `batch_alter_table()` for ALTER TABLE (SQLite limitation)
+- Multiple heads: `alembic merge heads` → `alembic upgrade heads`
+- Current head: `c3f7a8e1d924`
 
 ## REACT COMPONENT QUICK REF
 | Component | File | Purpose |

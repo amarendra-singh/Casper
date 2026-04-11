@@ -1,0 +1,153 @@
+{
+  "_meta": {
+    "file": "casper_context.json",
+    "purpose": "AI-readable project context. Paste at start of any AI conversation to instantly onboard.",
+    "last_updated": "2026-04-11",
+    "maintained_by": "Amarendra Singh",
+    "tracker_folder": "tracker/ — MEMORY.md, PROGRESS.md, ROADMAP.md, DECISIONS.md"
+  },
+
+  "project": {
+    "name": "Casper",
+    "tagline": "Pricing intelligence for ecommerce sellers",
+    "status": "Active Development",
+    "testing_with": "Shringar House Jewellery (SHJ)",
+    "owner": "Amarendra Singh",
+    "repo": "https://github.com/amarendra-singh/Casper",
+    "local_path": "C:\\WorkStation\\Projects\\Python\\Casper",
+    "worktree_path": "C:\\WorkStation\\Projects\\Python\\Casper\\.claude\\worktrees\\hungry-kepler",
+    "note": "ALWAYS edit worktree, not local_path — servers run from worktree",
+    "backend_url": "http://localhost:8000",
+    "frontend_url": "http://localhost:5173",
+    "api_prefix": "/api/v1",
+    "default_login": "admin@casper.com / Admin@1234"
+  },
+
+  "backend": {
+    "stack": "FastAPI + SQLAlchemy 2.0 async + SQLite (aiosqlite) + Alembic + JWT",
+    "alembic_current_head": "c3f7a8e1d924",
+    "alembic_migration_order": [
+      "911d6ab0f0f3 — base",
+      "b8f3a91c2e54 — add sku_platform_config (default_ad_pct, default_profit_pct, SkuPlatformConfig)",
+      "c3f7a8e1d924 — add platform_sku_name to sku_platform_configs"
+    ],
+    "alembic_note": "Always use batch_alter_table() for ALTER TABLE (SQLite limitation)",
+
+    "models": {
+      "User": "id, name, email, password_hash, role(super_admin|admin|viewer), is_active",
+      "Platform": "id, name, cr_charge:float, cr_percentage:float, default_ad_pct:float=0, default_profit_pct:float=20, is_active, tiers:relationship",
+      "PlatformTier": "id, platform_id(FK), tier_name, fee:float",
+      "SkuPlatformConfig": "id, sku_pricing_id(FK), platform_id(FK), ad_pct:float|null, profit_pct:float|null, platform_sku_name:str|null",
+      "Vendor": "id, name, short_code, is_active",
+      "Category": "id, name, is_active",
+      "MiscItem": "id, name, amount:float, is_active",
+      "GlobalSettings": "id, key, value — CLASS NAME IS GlobalSettings (plural)",
+      "HsnCode": "id, code, description, gst_rate:float, category, is_custom",
+      "Sku": "id, shringar_sku(UPPERCASE,unique), vendor_id(FK), category_id(FK), is_active",
+      "SkuPricing": "id, sku_id(FK), price, package, logistics, addons, misc_total, cr_percentage, cr_cost, damage_percentage, damage_cost, profit_percentage, gst, platform_configs:relationship"
+    },
+
+    "schema_gotcha": "vendor_id and category_id in sku.py Pydantic schema MUST be Optional[int] = None — non-optional causes 500",
+
+    "api_routes": {
+      "POST /auth/login": "{email,password} → {access_token, refresh_token, role, name}",
+      "GET /auth/me": "current user",
+      "GET /entries/": "all SKUs with platform_configs for SKU page",
+      "POST /entries/upsert-batch": "{rows:[...]} create/update multiple rows incl platform overrides",
+      "GET/POST /platforms/": "includes tiers[], default_ad_pct, default_profit_pct",
+      "GET/POST/PATCH/DELETE /vendors/": "",
+      "GET/POST/PATCH/DELETE /categories/": "",
+      "GET /misc-items/total": "{total: float}",
+      "GET/PATCH /settings/": "key-value global settings",
+      "GET /hsn-codes/": "all HSN codes"
+    }
+  },
+
+  "frontend": {
+    "stack": "React 18 + Vite, plain CSS + CSS vars, Axios, React Router v6, no Redux",
+    "fonts": "Plus Jakarta Sans (UI) + JetBrains Mono (numbers)",
+    "run": "cd frontend && npm run dev",
+
+    "pages": {
+      "/login": "Login (public)",
+      "/": "Dashboard",
+      "/skus": "SKUs page — main daily working page (was Entries.jsx)",
+      "/sku-analysis": "SKU Analysis — insights (not built)",
+      "/pricing/:skuId?": "Pricing calculator",
+      "/settings": "Settings (not built)"
+    },
+
+    "sku_page_columns": {
+      "SKU group": "Vendor (sticky) | SKU (sticky) | Series | V.Short | Vendor SKU | Category",
+      "Unit Economics": "Price | Package | Logistics | Addons | Misc | CR% | CR₹ | Dmg% | Dmg₹",
+      "Profitability": "Breakeven | Profit% | Profit₹ | BS w/o GST",
+      "Tax": "GST",
+      "Bank Settlement": "Final BS",
+      "Per platform (3 cols each)": "AD%/₹ inputs | Tier dropdown | BS (gold)"
+    },
+
+    "table_pattern": {
+      "layout": "table-layout:auto + width:max-content (no min-width:100%)",
+      "column_sizing": "Hidden span sizer (.ec-sizer-wrap) drives width — NOT CSS min-width",
+      "inputs": "size={1} on all inputs — removes browser default ~170px inflation",
+      "pointer_events": "ec-sizer-wrap pointer-events:none, inputs pointer-events:auto",
+      "height": "page-content flex-col → entries-page flex:1 → e-scroll flex:1 min-height:0"
+    },
+
+    "css_vars": {
+      "--bg": "#ECEAE4", "--surface": "#FFFFFF", "--surface-2": "#F7F6F3",
+      "--border": "#EBEBEB", "--border-2": "#E0DDD6",
+      "--accent": "#E8365D", "--text": "#111110", "--text-2": "#6B6866", "--text-3": "#A8A59F",
+      "--font-ui": "Plus Jakarta Sans", "--font-mono": "JetBrains Mono"
+    },
+
+    "localStorage_keys": {
+      "access_token": "JWT", "refresh_token": "JWT",
+      "casper_col_visibility": "column group toggle state (JSON)"
+    }
+  },
+
+  "pricing_formula": {
+    "note": "AD is PER-PLATFORM since 2026-04-02. Base breakeven has NO ad.",
+    "steps": [
+      "cr_cost = platform.cr_charge × cr_percentage / 100",
+      "damage_cost = price × damage_percentage / 100",
+      "breakeven = price + package + logistics + addons + misc + cr_cost + damage_cost",
+      "ad_amt = price × ad_pct / 100  [ad_pct: SKU override → platform.default_ad_pct]",
+      "plat_be = breakeven + ad_amt",
+      "profit_amt = plat_be × profit_pct / 100",
+      "bs_no_gst = round(plat_be + profit_amt)",
+      "gst_amt = round(bs_no_gst × gst_rate / 100)",
+      "bank_settlement = bs_no_gst + gst_amt + tier.fee"
+    ],
+    "gst_special": "apparel/footwear: ≤₹2500 → 5%, >₹2500 → 18%",
+    "defaults": {"damage_pct": "15%", "profit_pct": "20%", "misc_total": "₹12"}
+  },
+
+  "seed_data": {
+    "platforms": [
+      {"name": "Meesho", "cr_charge": 160, "tiers": ["Gold ₹20", "Silver ₹15", "Bronze ₹10"]},
+      {"name": "Flipkart", "cr_charge": 170, "tiers": ["Gold ₹25", "Silver ₹18", "Bronze ₹12"]},
+      {"name": "Amazon", "cr_charge": 180, "tiers": ["Gold ₹30", "Silver ₹22", "Bronze ₹15"]},
+      {"name": "Snapdeal", "cr_charge": 150, "tiers": ["Gold ₹18", "Silver ₹12"]},
+      {"name": "Myntra", "cr_charge": 175, "tiers": ["Gold ₹22", "Silver ₹16"]}
+    ],
+    "vendors": [{"name": "Varni Sales", "short_code": "VRI"}, {"name": "Vesu Imitation", "short_code": "VIC"}],
+    "sku_naming": "SHJ-{category_code}-{vendor_code}-{product_code}  e.g. SHJ-JS-VRI-N5-GREEN"
+  },
+
+  "key_decisions": {
+    "CR_means": "Customer Return COST (not Commission Rate)",
+    "accent_color": "#E8365D red-pink (not gold)",
+    "font": "Plus Jakarta Sans + JetBrains Mono",
+    "sidebar_bg": "Same as outer #ECEAE4 — seamless",
+    "dark_mode": "Add AFTER all pages complete in light theme",
+    "tracker": "See tracker/ folder for MEMORY, PROGRESS, ROADMAP, DECISIONS"
+  },
+
+  "ideas_parked": {
+    "pricing_insight_simulator": "What-if price changes → impact on profit per platform",
+    "sku_analysis_insights": "Return rates, best platform per SKU, margin ranking, below-breakeven warnings",
+    "reports_with_badge": "Backend generates Excel/PDF → badge on sidebar → user downloads"
+  }
+}

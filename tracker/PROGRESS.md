@@ -1,5 +1,6 @@
 # CASPER — PROGRESS LOG
 > Updated after every work session. Read before starting. Never re-do completed work.
+> Cross-ref: [DECISIONS](DECISIONS.md) · [MEMORY](MEMORY.md) · [ROADMAP](ROADMAP.md)
 > Format: [date] — what was done, files changed, result
 
 ---
