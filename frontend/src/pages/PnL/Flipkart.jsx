@@ -5,7 +5,12 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 
 const TABS = ['Reports', 'Profit & Loss', 'Insights']
 
-const fmt    = (v, d = 0) => v == null ? '—' : '₹' + Number(v).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d })
+const fmt    = (v, d = 0) => {
+  if (v == null) return '—'
+  const n = Number(v)
+  const abs = Math.abs(n).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d })
+  return (n < 0 ? '-' : '') + '₹' + abs
+}
 const fmtN   = v => v == null ? '—' : Number(v).toLocaleString('en-IN')
 const fmtPct = v => v == null ? '—' : Number(v).toFixed(1) + '%'
 const parseLocalDate = s => s ? new Date(s + 'T00:00:00') : null
