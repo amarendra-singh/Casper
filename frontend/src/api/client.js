@@ -99,4 +99,11 @@ export const searchHsn     = (q)    => api.get(`/hsn/search?q=${q}`).then(r => r
 export const getHsnList    = ()     => api.get('/hsn/').then(r => r.data)
 export const createHsnCode = (data) => api.post('/hsn/', data).then(r => r.data)
 
+// P&L
+export const getPnlReports              = (platformId) => api.get('/pnl/reports', { params: platformId ? { platform_id: platformId } : {} }).then(r => r.data)
+export const getPnlReport               = (id)         => api.get(`/pnl/reports/${id}`).then(r => r.data)
+export const deletePnlReport            = (id)         => api.delete(`/pnl/reports/${id}`)
+export const getPnlPlatformsWithReports = ()           => api.get('/pnl/platforms-with-reports').then(r => r.data)
+export const uploadPnlReport            = (formData)   => api.post('/pnl/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
+
 export default api

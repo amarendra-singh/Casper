@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { getPnlPlatformsWithReports } from '../api/client'
 import './Layout.css'
 
 const WORKSPACE = [
@@ -46,9 +47,10 @@ export default function Layout() {
   const initials = user?.name?.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase() || 'U'
   const handleLogout = () => { logout(); navigate('/login') }
 
+  const [pnlPlatforms, setPnlPlatforms] = useState([])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === 'true')
   const toggleSidebar = () => setSidebarCollapsed(p => { localStorage.setItem('sidebarCollapsed', !p); return !p })
-  const [open,      setOpen]      = useState({ workspace:true, analytics:true, reports:true, settings:true })
+  const [open,      setOpen]      = useState({ workspace:true, pnl:true, analytics:true, reports:true, settings:true })
   const [treeOpen,  setTreeOpen]  = useState({ my:true, shared:true })
   const [company,   setCompany]   = useState(COMPANIES[0])
   const [showCo,    setShowCo]    = useState(false)
@@ -66,6 +68,10 @@ export default function Layout() {
     }
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
+  }, [])
+
+  useEffect(() => {
+    getPnlPlatformsWithReports().then(setPnlPlatforms).catch(() => {})
   }, [])
 
   const togSec  = k => setOpen(p => ({ ...p, [k]: !p[k] }))
@@ -161,6 +167,28 @@ export default function Layout() {
                   {item.label}
                 </NavLink>
               ))}
+            </div>
+
+            {/* P&L */}
+            <div className="nav-sec">
+              <div className="sec-hdr" onClick={() => togSec('pnl')}>
+                <span className="sec-lbl">P&amp;L</span>
+                <span className={`sec-chev ${open.pnl ? '' : 'closed'}`}>▾</span>
+              </div>
+              {open.pnl && (
+                pnlPlatforms.length === 0
+                  ? <NavLink to="/pnl/flipkart"
+                      className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+                      Flipkart
+                    </NavLink>
+                  : pnlPlatforms.map(p => (
+                      <NavLink key={p.id}
+                        to={`/pnl/${p.name.toLowerCase()}`}
+                        className={({ isActive }) => `nav-item nav-sub-item${isActive ? ' active' : ''}`}>
+                        {p.name}
+                      </NavLink>
+                    ))
+              )}
             </div>
 
             {/* Analytics */}
