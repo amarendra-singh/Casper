@@ -517,14 +517,22 @@ async def get_all_reports(session: AsyncSession, platform_id: Optional[int] = No
 
 
 async def get_report_detail(session: AsyncSession, report_id: int) -> Optional[PnlReport]:
-    """Fetch full report with all SKU rows."""
+    """Fetch full report with all SKU rows + sku_pricing price (COGS)."""
     from sqlalchemy.orm import selectinload
     result = await session.execute(
         select(PnlReport)
-        .options(selectinload(PnlReport.sku_rows))
+        .options(
+            selectinload(PnlReport.sku_rows)
+            .selectinload(PnlSkuRow.sku_pricing)
+        )
         .where(PnlReport.id == report_id)
     )
-    return result.scalar_one_or_none()
+    report = result.scalar_one_or_none()
+    if report:
+        # Stamp cogs directly onto each row so Pydantic from_attributes picks it up
+        for row in report.sku_rows:
+            row.__dict__['cogs'] = row.sku_pricing.price if row.sku_pricing else None
+    return report
 
 
 async def delete_report(session: AsyncSession, report_id: int) -> bool:

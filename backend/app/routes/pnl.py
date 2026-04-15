@@ -231,6 +231,7 @@ async def get_report(
             variance_bs=row.variance_bs,
             variance_margin_pct=row.variance_margin_pct,
             is_matched=row.sku_pricing_id is not None,
+            cogs=row.sku_pricing.price if row.sku_pricing else None,
         ))
 
     total = len(sku_rows)

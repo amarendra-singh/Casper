@@ -38,9 +38,9 @@ export default function FlipkartPnL() {
   const [conflict, setConflict]     = useState(null)
   const [pnlView, setPnlView]       = useState('lifetime')   // 'lifetime' | 'bysku' | 'report'
   const [reportView, setReportView] = useState('fk')          // 'fk' | 'pnl'
-  const [skuFilter, setSkuFilter]   = useState('all')
+  const [skuFilter, setSkuFilter]   = useState('all')      // 'all' | 'profit' | 'loss'
   const [skuSearch, setSkuSearch]   = useState('')
-  const [sortCol, setSortCol]       = useState('variance_bs')
+  const [sortCol, setSortCol]       = useState('total_true_profit')
   const [sortDir, setSortDir]       = useState('asc')
 
   useEffect(() => {
@@ -113,12 +113,25 @@ export default function FlipkartPnL() {
   }
 
   const skuRows = selectedReport?.sku_rows || []
-  const filteredRows = skuRows
+
+  // Real P&L only shows matched SKUs — unmatched have no COGS/pricing data
+  const matchedRows = skuRows.filter(r => r.is_matched)
+
+  // Augment each matched row with computed true profit fields
+  const augmentedRows = matchedRows.map(r => {
+    const trueProfitPerUnit = (r.earnings_per_unit != null && r.cogs != null)
+      ? r.earnings_per_unit - r.cogs : null
+    const totalTrueProfit = (trueProfitPerUnit != null && r.net_units != null)
+      ? trueProfitPerUnit * r.net_units : null
+    const revShipPerUnit = (r.reverse_shipping_fee != null && r.net_units)
+      ? Math.abs(r.reverse_shipping_fee) / r.net_units : null
+    return { ...r, true_profit_per_unit: trueProfitPerUnit, total_true_profit: totalTrueProfit, rev_ship_per_unit: revShipPerUnit }
+  })
+
+  const filteredRows = augmentedRows
     .filter(r => {
-      if (skuFilter === 'matched')   return r.is_matched
-      if (skuFilter === 'unmatched') return !r.is_matched
-      if (skuFilter === 'beating')   return r.is_matched && (r.variance_bs || 0) > 0
-      if (skuFilter === 'missing')   return r.is_matched && (r.variance_bs || 0) < 0
+      if (skuFilter === 'profit') return (r.total_true_profit ?? 0) > 0
+      if (skuFilter === 'loss')   return (r.total_true_profit ?? 0) <= 0
       return true
     })
     .filter(r => !skuSearch || r.platform_sku_name.toLowerCase().includes(skuSearch.toLowerCase()))
@@ -458,100 +471,164 @@ export default function FlipkartPnL() {
                 )}
 
                 {/* ── Real P&L sub-view ── */}
-                {reportView === 'pnl' && (
-                  <div className="pnl-animate-in">
+                {reportView === 'pnl' && (() => {
+                  const profitSkus  = augmentedRows.filter(r => (r.total_true_profit ?? 0) > 0)
+                  const lossSkus    = augmentedRows.filter(r => (r.total_true_profit ?? 0) <= 0)
+                  const totalProfit = augmentedRows.reduce((s, r) => s + (r.total_true_profit || 0), 0)
+                  const avgProfitPerUnit = augmentedRows.length
+                    ? augmentedRows.reduce((s, r) => s + (r.true_profit_per_unit || 0), 0) / augmentedRows.length
+                    : null
 
-                    <div className="pnl-summary-bar">
-                      <div className="pnl-sum-item"><div className="pnl-sum-label">Bank Settlement</div><div className="pnl-sum-val gold">{fmt(selectedReport.bank_settlement)}</div></div>
-                      <div className="pnl-sum-divider"/>
-                      <div className="pnl-sum-item"><div className="pnl-sum-label">Flipkart Margin</div><div className="pnl-sum-val">{fmtPct(selectedReport.net_margin_pct)}</div></div>
-                      <div className="pnl-sum-item"><div className="pnl-sum-label">Net Units</div><div className="pnl-sum-val">{fmtN(selectedReport.net_units)}</div></div>
-                      <div className="pnl-sum-item"><div className="pnl-sum-label">Returns</div><div className="pnl-sum-val red">{fmtN(selectedReport.returned_units)} units</div></div>
-                      {insightsData && <>
-                        <div className="pnl-sum-divider"/>
+                  return (
+                    <div className="pnl-animate-in">
+
+                      {/* Real P&L summary bar */}
+                      <div className="pnl-summary-bar">
                         <div className="pnl-sum-item">
-                          <div className="pnl-sum-label">P&amp;L Signal</div>
-                          <div className={`pnl-sum-val ${insightsData.netVariance >= 0 ? 'green' : 'red'}`}>
-                            {insightsData.netVariance >= 0 ? '+' : ''}{fmt(insightsData.netVariance)}
+                          <div className="pnl-sum-label">Total True Profit</div>
+                          <div className={`pnl-sum-val ${totalProfit >= 0 ? 'green' : 'red'}`}>
+                            {totalProfit >= 0 ? '+' : ''}{fmt(totalProfit)}
                           </div>
                         </div>
-                        <div className="pnl-sum-item"><div className="pnl-sum-label">Beating Target</div><div className="pnl-sum-val green">{insightsData.beatingCount} SKUs</div></div>
-                        <div className="pnl-sum-item"><div className="pnl-sum-label">Below Target</div><div className="pnl-sum-val red">{insightsData.missingCount} SKUs</div></div>
-                      </>}
-                    </div>
-
-                    <div className="pnl-tbl-controls">
-                      <input className="pnl-search" placeholder="Search SKU…" value={skuSearch} onChange={e => setSkuSearch(e.target.value)} />
-                      <div className="pnl-filter-pills">
-                        {[
-                          { key: 'all',       label: `All (${skuRows.length})` },
-                          { key: 'beating',   label: `Beating (${insightsData?.beatingCount || 0})` },
-                          { key: 'missing',   label: `Below Target (${insightsData?.missingCount || 0})` },
-                          { key: 'unmatched', label: `No Data (${selectedReport.unmatched_skus})` },
-                        ].map(f => (
-                          <button key={f.key} className={`pnl-fpill${skuFilter === f.key ? ' active' : ''}`} onClick={() => setSkuFilter(f.key)}>{f.label}</button>
-                        ))}
+                        <div className="pnl-sum-item">
+                          <div className="pnl-sum-label">Avg Profit/unit</div>
+                          <div className={`pnl-sum-val ${(avgProfitPerUnit ?? 0) >= 0 ? 'green' : 'red'}`}>
+                            {avgProfitPerUnit != null ? ((avgProfitPerUnit >= 0 ? '+' : '') + fmt(avgProfitPerUnit, 2)) : '—'}
+                          </div>
+                        </div>
+                        <div className="pnl-sum-divider"/>
+                        <div className="pnl-sum-item">
+                          <div className="pnl-sum-label">Profitable SKUs</div>
+                          <div className="pnl-sum-val green">{profitSkus.length}</div>
+                        </div>
+                        <div className="pnl-sum-item">
+                          <div className="pnl-sum-label">Losing SKUs</div>
+                          <div className="pnl-sum-val red">{lossSkus.length}</div>
+                        </div>
+                        <div className="pnl-sum-divider"/>
+                        <div className="pnl-sum-item">
+                          <div className="pnl-sum-label">Flipkart Settlement</div>
+                          <div className="pnl-sum-val gold">{fmt(selectedReport.bank_settlement)}</div>
+                        </div>
+                        <div className="pnl-sum-item">
+                          <div className="pnl-sum-label">Net Units</div>
+                          <div className="pnl-sum-val">{fmtN(selectedReport.net_units)}</div>
+                        </div>
+                        {selectedReport.unmatched_skus > 0 && (
+                          <div className="pnl-sum-item">
+                            <div className="pnl-sum-label">No Pricing Data</div>
+                            <div className="pnl-sum-val amber">{selectedReport.unmatched_skus} SKUs hidden</div>
+                          </div>
+                        )}
                       </div>
-                      <span className="pnl-row-count">{filteredRows.length} SKUs</span>
-                    </div>
 
-                    <div className="pnl-tbl-wrap">
-                      <table className="pnl-tbl">
-                        <thead>
-                          <tr>
-                            <th className="pnl-th sticky-col">SKU</th>
-                            <th className="pnl-th sortable" onClick={() => toggleSort('net_units')}>Net Units{sortIcon('net_units')}</th>
-                            <th className="pnl-th sortable" onClick={() => toggleSort('return_rate_pct')}>Return Rate{sortIcon('return_rate_pct')}</th>
-                            <th className="pnl-th sortable" onClick={() => toggleSort('bank_settlement_projected')}>Actual BS{sortIcon('bank_settlement_projected')}</th>
-                            <th className="pnl-th">Expected BS</th>
-                            <th className="pnl-th sortable pnl-th-primary" onClick={() => toggleSort('variance_bs')}>Variance{sortIcon('variance_bs')}</th>
-                            <th className="pnl-th sortable" onClick={() => toggleSort('net_margin_pct')}>Flipkart Margin{sortIcon('net_margin_pct')}</th>
-                            <th className="pnl-th">Target Margin</th>
-                            <th className="pnl-th sortable" onClick={() => toggleSort('earnings_per_unit')}>EPU{sortIcon('earnings_per_unit')}</th>
-                            <th className="pnl-th sortable" onClick={() => toggleSort('reverse_shipping_fee')}>Rev. Ship{sortIcon('reverse_shipping_fee')}</th>
-                            <th className="pnl-th">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredRows.map(row => {
-                            const varBs    = row.variance_bs
-                            const varClass = varBs == null ? '' : varBs >= 0 ? 'positive' : 'negative'
-                            const expectedTotal = row.casper_expected_bs != null && row.net_units != null
-                              ? row.casper_expected_bs * row.net_units : null
-                            return (
-                              <tr key={row.id} className={`pnl-tr${!row.is_matched ? ' unmatched-row' : ''}`}>
-                                <td className="pnl-td sku-col sticky-col"><span className="pnl-sku-name">{row.platform_sku_name}</span></td>
-                                <td className="pnl-td center">{fmtN(row.net_units)}</td>
-                                <td className="pnl-td center">
-                                  {row.return_rate_pct != null
-                                    ? <span className={`pnl-ret-rate ${row.return_rate_pct > 40 ? 'high' : row.return_rate_pct > 20 ? 'mid' : 'low'}`}>{fmtPct(row.return_rate_pct)}</span>
-                                    : '—'}
-                                </td>
-                                <td className="pnl-td right mono">{fmt(row.bank_settlement_projected, 2)}</td>
-                                <td className="pnl-td right mono muted">{fmt(expectedTotal, 2)}</td>
-                                <td className={`pnl-td right mono variance ${varClass} pnl-td-primary`}>
-                                  {varBs == null ? '—' : (varBs >= 0 ? '+' : '') + fmt(varBs, 2)}
-                                </td>
-                                <td className="pnl-td right mono">{fmtPct(row.net_margin_pct)}</td>
-                                <td className="pnl-td right mono muted">{fmtExpectedMargin(row.casper_expected_profit_pct)}</td>
-                                <td className="pnl-td right mono">{fmt(row.earnings_per_unit, 2)}</td>
-                                <td className="pnl-td right mono red">{fmt(row.reverse_shipping_fee, 2)}</td>
-                                <td className="pnl-td center">
-                                  <span className={`pnl-status-pill ${row.is_matched ? 'matched' : 'unmatched'}`}>
-                                    {row.is_matched ? 'Matched' : 'No Data'}
-                                  </span>
-                                </td>
-                              </tr>
-                            )
-                          })}
-                          {filteredRows.length === 0 && (
-                            <tr><td colSpan={11} className="pnl-td center" style={{ padding: '32px', color: 'var(--text-3)' }}>No SKUs match your filter</td></tr>
-                          )}
-                        </tbody>
-                      </table>
+                      {/* Controls */}
+                      <div className="pnl-tbl-controls">
+                        <input className="pnl-search" placeholder="Search SKU…" value={skuSearch} onChange={e => setSkuSearch(e.target.value)} />
+                        <div className="pnl-filter-pills">
+                          {[
+                            { key: 'all',    label: `All Matched (${augmentedRows.length})` },
+                            { key: 'profit', label: `Profitable (${profitSkus.length})` },
+                            { key: 'loss',   label: `Losing (${lossSkus.length})` },
+                          ].map(f => (
+                            <button key={f.key} className={`pnl-fpill${skuFilter === f.key ? ' active' : ''}`} onClick={() => setSkuFilter(f.key)}>{f.label}</button>
+                          ))}
+                        </div>
+                        <span className="pnl-row-count">{filteredRows.length} SKUs</span>
+                      </div>
+
+                      {/* Real P&L table */}
+                      <div className="pnl-tbl-wrap">
+                        <table className="pnl-tbl">
+                          <thead>
+                            <tr>
+                              <th className="pnl-th sticky-col">SKU</th>
+                              <th className="pnl-th sortable" onClick={() => toggleSort('net_units')}>
+                                <span className="pnl-th-label">Units</span>
+                                <span className="pnl-th-sub">Net / Gross</span>
+                                {sortIcon('net_units')}
+                              </th>
+                              <th className="pnl-th sortable" onClick={() => toggleSort('return_rate_pct')}>
+                                <span className="pnl-th-label">Return Rate</span>
+                                {sortIcon('return_rate_pct')}
+                              </th>
+                              <th className="pnl-th sortable" onClick={() => toggleSort('cogs')}>
+                                <span className="pnl-th-label">COGS/unit</span>
+                                <span className="pnl-th-sub">Purchase cost</span>
+                                {sortIcon('cogs')}
+                              </th>
+                              <th className="pnl-th sortable" onClick={() => toggleSort('earnings_per_unit')}>
+                                <span className="pnl-th-label">FK Earnings/unit</span>
+                                <span className="pnl-th-sub">After all FK fees</span>
+                                {sortIcon('earnings_per_unit')}
+                              </th>
+                              <th className="pnl-th sortable pnl-th-primary" onClick={() => toggleSort('true_profit_per_unit')}>
+                                <span className="pnl-th-label">Profit/unit</span>
+                                <span className="pnl-th-sub">Earnings − COGS</span>
+                                {sortIcon('true_profit_per_unit')}
+                              </th>
+                              <th className="pnl-th sortable pnl-th-primary" onClick={() => toggleSort('total_true_profit')}>
+                                <span className="pnl-th-label">Total Profit</span>
+                                <span className="pnl-th-sub">Profit × net units</span>
+                                {sortIcon('total_true_profit')}
+                              </th>
+                              <th className="pnl-th sortable" onClick={() => toggleSort('rev_ship_per_unit')}>
+                                <span className="pnl-th-label">Return drag/unit</span>
+                                <span className="pnl-th-sub">Rev. ship ÷ delivered</span>
+                                {sortIcon('rev_ship_per_unit')}
+                              </th>
+                              <th className="pnl-th sortable" onClick={() => toggleSort('net_margin_pct')}>
+                                <span className="pnl-th-label">FK Margin</span>
+                                <span className="pnl-th-sub">FK's own %</span>
+                                {sortIcon('net_margin_pct')}
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredRows.map(row => {
+                              const profit = row.true_profit_per_unit
+                              const totalP = row.total_true_profit
+                              const profitCls = profit == null ? '' : profit > 0 ? 'positive' : 'negative'
+                              return (
+                                <tr key={row.id} className={`pnl-tr${totalP != null && totalP < 0 ? ' pnl-tr-loss' : ''}`}>
+                                  <td className="pnl-td sku-col sticky-col">
+                                    <span className="pnl-sku-name">{row.platform_sku_name}</span>
+                                  </td>
+                                  <td className="pnl-td center">
+                                    <div className="pnl-units-cell">
+                                      <span className="pnl-units-net">{fmtN(row.net_units)}</span>
+                                      <span className="pnl-units-gross">/ {fmtN(row.gross_units)}</span>
+                                    </div>
+                                  </td>
+                                  <td className="pnl-td center">
+                                    {row.return_rate_pct != null
+                                      ? <span className={`pnl-ret-rate ${row.return_rate_pct > 40 ? 'high' : row.return_rate_pct > 20 ? 'mid' : 'low'}`}>{fmtPct(row.return_rate_pct)}</span>
+                                      : '—'}
+                                  </td>
+                                  <td className="pnl-td right mono muted">{fmt(row.cogs, 2)}</td>
+                                  <td className="pnl-td right mono">{fmt(row.earnings_per_unit, 2)}</td>
+                                  <td className={`pnl-td right mono pnl-td-primary variance ${profitCls}`}>
+                                    {profit == null ? '—' : (profit >= 0 ? '+' : '') + fmt(profit, 2)}
+                                  </td>
+                                  <td className={`pnl-td right mono pnl-td-primary variance ${profitCls}`}>
+                                    {totalP == null ? '—' : (totalP >= 0 ? '+' : '') + fmt(totalP)}
+                                  </td>
+                                  <td className="pnl-td right mono red">
+                                    {row.rev_ship_per_unit != null ? fmt(row.rev_ship_per_unit, 2) : '—'}
+                                  </td>
+                                  <td className="pnl-td right mono">{fmtPct(row.net_margin_pct)}</td>
+                                </tr>
+                              )
+                            })}
+                            {filteredRows.length === 0 && (
+                              <tr><td colSpan={9} className="pnl-td center" style={{ padding: '32px', color: 'var(--text-3)' }}>No SKUs match your filter</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )
+                })()}
 
               </div>
             )

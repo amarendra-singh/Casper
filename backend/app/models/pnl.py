@@ -83,3 +83,8 @@ class PnlSkuRow(Base):
     # Relationships
     report: Mapped["PnlReport"] = relationship("PnlReport", back_populates="sku_rows")
     sku_pricing: Mapped[Optional["SkuPricing"]] = relationship("SkuPricing")
+
+    @property
+    def cogs(self) -> Optional[float]:
+        """Purchase cost per unit from sku_pricing.price — the real COGS."""
+        return self.sku_pricing.price if self.sku_pricing else None

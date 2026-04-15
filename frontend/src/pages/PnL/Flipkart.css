@@ -1415,3 +1415,32 @@ div.pnl-animate-in {
   background: var(--black-btn) !important;
   border-color: transparent !important;
 }
+
+/* ── Real P&L table enhancements ─────────────────────────────────── */
+.pnl-th-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-2);
+}
+.pnl-th-sub {
+  display: block;
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--text-3);
+  margin-top: 1px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Loss row subtle highlight */
+.pnl-tr-loss { background: rgba(239, 68, 68, 0.025); }
+.pnl-tr-loss:hover { background: rgba(239, 68, 68, 0.05) !important; }
+
+/* Units cell: net large, gross small */
+.pnl-units-cell { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.pnl-units-net  { font-size: 13px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.pnl-units-gross { font-size: 10px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+
+/* amber color for summary */
+.pnl-sum-val.amber { color: #d97706; }

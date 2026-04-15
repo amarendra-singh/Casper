@@ -43,6 +43,9 @@ class PnlSkuRowResponse(BaseModel):
     variance_bs: Optional[float]
     variance_margin_pct: Optional[float]
 
+    # COGS — purchase price per unit from sku_pricing.price (populated via @property on model)
+    cogs: Optional[float] = None
+
     # Derived: is this SKU matched to Casper?
     is_matched: bool = False
 
