@@ -401,10 +401,10 @@ export default function FlipkartReport() {
                     <span className="pnl-th-sub">Costs only, no profit</span>
                     {sortIcon('casper_breakeven')}
                   </th>
-                  <th className="pnl-th sortable" onClick={() => toggleSort('casper_bs_wo_gst')}>
-                    <span className="pnl-th-label">BS w/o GST</span>
-                    <span className="pnl-th-sub">Breakeven + profit</span>
-                    {sortIcon('casper_bs_wo_gst')}
+                  <th className="pnl-th sortable" onClick={() => toggleSort('casper_breakeven_gst')}>
+                    <span className="pnl-th-label">Breakeven + GST</span>
+                    <span className="pnl-th-sub">Min floor incl. GST</span>
+                    {sortIcon('casper_breakeven_gst')}
                   </th>
                   <th className="pnl-th sortable" onClick={() => toggleSort('casper_expected_bs')}>
                     <span className="pnl-th-label">Target BS/unit</span>
@@ -463,7 +463,7 @@ export default function FlipkartReport() {
                       <td className="pnl-td right mono red">{row.fees_per_unit != null ? fmt(row.fees_per_unit, 1) : '—'}</td>
                       <td className="pnl-td right mono">{row.fk_bs_per_unit != null ? fmt(row.fk_bs_per_unit, 1) : '—'}</td>
                       <td className="pnl-td right mono muted">{row.casper_breakeven != null ? fmt(row.casper_breakeven, 1) : '—'}</td>
-                      <td className="pnl-td right mono muted">{row.casper_bs_wo_gst != null ? fmt(row.casper_bs_wo_gst, 1) : '—'}</td>
+                      <td className="pnl-td right mono muted">{row.casper_breakeven_gst != null ? fmt(row.casper_breakeven_gst, 1) : '—'}</td>
                       <td className="pnl-td right mono muted">{fmt(row.casper_expected_bs, 1)}</td>
                       <td className={`pnl-td right mono pnl-td-primary variance ${profitCls}`}>
                         {profit == null ? '—' : (profit >= 0 ? '+' : '') + fmt(profit, 1)}

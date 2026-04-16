@@ -52,7 +52,7 @@ class PnlSkuRowResponse(BaseModel):
 
     # Casper pricing ladder (live from sku_pricing)
     casper_breakeven: Optional[float] = None      # pure cost basis (no profit, no GST)
-    casper_bs_wo_gst: Optional[float] = None      # breakeven + profit, before GST
+    casper_breakeven_gst: Optional[float] = None  # breakeven + GST on breakeven (zero profit floor)
 
     # Derived: is this SKU matched to Casper?
     is_matched: bool = False
