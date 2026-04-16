@@ -50,6 +50,10 @@ class PnlSkuRowResponse(BaseModel):
     # Platform BS — live Flipkart-specific BS from Casper (includes AD cost)
     platform_bs: Optional[float] = None
 
+    # Casper pricing ladder (live from sku_pricing)
+    casper_breakeven: Optional[float] = None      # pure cost basis (no profit, no GST)
+    casper_bs_wo_gst: Optional[float] = None      # breakeven + profit, before GST
+
     # Derived: is this SKU matched to Casper?
     is_matched: bool = False
 

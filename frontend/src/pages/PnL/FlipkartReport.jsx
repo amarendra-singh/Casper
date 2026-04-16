@@ -162,6 +162,9 @@ export default function FlipkartReport() {
   const avgProfitPerUnit = augmentedRows.length
     ? augmentedRows.reduce((s, r) => s + (r.true_profit_per_unit || 0), 0) / augmentedRows.length
     : null
+  const avgMarginPct = augmentedRows.length
+    ? augmentedRows.reduce((s, r) => s + (r.real_margin_pct || 0), 0) / augmentedRows.length
+    : null
 
   return (
     <div className="pnl-page">
@@ -316,6 +319,12 @@ export default function FlipkartReport() {
                     {avgProfitPerUnit != null ? ((avgProfitPerUnit >= 0 ? '+' : '') + fmt(avgProfitPerUnit, 2)) : '—'}
                   </div>
                 </div>
+                <div className="pnl-sum-item">
+                  <div className="pnl-sum-label">Net Margin %</div>
+                  <div className={`pnl-sum-val ${(avgMarginPct ?? 0) >= 0 ? 'green' : 'red'}`}>
+                    {avgMarginPct != null ? ((avgMarginPct >= 0 ? '+' : '') + avgMarginPct.toFixed(1) + '%') : '—'}
+                  </div>
+                </div>
                 <div className="pnl-sum-divider"/>
                 <div className="pnl-sum-item">
                   <div className="pnl-sum-label">Beating Target</div>
@@ -387,6 +396,16 @@ export default function FlipkartReport() {
                     <span className="pnl-th-sub">Settlement per unit</span>
                     {sortIcon('fk_bs_per_unit')}
                   </th>
+                  <th className="pnl-th sortable" onClick={() => toggleSort('casper_breakeven')}>
+                    <span className="pnl-th-label">Breakeven</span>
+                    <span className="pnl-th-sub">Costs only, no profit</span>
+                    {sortIcon('casper_breakeven')}
+                  </th>
+                  <th className="pnl-th sortable" onClick={() => toggleSort('casper_bs_wo_gst')}>
+                    <span className="pnl-th-label">BS w/o GST</span>
+                    <span className="pnl-th-sub">Breakeven + profit</span>
+                    {sortIcon('casper_bs_wo_gst')}
+                  </th>
                   <th className="pnl-th sortable" onClick={() => toggleSort('casper_expected_bs')}>
                     <span className="pnl-th-label">Target BS/unit</span>
                     <span className="pnl-th-sub">All costs + profit + GST</span>
@@ -443,6 +462,8 @@ export default function FlipkartReport() {
                       </td>
                       <td className="pnl-td right mono red">{row.fees_per_unit != null ? fmt(row.fees_per_unit, 1) : '—'}</td>
                       <td className="pnl-td right mono">{row.fk_bs_per_unit != null ? fmt(row.fk_bs_per_unit, 1) : '—'}</td>
+                      <td className="pnl-td right mono muted">{row.casper_breakeven != null ? fmt(row.casper_breakeven, 1) : '—'}</td>
+                      <td className="pnl-td right mono muted">{row.casper_bs_wo_gst != null ? fmt(row.casper_bs_wo_gst, 1) : '—'}</td>
                       <td className="pnl-td right mono muted">{fmt(row.casper_expected_bs, 1)}</td>
                       <td className={`pnl-td right mono pnl-td-primary variance ${profitCls}`}>
                         {profit == null ? '—' : (profit >= 0 ? '+' : '') + fmt(profit, 1)}
@@ -463,7 +484,7 @@ export default function FlipkartReport() {
                   )
                 })}
                 {filteredRows.length === 0 && (
-                  <tr><td colSpan={12} className="pnl-td center" style={{ padding: '32px', color: 'var(--text-3)' }}>No SKUs match your filter</td></tr>
+                  <tr><td colSpan={14} className="pnl-td center" style={{ padding: '32px', color: 'var(--text-3)' }}>No SKUs match your filter</td></tr>
                 )}
               </tbody>
             </table>

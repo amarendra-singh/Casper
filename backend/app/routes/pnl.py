@@ -262,6 +262,8 @@ async def get_report(
             is_matched=row.sku_pricing_id is not None,
             cogs=row.sku_pricing.price if row.sku_pricing else None,
             platform_bs=platform_bs,
+            casper_breakeven=row.sku_pricing.breakeven if row.sku_pricing else None,
+            casper_bs_wo_gst=row.sku_pricing.bs_wo_gst if row.sku_pricing else None,
         ))
 
     total = len(sku_rows)
