@@ -234,8 +234,11 @@
 .e-tbl { border-collapse: collapse; width: max-content; }
 
 /* ── Column widths ──
-   Text columns (vendor, sku, series, vsku, cat): flex to fill extra space
-   Number/calc columns: fixed — don't stretch, stay tight
+   Text columns: fixed or flex.
+   Number/calc columns: NO min-width — column width is driven purely by:
+     1. <th> text (9px uppercase, nowrap) — sets the floor
+     2. ec-sizer content in <td> — expands when value > heading
+   1 digit → tight. 2 digits → wider. Heading "LOGISTICS" → at least that wide.
 ── */
 .w-vendor  { width:  90px; min-width: 90px; max-width:  90px; }
 .w-sku     { }
@@ -243,22 +246,23 @@
 .w-vshort  { min-width: 36px; max-width: 52px; width: 48px; }
 .w-vsku    { }
 .w-cat     { }
-.w-price   { min-width: 28px; }
-.w-pkg     { min-width: 28px; }
-.w-log     { min-width: 28px; }
-.w-ad      { min-width: 28px; }
-.w-addons  { min-width: 28px; }
-.w-misc    { min-width: 28px; }
-.w-crpct   { min-width: 28px; }
-.w-cramt   { min-width: 28px; }
-.w-dmgpct  { min-width: 28px; }
-.w-dmgamt  { min-width: 28px; }
-.w-be      { min-width: 28px; }
-.w-profpct { min-width: 28px; }
-.w-profamt { min-width: 28px; }
-.w-bsnogst { min-width: 28px; }
-.w-gst     { min-width: 40px; }
-.w-finalbs { min-width: 28px; }
+/* Numeric input columns — content-driven, no fixed min-width */
+.w-price   { }
+.w-pkg     { }
+.w-log     { }
+.w-ad      { }
+.w-addons  { }
+.w-misc    { }
+.w-crpct   { }
+.w-cramt   { }
+.w-dmgpct  { }
+.w-dmgamt  { }
+.w-be      { }
+.w-profpct { }
+.w-profamt { }
+.w-bsnogst { }
+.w-gst     { min-width: 40px; } /* dropdown needs arrow space */
+.w-finalbs { }
 .w-plat    { min-width: 140px; max-width: 160px; width: 160px; }
 .w-plat-ad { min-width: 160px; max-width: 180px; width: 180px; }
 .w-plat-tier { min-width: 52px; max-width: 90px; width: 72px; }
@@ -386,7 +390,7 @@
   height: 32px;
   line-height: 32px;
   pointer-events: none;
-  min-width: 24px;
+  min-width: 0;
 }
 .ec-sizer.mono { font-family: var(--font-mono); font-size: 11px; }
 .ec-sizer-wrap .ec-input {
@@ -541,7 +545,10 @@ select.ec-input,
 }
 .plat-field-inp:focus { background: var(--surface); }
 .plat-field-inp::placeholder { color: var(--text-3); font-size: 10px; }
-/* Hide spinners */
+/* Hide spinners — ec-input and plat-field-inp */
+.ec-input::-webkit-outer-spin-button,
+.ec-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.ec-input[type=number] { -moz-appearance: textfield; }
 .plat-field-inp::-webkit-outer-spin-button,
 .plat-field-inp::-webkit-inner-spin-button { -webkit-appearance: none; }
 .plat-field-inp[type=number] { -moz-appearance: textfield; }

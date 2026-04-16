@@ -7,6 +7,8 @@ import SKUs from './pages/SKUs'
 import Pricing from './pages/Pricing'
 import Vendors from './pages/Vendors'
 import FlipkartPnL from './pages/PnL/Flipkart'
+import FlipkartReport from './pages/PnL/FlipkartReport'
+import Settings from './pages/Settings'
 // import Entries from './pages/Entries'
 
 function ProtectedRoute({ children }) {
@@ -31,6 +33,8 @@ function AppRoutes() {
         <Route path="vendors" element={<Vendors />} />
         <Route path="pricing/:skuId?" element={<Pricing />} />
         <Route path="pnl/flipkart" element={<FlipkartPnL />} />
+        <Route path="pnl/flipkart/:reportId" element={<FlipkartReport />} />
+        <Route path="settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

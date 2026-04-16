@@ -28,24 +28,25 @@ from app.schemas.pnl import PnlUploadResult, PnlDuplicateInfo
 SKU_COL_MAP = {
     "sku_id":                   ["sku id", "sku name"],
     "gross_units":              ["gross units"],
-    "rto_units":                ["rto"],
-    "rvp_units":                ["rvp"],
-    "cancelled_units":          ["cancell"],
+    "rto_units":                ["rto (logistics"],          # "RTO (Logistics Return)" — avoids matching "Returned & Cancelled"
+    "rvp_units":                ["rvp (customer"],           # "RVP (Customer Return)"
+    "cancelled_units":          ["cancellations"],           # Row 1: "Cancellations" (col 6) — not "Returned & Cancelled Units" (col 3)
     "net_units":                ["net units"],
     "accounted_net_sales":      ["accounted net sales"],
     "commission_fee":           ["commission fee"],
     "collection_fee":           ["collection fee"],
+    "fixed_fee":                ["fixed fee"],               # Fixed Fee (col 15) — was missing
     "reverse_shipping_fee":     ["reverse shipping"],
     "taxes_gst":                ["taxes (gst)", "tax gst"],
     "taxes_tcs":                ["taxes (tcs)", "tax tcs"],
     "taxes_tds":                ["taxes (tds)", "tax tds"],
     "rewards_benefits":         ["rewards & other benefits", "rewards and other benefits"],
     # Flipkart uses square brackets: "Bank Settlement [Projected]"
-    "bank_settlement_projected":["bank settlement [projected]", "bank settlement projected", "bank settlement"],
-    "input_tax_credits":        ["input tax credit"],
+    "bank_settlement_projected":["bank settlement [projected]", "bank settlement projected"],
+    "input_tax_credits":        ["input tax credits (inr)", "input tax credit"],
     "net_earnings":             ["net earnings"],
     "earnings_per_unit":        ["earnings per unit"],
-    "net_margin_pct":           ["net margin"],
+    "net_margin_pct":           ["net margins", "net margin"],
     "amount_settled":           ["amount settled"],
     "amount_pending":           ["amount pending"],
 }
@@ -91,21 +92,21 @@ def _safe_int(val) -> Optional[int]:
 def _safe_pct(val) -> Optional[float]:
     """
     Convert a percentage value to 0-100 scale.
-    - If val is a string like '80.71%', strip % and return 80.71 directly.
-    - If val is a decimal float like 0.8071 (Excel percentage cell), multiply by 100.
-    - If val is already >1.5 (e.g. 80.71), return as-is.
+    - String '80.71%' → 80.71
+    - Excel decimal 0.8071 (openpyxl returns this for % formatted cells) → 80.71
+    - Plain number 80.71 (Flipkart SKU sheet stores it this way) → 80.71
+    Threshold: if abs(val) <= 1.0 treat as decimal; otherwise already 0-100 scale.
     """
     if val is None:
         return None
-    # String with % sign = already human-readable percentage
     if isinstance(val, str) and "%" in val:
-        f = _safe_float(val)  # _safe_float strips %
+        f = _safe_float(val)
         return round(f, 2) if f is not None else None
     f = _safe_float(val)
     if f is None:
         return None
-    # Excel decimal percentage: 0.8071 → 80.71
-    if abs(f) <= 1.5:
+    # Only multiply if it looks like a decimal fraction (e.g. 0.8071)
+    if abs(f) <= 1.0:
         return round(f * 100, 2)
     return round(f, 2)
 
@@ -306,6 +307,7 @@ def _parse_sku_sheet(ws, col_map: dict) -> list[dict]:
             "accounted_net_sales":      _safe_float(get("accounted_net_sales")),
             "commission_fee":           _safe_float(get("commission_fee")),
             "collection_fee":           _safe_float(get("collection_fee")),
+            "fixed_fee":                _safe_float(get("fixed_fee")),
             "reverse_shipping_fee":     _safe_float(get("reverse_shipping_fee")),
             "taxes_gst":                _safe_float(get("taxes_gst")),
             "taxes_tcs":                _safe_float(get("taxes_tcs")),
@@ -478,6 +480,7 @@ async def parse_and_store(
         sku_row.accounted_net_sales = raw["accounted_net_sales"]
         sku_row.commission_fee = raw["commission_fee"]
         sku_row.collection_fee = raw["collection_fee"]
+        sku_row.fixed_fee = raw["fixed_fee"]
         sku_row.reverse_shipping_fee = raw["reverse_shipping_fee"]
         sku_row.taxes_gst = raw["taxes_gst"]
         sku_row.taxes_tcs = raw["taxes_tcs"]
@@ -517,19 +520,19 @@ async def get_all_reports(session: AsyncSession, platform_id: Optional[int] = No
 
 
 async def get_report_detail(session: AsyncSession, report_id: int) -> Optional[PnlReport]:
-    """Fetch full report with all SKU rows + sku_pricing price (COGS)."""
+    """Fetch full report with all SKU rows + sku_pricing + platform_configs (for live platform BS)."""
     from sqlalchemy.orm import selectinload
     result = await session.execute(
         select(PnlReport)
         .options(
             selectinload(PnlReport.sku_rows)
             .selectinload(PnlSkuRow.sku_pricing)
+            .selectinload(SkuPricing.platform_configs)
         )
         .where(PnlReport.id == report_id)
     )
     report = result.scalar_one_or_none()
     if report:
-        # Stamp cogs directly onto each row so Pydantic from_attributes picks it up
         for row in report.sku_rows:
             row.__dict__['cogs'] = row.sku_pricing.price if row.sku_pricing else None
     return report

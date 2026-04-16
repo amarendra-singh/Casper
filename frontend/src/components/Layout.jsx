@@ -5,10 +5,11 @@ import { getPnlPlatformsWithReports } from '../api/client'
 import './Layout.css'
 
 const WORKSPACE = [
-  { to: '/',        label: 'Dashboard', end: true  },
-  { to: '/skus',    label: 'SKUs',      end: false },
-  { to: '/vendors', label: 'Vendors',   end: false },
-  { to: '/pricing', label: 'Pricing',   end: false },
+  { to: '/',          label: 'Dashboard', end: true  },
+  { to: '/skus',      label: 'SKUs',      end: false },
+  { to: '/vendors',   label: 'Vendors',   end: false },
+  { to: '/pricing',   label: 'Pricing',   end: false },
+  { to: '/settings',  label: 'Settings',  end: false },
 ]
 const ANALYTICS      = ['Overview','Revenue','Platform Performance','SKU Analysis']
 const REPORTS_MY     = ['Sales Report','Profitability','Platform Compare']

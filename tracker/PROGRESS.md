@@ -5,17 +5,39 @@
 
 ---
 
-## STATUS SNAPSHOT — 2026-04-11
+## STATUS SNAPSHOT — 2026-04-16
 
 ```
-Backend   ████████████░░░░░░░░  55%
-Frontend  ███████████░░░░░░░░░  50%
-Overall   ██████████░░░░░░░░░░  48%
+Backend   ██████████████░░░░░░  68%
+Frontend  █████████████░░░░░░░  62%
+Overall   █████████████░░░░░░░  63%
 ```
 
 ---
 
 ## ✅ COMPLETED
+
+### Session 2026-04-16 (P&L Routing + Parser Audit)
+- **Separate route for report detail** — `/pnl/flipkart/:reportId` owns its own page
+  - `FlipkartReport.jsx` — new file, fetches by ID on mount, tabs in `?view=fk/pnl/insights`
+  - `Flipkart.jsx` — stripped to list-only page (Reports, All Time P&L, By SKU)
+  - `App.jsx` — added `<Route path="pnl/flipkart/:reportId" element={<FlipkartReport />} />`
+  - Refresh on Real P&L stays on same report + same tab — refresh-safe by design
+- **Removed `Sell Price/unit` column** — `accounted_net_sales / net_units` was meaningless; not visible in FK report
+- **Removed `Platform BS/unit` column** — was identical to Target BS/unit (no override set)
+- **Removed gross units from table** — only net units shown
+- **Full parser audit against real Excel** — 3 bugs found and fixed:
+  1. `cancelled_units` was reading col 3 (total 40) instead of col 6 (actual 4). Fixed keyword: `"cancellations"`
+  2. `fixed_fee` (Fixed Fee = ₹-210 for N65-WHITE) was never captured — added new field + col + alembic migration
+  3. `net_margin_pct` was wrongly multiplied ×100 (69.88 → 6988%). Fixed `_safe_pct` threshold: `<= 1.0`
+- **Backend saves uploaded Excel files** — `backend/uploads/pnl/{report_id}.xlsx`, auto-deleted on report delete
+- **Download endpoint** — `GET /pnl/reports/{report_id}/file` returns original Excel
+- **Full cross-check PASSED** — 107 SKU rows × all fields, totals match Summary sheet exactly:
+  - gross_units: 813 ✅ · net_units: 412 ✅ · bank_settlement: ₹89,480.52 ✅ · net_earnings: ₹95,764.19 ✅
+  - fixed_fee total: -2525 ✅ · reverse_shipping total: -20823 ✅
+- **Summary sheet parser — all 13 fields PASS**
+- **Alembic migration** `b7d959691938` — adds `fixed_fee` column to `pnl_sku_rows`
+- Files: `FlipkartReport.jsx` (new), `Flipkart.jsx`, `App.jsx`, `models/pnl.py`, `schemas/pnl.py`, `services/pnl.py`, `routes/pnl.py`
 
 ### Session 2026-04-11
 - **Platform AD columns split into 3** — each platform now has: AD inputs | Tier | BS
@@ -71,16 +93,17 @@ Overall   ██████████░░░░░░░░░░  48%
 |------|--------|-------|
 | Platform Settings UI | Partially done | Page exists but missing `default_ad_pct` and `default_profit_pct` input fields |
 | Dashboard lower sections | Not started | Platform list, donut chart, sales table |
+| PnL re-upload needed | Action required | Must re-upload Excel after parser fix to get correct `cancelled_units`, `fixed_fee`, `net_margin_pct` |
 
 ---
 
 ## ⏭ NEXT UP (in priority order)
 
-1. **Platform Settings UI** — add `default_ad_pct` and `default_profit_pct` editable fields to Platforms page (`/settings` or `/pricing`)
-2. **Dashboard lower sections** — platform performance list, donut chart, sales table
-3. **Test persist flow** — save a row with per-platform AD override → reload page → verify it loads back correctly
-4. **SKU alias display** — show platform alias name in the Tier column or somewhere visible
-5. **Multi-platform BS export** — update export to include AD ₹, Tier, BS per platform (currently only exports BS)
+1. **Re-upload FK report** — parser was wrong before fix; old data has bad `cancelled_units` and missing `fixed_fee`
+2. **Platform Settings UI** — add `default_ad_pct` and `default_profit_pct` editable fields
+3. **Parser upload validation** — warn if critical fields (BSP, net_units) are null for >50% SKUs after parse
+4. **Dashboard lower sections** — platform performance list, donut chart, sales table
+5. **Test persist flow** — save a row with per-platform AD override → reload → verify
 
 ---
 
@@ -94,6 +117,10 @@ Overall   ██████████░░░░░░░░░░  48%
 | 2026-04-10 | Inputs unclickable after sizer added | `pointer-events:none` on wrappers | `SKUs.css`, `SmartCell.css` |
 | 2026-04-10 | Vendor SmartCell blocked by TD gaps | `sc-wrap` sizer inside it, `width:100%` | `SmartCell.jsx`, `SmartCell.css` |
 | 2026-04-10 | Column inflation from browser default size | `size={1}` on all inputs | `SKUs.jsx` |
+| 2026-04-16 | `cancelled_units` reading 40 (total) instead of 4 (actual) | Changed keyword from `"cancell"` to `"cancellations"` (col 6) | `services/pnl.py` |
+| 2026-04-16 | `fixed_fee` never captured — FK Fees/unit understated | Added `fixed_fee` field + column keyword + migration | `models/pnl.py`, `schemas/pnl.py`, `services/pnl.py`, `routes/pnl.py` |
+| 2026-04-16 | `net_margin_pct` multiplied ×100 (6988% instead of 69.88%) | Fixed `_safe_pct` threshold from `≤1.5` to `≤1.0` | `services/pnl.py` |
+| 2026-04-16 | `bank_settlement` keyword also matched duplicate col 45 | Removed generic `"bank settlement"` fallback; now requires `"[projected]"` | `services/pnl.py` |
 | 2026-04-02 | 500 on `/api/v1/skus/` | `vendor_id`/`category_id` → `Optional[int]` | `schemas/sku.py` |
 | 2026-04-02 | Group header sticky offset wrong | `top:24px` (was 27px) | `SKUs.css` |
 

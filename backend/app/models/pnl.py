@@ -61,6 +61,7 @@ class PnlSkuRow(Base):
     accounted_net_sales: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     commission_fee: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     collection_fee: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    fixed_fee: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     reverse_shipping_fee: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     taxes_gst: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     taxes_tcs: Mapped[Optional[float]] = mapped_column(Float, nullable=True)

@@ -24,6 +24,7 @@ class PnlSkuRowResponse(BaseModel):
     accounted_net_sales: Optional[float]
     commission_fee: Optional[float]
     collection_fee: Optional[float]
+    fixed_fee: Optional[float] = None
     reverse_shipping_fee: Optional[float]
     taxes_gst: Optional[float]
     taxes_tcs: Optional[float]
@@ -43,8 +44,11 @@ class PnlSkuRowResponse(BaseModel):
     variance_bs: Optional[float]
     variance_margin_pct: Optional[float]
 
-    # COGS — purchase price per unit from sku_pricing.price (populated via @property on model)
+    # COGS — purchase price per unit from sku_pricing.price
     cogs: Optional[float] = None
+
+    # Platform BS — live Flipkart-specific BS from Casper (includes AD cost)
+    platform_bs: Optional[float] = None
 
     # Derived: is this SKU matched to Casper?
     is_matched: bool = False

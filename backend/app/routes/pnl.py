@@ -8,9 +8,14 @@ DELETE /pnl/reports/{report_id}   → delete report + all rows
 GET  /pnl/platforms               → platforms that have at least one report (for dynamic sidebar)
 """
 
+from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+
+UPLOADS_DIR = Path(__file__).parent.parent.parent / "uploads" / "pnl"
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_any, require_admin_or_above
@@ -102,6 +107,9 @@ async def upload_pnl(
 
     if existing and force:
         pnl_logger.info(f"Force replace — deleting existing report_id={existing.id}")
+        # Delete old saved file if present
+        for old_file in UPLOADS_DIR.glob(f"{existing.id}.*"):
+            old_file.unlink(missing_ok=True)
         await delete_report(db, existing.id)
 
     # Full parse + store
@@ -115,10 +123,15 @@ async def upload_pnl(
             period_start=period_start,
             period_end=period_end,
         )
+        # Save original file to disk for future reference / debugging
+        ext = Path(file.filename).suffix or ".xlsx"
+        saved_path = UPLOADS_DIR / f"{result.report_id}{ext}"
+        saved_path.write_bytes(file_bytes)
         pnl_logger.info(
             f"Upload complete — report_id={result.report_id} "
             f"matched={result.matched_skus} unmatched={result.unmatched_skus} "
-            f"total={result.total_skus} period={period_start}→{period_end}"
+            f"total={result.total_skus} period={period_start}→{period_end} "
+            f"file_saved={saved_path}"
         )
     except Exception as e:
         pnl_logger.error(f"Parse failed — {e}", exc_info=True)
@@ -201,6 +214,20 @@ async def get_report(
         net = row.net_units or 0
         return_rate = round((gross - net) / gross * 100, 1) if gross > 0 else None
 
+        # Compute live platform BS (includes platform-specific AD)
+        platform_bs = None
+        if row.sku_pricing:
+            sp = row.sku_pricing
+            cfg = next((c for c in sp.platform_configs if c.platform_id == report.platform_id), None)
+            ad_pct = cfg.ad_pct if cfg and cfg.ad_pct is not None else (plat.default_ad_pct if plat else 0)
+            profit_pct = cfg.profit_pct if cfg and cfg.profit_pct is not None else sp.profit_percentage
+            ad_amt = sp.price * (ad_pct or 0) / 100
+            plat_be = sp.breakeven + ad_amt
+            profit_amt = plat_be * profit_pct / 100
+            bs_wo_gst = round(plat_be + profit_amt)
+            gst_amt = round(bs_wo_gst * (sp.gst or 0) / 100)
+            platform_bs = bs_wo_gst + gst_amt
+
         sku_rows.append(PnlSkuRowResponse(
             id=row.id,
             platform_sku_name=row.platform_sku_name,
@@ -214,6 +241,7 @@ async def get_report(
             accounted_net_sales=row.accounted_net_sales,
             commission_fee=row.commission_fee,
             collection_fee=row.collection_fee,
+            fixed_fee=row.fixed_fee,
             reverse_shipping_fee=row.reverse_shipping_fee,
             taxes_gst=row.taxes_gst,
             taxes_tcs=row.taxes_tcs,
@@ -226,12 +254,14 @@ async def get_report(
             net_margin_pct=row.net_margin_pct,
             amount_settled=row.amount_settled,
             amount_pending=row.amount_pending,
-            casper_expected_bs=row.casper_expected_bs,
+            # Use live bank_settlement from sku_pricing so Real P&L reflects current pricing decisions
+            casper_expected_bs=row.sku_pricing.bank_settlement if row.sku_pricing else row.casper_expected_bs,
             casper_expected_profit_pct=row.casper_expected_profit_pct,
             variance_bs=row.variance_bs,
             variance_margin_pct=row.variance_margin_pct,
             is_matched=row.sku_pricing_id is not None,
             cogs=row.sku_pricing.price if row.sku_pricing else None,
+            platform_bs=platform_bs,
         ))
 
     total = len(sku_rows)
@@ -279,7 +309,30 @@ async def remove_report(
     if not deleted:
         pnl_logger.warning(f"Delete failed — report_id={report_id} not found")
         raise HTTPException(status_code=404, detail="Report not found.")
+    # Remove saved file
+    for f in UPLOADS_DIR.glob(f"{report_id}.*"):
+        f.unlink(missing_ok=True)
     pnl_logger.info(f"Report deleted — report_id={report_id}")
+
+
+# ── Download original file ───────────────────────────────────────────────────
+
+@router.get("/reports/{report_id}/file")
+async def download_report_file(
+    report_id: int,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_any),
+):
+    """Download the original uploaded Excel file for a report."""
+    matches = list(UPLOADS_DIR.glob(f"{report_id}.*"))
+    if not matches:
+        raise HTTPException(status_code=404, detail="Original file not available.")
+    file_path = matches[0]
+    return FileResponse(
+        path=str(file_path),
+        filename=file_path.name,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
 
 
 # ── Platforms with reports (for dynamic sidebar) ──────────────────────────────

@@ -26,6 +26,9 @@
 | A7 | 2026-04-11 | 3 columns per platform: AD inputs \| Tier \| BS | User wants each section separately visible and independently sized | `SKUs.jsx` → platform cols, `colSpan={3}` |
 | A8 | 2026-04-11 | `numStr()` for all number→string conversions | `String()` on floats produces `1.5e-9` sci notation; `toFixed(6)` never does | `SKUs.jsx` → `numStr()`, `backendRowToFrontend()` |
 | A9 | 2026-04-11 | No `max-width` on `w-plat-bs` | Large BS values were clipping (test data ₹1984500000087 was 29px over) | `SKUs.css` → `.w-plat-bs` |
+| A10 | 2026-04-16 | `/pnl/flipkart/:reportId` as separate route | Each report is a resource — refresh-safe, bookmarkable, shareable URL | `App.jsx`, `FlipkartReport.jsx` |
+| A11 | 2026-04-16 | `?view=fk/pnl/insights` search param for active tab | Tab state survives refresh without extra DB query | `FlipkartReport.jsx` → `useSearchParams` |
+| A12 | 2026-04-16 | Save original Excel to `backend/uploads/pnl/{id}.xlsx` | Needed for debugging parser issues; auto-deleted on report delete | `routes/pnl.py` → `UPLOADS_DIR` |
 
 ---
 
@@ -49,6 +52,10 @@
 | F2 | 2026-04-02 | Profit % applied to `plat_be` (not base be) | Profit must cover AD cost too |
 | F3 | 2026-04-02 | `bs_no_gst = round(plat_be + profit_amt)` | Round before adding GST to avoid compounding decimals |
 | F4 | 2026-04-02 | Apparel/footwear GST: ≤2500 → 5%, >2500 → 18% | Indian GST slab rules |
+| F5 | 2026-04-16 | FK BS/unit = `bank_settlement_projected / net_units` | BSP includes ITC (real deposit); FK's `earnings_per_unit` excludes ITC |
+| F6 | 2026-04-16 | Margin % = `(FK BS/unit − Target BS) / Target BS × 100` | Variance as % of our own target — measures how far we are from goal |
+| F7 | 2026-04-16 | FK Fees/unit = `(commission + collection + fixed + gst + tcs + tds − rewards) / net_units` | All FK charges; reverse_shipping is separate (return drag, not a platform fee) |
+| F8 | 2026-04-16 | Return Drag/unit = `|reverse_shipping_fee| / net_units` | Spreads return cost over delivered units — true unit-level drag |
 
 ---
 

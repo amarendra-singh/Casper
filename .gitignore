@@ -4,6 +4,22 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+env/
 *.log
 .idea/
 .vscode/
+
+# Database
+*.db
+*.sqlite
+
+# Frontend build / deps
+node_modules/
+frontend/dist/
+.vite/
+
+# Claude internal
+.claude/
+
+# Uploads
+backend/uploads/
