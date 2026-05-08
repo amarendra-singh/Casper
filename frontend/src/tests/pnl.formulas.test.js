@@ -1,5 +1,5 @@
 /**
- * Tests for Real P&L formula logic extracted from FlipkartReport.jsx
+ * Tests for Unit Economics formula logic extracted from FlipkartReport.jsx
  * These are pure functions — no React, no DOM needed.
  *
  * N65-WHITE reference (Oct 2025 Flipkart report):

@@ -525,7 +525,7 @@ export default function SKUs() {
 
   const TMPL_HEADERS = [
     'Vendor','SKU Name','V.Short','Vendor SKU','Category',
-    'Price ₹','Package ₹','Logistics ₹','Addons ₹','Misc ₹',
+    'Price ₹','Package ₹','Inbound Logistics ₹','Addons ₹','Misc ₹',
     'CR %','CR ₹','Damage %','Damage ₹','Profit %','Profit ₹','GST %'
   ]
   const TMPL_SAMPLE = ['Varni','FH','y','N6-WHITE','Jewellery Set',299,0,0,0,0,10,'',5,'',20,'',5]
@@ -569,7 +569,7 @@ export default function SKUs() {
           category:String(r['Category']     || ''),
           price:   String(r['Price ₹']      || ''),
           pkg:     String(r['Package ₹']    || ''),
-          log:     String(r['Logistics ₹']  || ''),
+          log:     String(r['Inbound Logistics ₹'] || r['Logistics ₹'] || ''),
           addons:  String(r['Addons ₹']     || ''),
           misc:    String(r['Misc ₹']       || ''),
           crPct:   String(r['CR %']         || ''),
@@ -601,7 +601,7 @@ export default function SKUs() {
     const platHeaders = activePlats.map(pl => `${pl.name} BS`)
     const headers = [
       'Vendor','SKU','V.Short','Vendor SKU','Category',
-      'Price ₹','Package ₹','Logistics ₹','Addons ₹','Misc ₹',
+      'Price ₹','Package ₹','Inbound Logistics ₹','Addons ₹','Misc ₹',
       'CR %','CR ₹','Dmg %','Dmg ₹','Breakeven',
       'Profit %','Profit ₹','BS w/o GST','GST %','Final BS',
       ...platHeaders
@@ -807,7 +807,7 @@ export default function SKUs() {
               {vis('category') && <th className="sh sh-sku w-cat">Category</th>}
               <th className="sh sh-ue w-price">Price ₹</th>
               {vis('pkg')    && <th className="sh sh-ue w-pkg">Package</th>}
-              {vis('log')    && <th className="sh sh-ue w-log">Logistics</th>}
+              {vis('log')    && <th className="sh sh-ue w-log">Inbound Logistics</th>}
               {vis('addons') && <th className="sh sh-ue w-addons">Addons</th>}
               {vis('misc')   && <th className="sh sh-ue w-misc">Misc</th>}
               {vis('crpct')  && <th className="sh sh-ue w-crpct">CR %</th>}
@@ -1335,7 +1335,7 @@ function MobileCard({ row, calc:c, vendorOpts, catOpts, miscDef, profDef,
           </div>
           <div className="m-section">Unit Economics</div>
           <div className="m-grid">
-            {[['Price','price'],['Package','pkg'],['Logistics','log'],
+            {[['Price','price'],['Package','pkg'],['Inbound Logistics','log'],
               ['Addons','addons']].map(([l,f])=>(
               <div key={f} className="m-field"><label>{l}</label>
                 <input className="m-input mono right" type="number" value={row[f]}

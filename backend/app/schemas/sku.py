@@ -120,7 +120,7 @@ class PricingResponse(BaseModel):
 
     # Auto-calculated outputs
     breakeven: float
-    net_profit_20: float
+    net_profit_amt: float
     bs_wo_gst: float
     bank_settlement: float
 

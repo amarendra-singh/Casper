@@ -52,7 +52,7 @@ class SkuPricing(Base):
 
     # ── Auto-calculated outputs ───────────────────────────
     breakeven: Mapped[float] = mapped_column(Float, nullable=False, default=0)
-    net_profit_20: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    net_profit_amt: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     bs_wo_gst: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     bank_settlement: Mapped[float] = mapped_column(Float, nullable=False, default=0)
 

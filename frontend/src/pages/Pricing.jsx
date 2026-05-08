@@ -28,7 +28,7 @@ function PricingCard({ row, platform, onEdit, onDelete }) {
         {[
           ['Price',     `₹${row.price}`],
           ['Package',   `₹${row.package}`],
-          ['Logistics', `₹${row.logistics}`],
+          ['Inbound Logistics', `₹${row.logistics}`],
           ['Addons',    `₹${row.addons}`],
           ['Misc',      `₹${row.misc_total}`],
           ['CR Cost',   `₹${row.cr_cost}`, `${row.cr_percentage}%`],
@@ -280,7 +280,7 @@ export default function Pricing() {
                   value={form.package} onChange={e => setForm(f => ({ ...f, package: e.target.value }))} />
               </div>
               <div className="input-group">
-                <label>Logistics (₹) *</label>
+                <label>Inbound Logistics (₹) *</label>
                 <input className="input mono" type="number" placeholder="5"
                   value={form.logistics} onChange={e => setForm(f => ({ ...f, logistics: e.target.value }))} />
               </div>

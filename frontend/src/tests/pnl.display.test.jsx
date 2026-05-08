@@ -1,5 +1,5 @@
 /**
- * UI tests for FlipkartReport Real P&L table rendering.
+ * UI tests for FlipkartReport Unit Economics table rendering.
  * Tests that computed values display correctly in the DOM.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -42,6 +42,7 @@ const makeReport = (skuOverrides = {}) => ({
   net_earnings: 95764.19,
   amount_settled: 89654.83,
   amount_pending: -174.31,
+  target_monthly_units: 700,
   sku_rows: [{
     id: 1,
     platform_sku_name: 'SHJ-JS-VRI-N65-WHITE',
@@ -73,13 +74,14 @@ const makeReport = (skuOverrides = {}) => ({
     variance_bs: -2527.02,
     variance_margin_pct: -43.2,
     is_matched: true,
-    cogs: 80,
-    platform_bs: 172,
+    casper_breakeven: 137.04,
+    casper_breakeven_gst: 143.89,
+    casper_misc_total: 12,
     ...skuOverrides,
   }]
 })
 
-const renderReport = (view = 'pnl') => {
+const renderReport = (view = 'unit') => {
   getPnlReport.mockResolvedValue(makeReport())
   return render(
     <MemoryRouter initialEntries={[`/pnl/flipkart/1?view=${view}`]}>
@@ -96,7 +98,7 @@ describe('FlipkartReport loading', () => {
   it('shows loading state initially', () => {
     getPnlReport.mockReturnValue(new Promise(() => {}))
     render(
-      <MemoryRouter initialEntries={['/pnl/flipkart/1?view=pnl']}>
+      <MemoryRouter initialEntries={['/pnl/flipkart/1?view=unit']}>
         <Routes>
           <Route path="/pnl/flipkart/:reportId" element={<FlipkartReport />} />
         </Routes>
@@ -108,7 +110,7 @@ describe('FlipkartReport loading', () => {
   it('shows error state for invalid report', async () => {
     getPnlReport.mockRejectedValue(new Error('Not found'))
     render(
-      <MemoryRouter initialEntries={['/pnl/flipkart/999?view=pnl']}>
+      <MemoryRouter initialEntries={['/pnl/flipkart/999?view=unit']}>
         <Routes>
           <Route path="/pnl/flipkart/:reportId" element={<FlipkartReport />} />
         </Routes>
@@ -144,69 +146,70 @@ describe('FlipkartReport header', () => {
 })
 
 
-// ── Real P&L tab ──────────────────────────────────────────────────────────────
+// ── Unit Economics tab ──────────────────────────────────────────────────────────────
 
-describe('Real P&L table', () => {
+describe('Unit Economics table', () => {
   it('renders SKU name', async () => {
-    renderReport('pnl')
+    renderReport('unit')
     const sku = await screen.findByText('SHJ-JS-VRI-N65-WHITE')
     expect(sku).toBeInTheDocument()
   })
 
   it('shows correct net units (34)', async () => {
-    renderReport('pnl')
+    renderReport('unit')
     await screen.findByText('SHJ-JS-VRI-N65-WHITE')
     // '34' appears in both summary bar and table row — use getAllByText
     expect(screen.getAllByText('34').length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows return rate badge', async () => {
-    renderReport('pnl')
+    renderReport('unit')
     await screen.findByText('SHJ-JS-VRI-N65-WHITE')
     // return_rate_pct=54.05 → displayed as 54.1%
     expect(screen.getByText('54.1%')).toBeInTheDocument()
   })
 
   it('displays FK BS/unit as ₹97.7 (1 decimal)', async () => {
-    renderReport('pnl')
+    renderReport('unit')
     await screen.findByText('SHJ-JS-VRI-N65-WHITE')
     // 3320.98 / 34 = 97.67 → displayed as ₹97.7
     expect(screen.getByText('₹97.7')).toBeInTheDocument()
   })
 
   it('displays Target BS as ₹172.0', async () => {
-    renderReport('pnl')
+    renderReport('unit')
     await screen.findByText('SHJ-JS-VRI-N65-WHITE')
     expect(screen.getByText('₹172.0')).toBeInTheDocument()
   })
 
   it('displays negative variance with - prefix', async () => {
-    renderReport('pnl')
+    renderReport('unit')
     await screen.findByText('SHJ-JS-VRI-N65-WHITE')
     // var/unit = 97.67 - 172 = -74.3
     expect(screen.getByText('-₹74.3')).toBeInTheDocument()
   })
 
   it('displays margin % with sign prefix', async () => {
-    renderReport('pnl')
+    renderReport('unit')
     await screen.findByText('SHJ-JS-VRI-N65-WHITE')
-    expect(screen.getByText('-43.2%')).toBeInTheDocument()
+    // -43.2% appears in both the table row and summary bar (avg of 1 row)
+    expect(screen.getAllByText('-43.2%').length).toBeGreaterThanOrEqual(1)
   })
 
   it('no Sell Price/unit column (removed)', async () => {
-    renderReport('pnl')
+    renderReport('unit')
     await screen.findByText('SHJ-JS-VRI-N65-WHITE')
     expect(screen.queryByText(/sell price\/unit/i)).toBeNull()
   })
 
   it('no Platform BS/unit column (removed)', async () => {
-    renderReport('pnl')
+    renderReport('unit')
     await screen.findByText('SHJ-JS-VRI-N65-WHITE')
     expect(screen.queryByText(/platform bs\/unit/i)).toBeNull()
   })
 
   it('shows FK Fees/unit column', async () => {
-    renderReport('pnl')
+    renderReport('unit')
     await screen.findByText(/fk fees\/unit/i)
   })
 })
@@ -214,24 +217,24 @@ describe('Real P&L table', () => {
 
 // ── Summary bar ───────────────────────────────────────────────────────────────
 
-describe('Real P&L summary bar', () => {
+describe('Unit Economics summary bar', () => {
   it('shows FK Bank Settlement total', async () => {
-    renderReport('pnl')
+    renderReport('unit')
     await screen.findByText(/fk bank settlement/i)
   })
 
   it('shows Total Expected BS', async () => {
-    renderReport('pnl')
+    renderReport('unit')
     await screen.findByText(/total expected bs/i)
   })
 
   it('shows Net Variance', async () => {
-    renderReport('pnl')
+    renderReport('unit')
     await screen.findByText(/net variance/i)
   })
 
   it('shows beating/missing counts', async () => {
-    renderReport('pnl')
+    renderReport('unit')
     await screen.findByText(/beating target/i)
     expect(screen.getByText(/missing target/i)).toBeInTheDocument()
   })
@@ -242,7 +245,7 @@ describe('Real P&L summary bar', () => {
 
 describe('SKU filter pills', () => {
   it('shows All, Beating, Missing pills', async () => {
-    renderReport('pnl')
+    renderReport('unit')
     await screen.findByText(/all matched/i)
     expect(screen.getByText(/^Beating \(/)).toBeInTheDocument()
     expect(screen.getByText(/^Missing \(/)).toBeInTheDocument()
@@ -251,7 +254,7 @@ describe('SKU filter pills', () => {
   it('search input filters SKUs', async () => {
     getPnlReport.mockResolvedValue(makeReport())
     render(
-      <MemoryRouter initialEntries={['/pnl/flipkart/1?view=pnl']}>
+      <MemoryRouter initialEntries={['/pnl/flipkart/1?view=unit']}>
         <Routes>
           <Route path="/pnl/flipkart/:reportId" element={<FlipkartReport />} />
         </Routes>
@@ -278,10 +281,10 @@ describe('tab navigation', () => {
     await screen.findByText(/flipkart settlement/i)
   })
 
-  it('clicking Real P&L tab shows table', async () => {
+  it('clicking Unit Economics tab shows table', async () => {
     renderReport('fk')
     await screen.findByText(/revenue flow/i)
-    fireEvent.click(screen.getByText('Real P&L'))
+    fireEvent.click(screen.getByText('Unit Economics'))
     const sku = await screen.findByText('SHJ-JS-VRI-N65-WHITE')
     expect(sku).toBeInTheDocument()
   })
@@ -292,7 +295,7 @@ describe('tab navigation', () => {
 
 describe('row styling', () => {
   it('loss row has pnl-tr-loss class', async () => {
-    renderReport('pnl')
+    renderReport('unit')
     await screen.findByText('SHJ-JS-VRI-N65-WHITE')
     const row = screen.getByText('SHJ-JS-VRI-N65-WHITE').closest('tr')
     expect(row).toHaveClass('pnl-tr-loss')
@@ -304,7 +307,7 @@ describe('row styling', () => {
       variance_bs: 1152,
     }))
     render(
-      <MemoryRouter initialEntries={['/pnl/flipkart/1?view=pnl']}>
+      <MemoryRouter initialEntries={['/pnl/flipkart/1?view=unit']}>
         <Routes>
           <Route path="/pnl/flipkart/:reportId" element={<FlipkartReport />} />
         </Routes>
@@ -313,5 +316,106 @@ describe('row styling', () => {
     await screen.findByText('SHJ-JS-VRI-N65-WHITE')
     const row = screen.getByText('SHJ-JS-VRI-N65-WHITE').closest('tr')
     expect(row).not.toHaveClass('pnl-tr-loss')
+  })
+})
+
+
+// ── Operating P&L tab ──────────────────────────────────────────────────────────────
+
+describe('Operating P&L tab', () => {
+  // Mock fixture: BS=3320.98, breakeven=137.04, net=34
+  // → var_cost = 137.04 * 34 = 4659.36
+  // → gross_profit = 3320.98 - 4659.36 = -1338.38 (LOSS)
+  // → margin = -1338.38 / 3320.98 = -40.3%
+
+  it('renders verdict banner with loss state', async () => {
+    renderReport('ops')
+    const banner = await screen.findByText(/Real loss/i)
+    expect(banner).toBeInTheDocument()
+  })
+
+  it('shows FK Cash In KPI', async () => {
+    renderReport('ops')
+    await screen.findByText(/FK Cash In/i)
+  })
+
+  it('shows Net Profit KPI', async () => {
+    renderReport('ops')
+    // "Net Profit" can appear in banner + KPI label
+    const matches = await screen.findAllByText(/Net Profit/i)
+    expect(matches.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('shows True Margin %', async () => {
+    renderReport('ops')
+    await screen.findByText(/True Margin/i)
+  })
+
+  it('shows Kill List card', async () => {
+    renderReport('ops')
+    // Appears in KPI label + filter pill + card title
+    const matches = await screen.findAllByText(/Kill List/i)
+    expect(matches.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('shows Volume Absorption card', async () => {
+    renderReport('ops')
+    await screen.findByText(/Volume Absorption/i)
+  })
+
+  it('shows Data Gap card', async () => {
+    renderReport('ops')
+    // Appears in KPI label + card title
+    const matches = await screen.findAllByText(/Data Gap/i)
+    expect(matches.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('shows Return Leakage card', async () => {
+    renderReport('ops')
+    await screen.findByText(/Return Leakage/i)
+  })
+
+  it('renders SKU in Operating P&L table', async () => {
+    renderReport('ops')
+    // SKU appears in main table + may appear in pattern cards (Kill List/Return Leakage)
+    const matches = await screen.findAllByText('SHJ-JS-VRI-N65-WHITE')
+    expect(matches.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('flags loss-making SKU as kill (BS/u 97.7 < breakeven 137)', async () => {
+    renderReport('ops')
+    const skuMatches = await screen.findAllByText('SHJ-JS-VRI-N65-WHITE')
+    // Find the one inside the main table (not the pattern card)
+    const tableRow = skuMatches.map(el => el.closest('tr')).find(tr => tr != null)
+    expect(tableRow).toHaveClass('pnl-tr-kill')
+  })
+
+  it('shows target units (700) in editor', async () => {
+    renderReport('ops')
+    await screen.findAllByText('SHJ-JS-VRI-N65-WHITE')
+    expect(screen.getByText('700')).toBeInTheDocument()
+  })
+
+  it('clicking Operating P&L tab shows the view', async () => {
+    renderReport('fk')
+    await screen.findByText(/revenue flow/i)
+    fireEvent.click(screen.getByText('Operating P&L'))
+    await screen.findByText(/FK Cash In/i)
+  })
+
+  it('profitable SKU does NOT have pnl-tr-kill class', async () => {
+    getPnlReport.mockResolvedValue(makeReport({
+      bank_settlement_projected: 7000,  // 7000/34 = 205.88 > 137 breakeven
+    }))
+    render(
+      <MemoryRouter initialEntries={['/pnl/flipkart/1?view=ops']}>
+        <Routes>
+          <Route path="/pnl/flipkart/:reportId" element={<FlipkartReport />} />
+        </Routes>
+      </MemoryRouter>
+    )
+    const skuMatches = await screen.findAllByText('SHJ-JS-VRI-N65-WHITE')
+    const tableRow = skuMatches.map(el => el.closest('tr')).find(tr => tr != null)
+    expect(tableRow).not.toHaveClass('pnl-tr-kill')
   })
 })

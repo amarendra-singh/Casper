@@ -341,39 +341,36 @@ async def check_duplicate(
     return result.scalar_one_or_none()
 
 
-async def parse_and_store(
-    session: AsyncSession,
-    file_bytes: bytes,
-    filename: str,
-    platform_id: int,
-    uploaded_by: int,
-    period_start,
-    period_end,
-) -> PnlUploadResult:
-    """
-    Main entry point. Parse xlsx, match SKUs, store report + rows.
-    Returns upload result with match counts.
-    """
-    # ── 1. Load workbook ─────────────────────────────────────────────────────
+# ── Helpers for parse_and_store ───────────────────────────────────────────────
+
+# Flipkart "actuals" — fields copied verbatim from parsed row onto PnlSkuRow
+_ACTUAL_FIELDS = (
+    "gross_units", "rto_units", "rvp_units", "cancelled_units", "net_units",
+    "accounted_net_sales", "commission_fee", "collection_fee", "fixed_fee",
+    "reverse_shipping_fee", "taxes_gst", "taxes_tcs", "taxes_tds",
+    "rewards_benefits", "bank_settlement_projected", "input_tax_credits",
+    "net_earnings", "earnings_per_unit", "net_margin_pct",
+    "amount_settled", "amount_pending",
+)
+
+
+def _parse_workbook(file_bytes: bytes) -> tuple[dict, list[dict]]:
+    """Load workbook and parse both sheets. Returns (summary_dict, raw_sku_rows)."""
     from io import BytesIO
     wb = openpyxl.load_workbook(BytesIO(file_bytes), read_only=True, data_only=True)
-
-    sheet_names = wb.sheetnames
-    summary_ws = wb[sheet_names[0]]   # Sheet 1: Overall Summary
-    sku_ws = wb[sheet_names[1]]        # Sheet 2: SKU-level P&L
-
-    # ── 2. Parse sheets ───────────────────────────────────────────────────────
-    summary = _parse_summary_sheet(summary_ws)
-    col_map = _build_col_index(sku_ws)
+    summary_ws = wb[wb.sheetnames[0]]
+    sku_ws     = wb[wb.sheetnames[1]]
+    summary      = _parse_summary_sheet(summary_ws)
+    col_map      = _build_col_index(sku_ws)
     sku_rows_raw = _parse_sku_sheet(sku_ws, col_map)
+    return summary, sku_rows_raw
 
-    # ── 3. Get platform name ──────────────────────────────────────────────────
-    plat_result = await session.execute(select(Platform).where(Platform.id == platform_id))
-    platform = plat_result.scalar_one_or_none()
-    platform_name = platform.name if platform else "Unknown"
 
-    # ── 4. Build SKU name → SkuPricing lookup map ─────────────────────────────
-    # Match: SkuPlatformConfig.platform_sku_name (for this platform) → sku_pricing_id
+async def _build_pricing_lookup(session: AsyncSession, platform_id: int) -> dict[str, SkuPricing]:
+    """
+    Build a case-insensitive map: platform_sku_name.upper() → SkuPricing.
+    Used to match Flipkart SKU names against Casper pricing records.
+    """
     config_result = await session.execute(
         select(SkuPlatformConfig).where(
             SkuPlatformConfig.platform_id == platform_id,
@@ -382,27 +379,26 @@ async def parse_and_store(
     )
     configs = config_result.scalars().all()
 
-    # Also load the corresponding SkuPricing rows for snapshot
     pricing_ids = [c.sku_pricing_id for c in configs]
-    pricing_map: dict[int, SkuPricing] = {}
-    if pricing_ids:
-        pricing_result = await session.execute(
-            select(SkuPricing).where(SkuPricing.id.in_(pricing_ids))
-        )
-        for sp in pricing_result.scalars().all():
-            pricing_map[sp.id] = sp
+    if not pricing_ids:
+        return {}
 
-    # platform_sku_name (uppercase) → SkuPricing
-    name_to_pricing: dict[str, SkuPricing] = {}
-    for cfg in configs:
-        if cfg.platform_sku_name:
-            key = cfg.platform_sku_name.strip().upper()
-            sp = pricing_map.get(cfg.sku_pricing_id)
-            if sp:
-                name_to_pricing[key] = sp
+    pricing_result = await session.execute(
+        select(SkuPricing).where(SkuPricing.id.in_(pricing_ids))
+    )
+    pricing_by_id = {sp.id: sp for sp in pricing_result.scalars().all()}
 
-    # ── 5. Create PnlReport ───────────────────────────────────────────────────
-    report = PnlReport(
+    return {
+        cfg.platform_sku_name.strip().upper(): pricing_by_id[cfg.sku_pricing_id]
+        for cfg in configs
+        if cfg.platform_sku_name and cfg.sku_pricing_id in pricing_by_id
+    }
+
+
+def _build_report_model(summary: dict, platform_id: int, filename: str,
+                        uploaded_by: int, period_start, period_end) -> PnlReport:
+    """Instantiate a PnlReport from parsed summary sheet data."""
+    return PnlReport(
         platform_id=platform_id,
         period_start=period_start,
         period_end=period_end,
@@ -424,77 +420,84 @@ async def parse_and_store(
         amount_settled=summary.get("amount_settled"),
         amount_pending=summary.get("amount_pending"),
     )
+
+
+def _build_sku_row(raw: dict, report_id: int, matched_pricing: Optional[SkuPricing]) -> PnlSkuRow:
+    """
+    Build a PnlSkuRow from parsed raw data + matched Casper pricing.
+    If matched: computes variance vs Casper expected BS (snapshot at upload time).
+    If unmatched: variance fields left null.
+    """
+    casper_fields: dict = dict(
+        sku_pricing_id=None,
+        casper_expected_bs=None,
+        casper_expected_profit_pct=None,
+        variance_bs=None,
+        variance_margin_pct=None,
+    )
+
+    if matched_pricing is not None:
+        sp           = matched_pricing
+        actual_bs    = raw.get("bank_settlement_projected")
+        net_units    = raw.get("net_units") or 0
+        expected_bs  = sp.bank_settlement
+        expected_tot = round(expected_bs * net_units, 2) if expected_bs else None
+        variance_bs  = round(actual_bs - expected_tot, 2) if (actual_bs is not None and expected_tot is not None) else None
+
+        actual_margin   = raw.get("net_margin_pct")
+        expected_margin = sp.profit_percentage
+        variance_margin = round(actual_margin - expected_margin, 2) if (actual_margin is not None and expected_margin) else None
+
+        casper_fields = dict(
+            sku_pricing_id=sp.id,
+            casper_expected_bs=expected_bs,
+            casper_expected_profit_pct=sp.profit_percentage,
+            variance_bs=variance_bs,
+            variance_margin_pct=variance_margin,
+        )
+
+    row = PnlSkuRow(
+        report_id=report_id,
+        platform_sku_name=raw["platform_sku_name"],
+        **casper_fields,
+    )
+    for field in _ACTUAL_FIELDS:
+        setattr(row, field, raw.get(field))
+    return row
+
+
+async def parse_and_store(
+    session: AsyncSession,
+    file_bytes: bytes,
+    filename: str,
+    platform_id: int,
+    uploaded_by: int,
+    period_start,
+    period_end,
+) -> PnlUploadResult:
+    """
+    Main entry point. Parse xlsx, match SKUs against Casper pricing, store report + rows.
+    Returns upload result with match counts.
+    """
+    summary, sku_rows_raw = _parse_workbook(file_bytes)
+
+    platform = await session.scalar(select(Platform).where(Platform.id == platform_id))
+    platform_name = platform.name if platform else "Unknown"
+
+    name_to_pricing = await _build_pricing_lookup(session, platform_id)
+
+    report = _build_report_model(summary, platform_id, filename, uploaded_by, period_start, period_end)
     session.add(report)
-    await session.flush()  # get report.id before inserting rows
+    await session.flush()  # need report.id for child rows
 
-    # ── 6. Create PnlSkuRows with Casper snapshot ─────────────────────────────
-    matched = 0
-    unmatched = 0
-
+    matched = unmatched = 0
     for raw in sku_rows_raw:
-        lookup_key = raw["platform_sku_name"].strip().upper()
-        sp = name_to_pricing.get(lookup_key)
-
-        if sp:
+        sp = name_to_pricing.get(raw["platform_sku_name"].strip().upper())
+        if sp is not None:
             matched += 1
-            # Variance: compare actual TOTAL bank settlement vs Casper expected TOTAL
-            # (expected per unit × units sold = total we expected to receive)
-            actual_bs    = raw.get("bank_settlement_projected")   # actual total
-            expected_per_unit = sp.bank_settlement                 # our estimate per unit
-            net_units_sold    = raw.get("net_units") or 0
-            expected_total_bs = round(expected_per_unit * net_units_sold, 2) if expected_per_unit else None
-            variance_bs = round(actual_bs - expected_total_bs, 2) if (actual_bs is not None and expected_total_bs is not None) else None
-
-            actual_margin  = raw.get("net_margin_pct")
-            expected_margin = sp.profit_percentage
-            variance_margin = round(actual_margin - expected_margin, 2) if (actual_margin is not None and expected_margin) else None
-
-            sku_row = PnlSkuRow(
-                report_id=report.id,
-                platform_sku_name=raw["platform_sku_name"],
-                sku_pricing_id=sp.id,
-                # Store per-unit expected BS for unit-level drill-down
-                casper_expected_bs=expected_per_unit,
-                casper_expected_profit_pct=sp.profit_percentage,
-                variance_bs=variance_bs,           # total actual − total expected
-                variance_margin_pct=variance_margin,
-            )
         else:
             unmatched += 1
-            sku_row = PnlSkuRow(
-                report_id=report.id,
-                platform_sku_name=raw["platform_sku_name"],
-                sku_pricing_id=None,
-                casper_expected_bs=None,
-                casper_expected_profit_pct=None,
-                variance_bs=None,
-                variance_margin_pct=None,
-            )
-
-        # Set all Flipkart actuals
-        sku_row.gross_units = raw["gross_units"]
-        sku_row.rto_units = raw["rto_units"]
-        sku_row.rvp_units = raw["rvp_units"]
-        sku_row.cancelled_units = raw["cancelled_units"]
-        sku_row.net_units = raw["net_units"]
-        sku_row.accounted_net_sales = raw["accounted_net_sales"]
-        sku_row.commission_fee = raw["commission_fee"]
-        sku_row.collection_fee = raw["collection_fee"]
-        sku_row.fixed_fee = raw["fixed_fee"]
-        sku_row.reverse_shipping_fee = raw["reverse_shipping_fee"]
-        sku_row.taxes_gst = raw["taxes_gst"]
-        sku_row.taxes_tcs = raw["taxes_tcs"]
-        sku_row.taxes_tds = raw["taxes_tds"]
-        sku_row.rewards_benefits = raw["rewards_benefits"]
-        sku_row.bank_settlement_projected = raw["bank_settlement_projected"]
-        sku_row.input_tax_credits = raw["input_tax_credits"]
-        sku_row.net_earnings = raw["net_earnings"]
-        sku_row.earnings_per_unit = raw["earnings_per_unit"]
-        sku_row.net_margin_pct = raw["net_margin_pct"]
-        sku_row.amount_settled = raw["amount_settled"]
-        sku_row.amount_pending = raw["amount_pending"]
-
-        session.add(sku_row)
+        session.add(_build_sku_row(raw, report.id, sp))
 
     await session.commit()
 
@@ -520,22 +523,17 @@ async def get_all_reports(session: AsyncSession, platform_id: Optional[int] = No
 
 
 async def get_report_detail(session: AsyncSession, report_id: int) -> Optional[PnlReport]:
-    """Fetch full report with all SKU rows + sku_pricing + platform_configs (for live platform BS)."""
+    """Fetch full report, eagerly loading SKU rows + their live sku_pricing relationship."""
     from sqlalchemy.orm import selectinload
     result = await session.execute(
         select(PnlReport)
         .options(
             selectinload(PnlReport.sku_rows)
             .selectinload(PnlSkuRow.sku_pricing)
-            .selectinload(SkuPricing.platform_configs)
         )
         .where(PnlReport.id == report_id)
     )
-    report = result.scalar_one_or_none()
-    if report:
-        for row in report.sku_rows:
-            row.__dict__['cogs'] = row.sku_pricing.price if row.sku_pricing else None
-    return report
+    return result.scalar_one_or_none()
 
 
 async def delete_report(session: AsyncSession, report_id: int) -> bool:

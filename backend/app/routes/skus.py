@@ -219,7 +219,7 @@ async def create_pricing(
         gst=payload.gst,
         profit_percentage=payload.profit_percentage,
         **resolved,   # cr_percentage, cr_cost, damage_percentage, damage_cost, misc_total
-        **calcs,      # breakeven, net_profit_20, bs_wo_gst, bank_settlement
+        **calcs,      # breakeven, net_profit_amt, bs_wo_gst, bank_settlement
     )
 
     db.add(pricing)

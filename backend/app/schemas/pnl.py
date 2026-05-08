@@ -44,15 +44,10 @@ class PnlSkuRowResponse(BaseModel):
     variance_bs: Optional[float]
     variance_margin_pct: Optional[float]
 
-    # COGS — purchase price per unit from sku_pricing.price
-    cogs: Optional[float] = None
-
-    # Platform BS — live Flipkart-specific BS from Casper (includes AD cost)
-    platform_bs: Optional[float] = None
-
     # Casper pricing ladder (live from sku_pricing)
     casper_breakeven: Optional[float] = None      # pure cost basis (no profit, no GST)
     casper_breakeven_gst: Optional[float] = None  # breakeven + GST on breakeven (zero profit floor)
+    casper_misc_total: Optional[float] = None     # per-unit overhead allocation (rent/elec/manpower)
 
     # Derived: is this SKU matched to Casper?
     is_matched: bool = False
@@ -85,6 +80,9 @@ class PnlReportSummary(BaseModel):
     total_skus: Optional[int] = None
     matched_skus: Optional[int] = None
     unmatched_skus: Optional[int] = None
+
+    # Platform config (for True P&L absorption math)
+    target_monthly_units: Optional[int] = None
 
     model_config = {"from_attributes": True}
 

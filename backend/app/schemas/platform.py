@@ -21,6 +21,7 @@ class PlatformCreate(BaseModel):
     cr_percentage: float
     default_ad_pct: float = 0.0
     default_profit_pct: float = 20.0
+    target_monthly_units: int = 700
     tiers: list[PlatformTierCreate] = []
 
 
@@ -30,6 +31,7 @@ class PlatformUpdate(BaseModel):
     cr_percentage: float | None = None
     default_ad_pct: float | None = None
     default_profit_pct: float | None = None
+    target_monthly_units: int | None = None
     is_active: bool | None = None
 
 
@@ -40,6 +42,7 @@ class PlatformResponse(BaseModel):
     cr_percentage: float
     default_ad_pct: float
     default_profit_pct: float
+    target_monthly_units: int = 700
     is_active: bool
     tiers: list[PlatformTierResponse] = []
     created_at: datetime

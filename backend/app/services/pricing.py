@@ -79,10 +79,10 @@ def calculate_pricing(
     )
 
     # profit % on top of breakeven
-    net_profit_20 = round(breakeven * (profit_percentage / 100), 2)
+    net_profit_amt = round(breakeven * (profit_percentage / 100), 2)
 
     # Bank settlement before GST — rounded to nearest integer
-    bs_wo_gst = round(breakeven + net_profit_20)
+    bs_wo_gst = round(breakeven + net_profit_amt)
 
     # GST is a rate (%), not a flat ₹ amount
     gst_amount = round(bs_wo_gst * gst / 100, 2)
@@ -90,7 +90,7 @@ def calculate_pricing(
 
     return {
         "breakeven": breakeven,
-        "net_profit_20": net_profit_20,
+        "net_profit_amt": net_profit_amt,
         "bs_wo_gst": float(bs_wo_gst),
         "bank_settlement": bank_settlement,
     }

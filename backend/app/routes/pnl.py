@@ -194,80 +194,74 @@ async def list_reports(
 
 # ── Report detail ─────────────────────────────────────────────────────────────
 
+def _build_sku_row_response(row) -> PnlSkuRowResponse:
+    """
+    Converts a PnlSkuRow ORM object to PnlSkuRowResponse.
+    Casper fields (breakeven, expected BS, etc.) are read LIVE from sku_pricing
+    so pricing edits in SKUs page reflect immediately in P&L views.
+    """
+    gross = row.gross_units or 0
+    net   = row.net_units or 0
+    return_rate = round((gross - net) / gross * 100, 1) if gross > 0 else None
+
+    sp = row.sku_pricing  # may be None if unmatched
+    casper_expected_bs   = sp.bank_settlement if sp else row.casper_expected_bs
+    casper_breakeven     = sp.breakeven if sp else None
+    casper_breakeven_gst = round(sp.breakeven * (1 + (sp.gst or 0) / 100), 2) if sp else None
+
+    return PnlSkuRowResponse(
+        id=row.id,
+        platform_sku_name=row.platform_sku_name,
+        sku_pricing_id=row.sku_pricing_id,
+        gross_units=row.gross_units,
+        rto_units=row.rto_units,
+        rvp_units=row.rvp_units,
+        cancelled_units=row.cancelled_units,
+        net_units=row.net_units,
+        return_rate_pct=return_rate,
+        accounted_net_sales=row.accounted_net_sales,
+        commission_fee=row.commission_fee,
+        collection_fee=row.collection_fee,
+        fixed_fee=row.fixed_fee,
+        reverse_shipping_fee=row.reverse_shipping_fee,
+        taxes_gst=row.taxes_gst,
+        taxes_tcs=row.taxes_tcs,
+        taxes_tds=row.taxes_tds,
+        rewards_benefits=row.rewards_benefits,
+        bank_settlement_projected=row.bank_settlement_projected,
+        input_tax_credits=row.input_tax_credits,
+        net_earnings=row.net_earnings,
+        earnings_per_unit=row.earnings_per_unit,
+        net_margin_pct=row.net_margin_pct,
+        amount_settled=row.amount_settled,
+        amount_pending=row.amount_pending,
+        casper_expected_bs=casper_expected_bs,
+        casper_expected_profit_pct=row.casper_expected_profit_pct,
+        variance_bs=row.variance_bs,
+        variance_margin_pct=row.variance_margin_pct,
+        is_matched=row.sku_pricing_id is not None,
+        casper_breakeven=casper_breakeven,
+        casper_breakeven_gst=casper_breakeven_gst,
+        casper_misc_total=sp.misc_total if sp else None,
+    )
+
+
 @router.get("/reports/{report_id}", response_model=PnlReportDetail)
 async def get_report(
     report_id: int,
     db: AsyncSession = Depends(get_db),
     _=Depends(require_any),
 ):
-    """Full report with all SKU rows."""
+    """Full report with all SKU rows. Casper-derived fields are LIVE from sku_pricing."""
     report = await get_report_detail(db, report_id)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found.")
 
     plat = await db.get(Platform, report.platform_id)
 
-    # Build SKU row responses with computed fields
-    sku_rows = []
-    for row in report.sku_rows:
-        gross = row.gross_units or 0
-        net = row.net_units or 0
-        return_rate = round((gross - net) / gross * 100, 1) if gross > 0 else None
-
-        # Compute live platform BS (includes platform-specific AD)
-        platform_bs = None
-        if row.sku_pricing:
-            sp = row.sku_pricing
-            cfg = next((c for c in sp.platform_configs if c.platform_id == report.platform_id), None)
-            ad_pct = cfg.ad_pct if cfg and cfg.ad_pct is not None else (plat.default_ad_pct if plat else 0)
-            profit_pct = cfg.profit_pct if cfg and cfg.profit_pct is not None else sp.profit_percentage
-            ad_amt = sp.price * (ad_pct or 0) / 100
-            plat_be = sp.breakeven + ad_amt
-            profit_amt = plat_be * profit_pct / 100
-            bs_wo_gst = round(plat_be + profit_amt)
-            gst_amt = round(bs_wo_gst * (sp.gst or 0) / 100)
-            platform_bs = bs_wo_gst + gst_amt
-
-        sku_rows.append(PnlSkuRowResponse(
-            id=row.id,
-            platform_sku_name=row.platform_sku_name,
-            sku_pricing_id=row.sku_pricing_id,
-            gross_units=row.gross_units,
-            rto_units=row.rto_units,
-            rvp_units=row.rvp_units,
-            cancelled_units=row.cancelled_units,
-            net_units=row.net_units,
-            return_rate_pct=return_rate,
-            accounted_net_sales=row.accounted_net_sales,
-            commission_fee=row.commission_fee,
-            collection_fee=row.collection_fee,
-            fixed_fee=row.fixed_fee,
-            reverse_shipping_fee=row.reverse_shipping_fee,
-            taxes_gst=row.taxes_gst,
-            taxes_tcs=row.taxes_tcs,
-            taxes_tds=row.taxes_tds,
-            rewards_benefits=row.rewards_benefits,
-            bank_settlement_projected=row.bank_settlement_projected,
-            input_tax_credits=row.input_tax_credits,
-            net_earnings=row.net_earnings,
-            earnings_per_unit=row.earnings_per_unit,
-            net_margin_pct=row.net_margin_pct,
-            amount_settled=row.amount_settled,
-            amount_pending=row.amount_pending,
-            # Use live bank_settlement from sku_pricing so Real P&L reflects current pricing decisions
-            casper_expected_bs=row.sku_pricing.bank_settlement if row.sku_pricing else row.casper_expected_bs,
-            casper_expected_profit_pct=row.casper_expected_profit_pct,
-            variance_bs=row.variance_bs,
-            variance_margin_pct=row.variance_margin_pct,
-            is_matched=row.sku_pricing_id is not None,
-            cogs=row.sku_pricing.price if row.sku_pricing else None,
-            platform_bs=platform_bs,
-            casper_breakeven=row.sku_pricing.breakeven if row.sku_pricing else None,
-            casper_breakeven_gst=round(row.sku_pricing.breakeven * (1 + (row.sku_pricing.gst or 0) / 100), 2) if row.sku_pricing else None,
-        ))
-
-    total = len(sku_rows)
-    matched = sum(1 for r in sku_rows if r.is_matched)
+    sku_rows = [_build_sku_row_response(row) for row in report.sku_rows]
+    total    = len(sku_rows)
+    matched  = sum(1 for r in sku_rows if r.is_matched)
 
     return PnlReportDetail(
         id=report.id,
@@ -287,6 +281,7 @@ async def get_report(
         total_skus=total,
         matched_skus=matched,
         unmatched_skus=total - matched,
+        target_monthly_units=plat.target_monthly_units if plat else None,
         returns_amount=report.returns_amount,
         returned_units=report.returned_units,
         total_expenses=report.total_expenses,
