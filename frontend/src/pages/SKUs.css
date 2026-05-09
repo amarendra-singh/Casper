@@ -293,6 +293,22 @@
 }
 .gh-x:hover { color: var(--accent); }
 
+/* Phase 6 — ad-report upload trigger in platform group header */
+.gh-upload-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: 4px;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.gh-upload-btn:hover { opacity: 0.85; }
+
 /* ── Sub headers ── */
 .sh {
   padding: 4px 5px;
@@ -787,24 +803,48 @@ select.ec-input,
 .imp-inp:disabled { background: var(--surface-2); color: var(--text-3); cursor: not-allowed; }
 .imp-inp:focus { outline: 2px solid var(--accent); border-color: transparent; }
 
-/* ── Series group header row ── */
+/* ── Series group header row — compact, Excel-like ── */
 .series-hdr-row td {
   padding: 0;
-  background: var(--surface-2);
+  background: linear-gradient(to right,
+    rgba(0, 0, 0, 0.025) 0%,
+    rgba(0, 0, 0, 0.015) 200px,
+    rgba(0, 0, 0, 0) 400px);
+  border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  border-top: 2px solid var(--border);
+  height: 20px;
+  line-height: 20px;
 }
 .series-hdr-btn {
-  display: flex; align-items: center; gap: 8px;
-  width: 100%; padding: 5px 12px;
-  background: none; border: none; cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
   text-align: left;
+  height: 20px;
+  line-height: 20px;
 }
-.series-hdr-arrow { font-size: 9px; color: var(--text-3); }
-.series-hdr-name { font-size: 11px; font-weight: 700; color: var(--text-2); letter-spacing: 0.5px; text-transform: uppercase; }
+.series-hdr-btn:hover { background: rgba(0, 0, 0, 0.04); }
+.series-hdr-arrow {
+  font-size: 7px;
+  color: var(--text-3);
+  width: 8px;
+  text-align: center;
+}
+.series-hdr-name {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-2);
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
 .series-hdr-count {
-  font-size: 10px; color: var(--text-3);
-  background: var(--border); border-radius: 10px;
-  padding: 1px 6px;
+  font-size: 9px;
+  color: var(--text-3);
+  font-weight: 500;
+  margin-left: 2px;
 }
 

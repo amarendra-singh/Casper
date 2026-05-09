@@ -57,3 +57,36 @@
 .mc-save:hover:not(:disabled) { background: #ecfdf5; color: #16a34a; }
 .mc-cancel:hover:not(:disabled) { background: #fef2f2; color: #ef4444; }
 .mc-del:hover:not(:disabled) { background: #fef2f2; color: #ef4444; }
+
+/* Column hints (header) */
+.mc-hints {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 8px;
+  font-size: 10px; font-weight: 600;
+  color: var(--text-3);
+  text-transform: uppercase; letter-spacing: 0.4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.mc-hint-pct { width: 60px; text-align: center; }
+
+/* Inline percentage inputs (edit mode) */
+.mc-pct-inp {
+  width: 60px;
+  font-size: 12px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 4px 6px;
+  outline: none;
+  background: var(--surface);
+  color: var(--text);
+  text-align: center;
+}
+
+/* Read-only percentage display */
+.mc-pct-show {
+  width: 60px;
+  font-size: 12px;
+  color: var(--text-2);
+  text-align: center;
+}

@@ -4,13 +4,21 @@ from datetime import datetime
 
 class PlatformTierCreate(BaseModel):
     tier_name: str
-    fee: float
+    fee: float = 0.0           # ₹ (used when fee_pct is null)
+    fee_pct: float | None = None  # % of base — takes precedence over `fee` if set
+
+
+class PlatformTierUpdate(BaseModel):
+    tier_name: str | None = None
+    fee: float | None = None
+    fee_pct: float | None = None
 
 
 class PlatformTierResponse(BaseModel):
     id: int
     tier_name: str
     fee: float
+    fee_pct: float | None = None
 
     model_config = {"from_attributes": True}
 

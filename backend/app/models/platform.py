@@ -29,7 +29,9 @@ class PlatformTier(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     platform_id: Mapped[int] = mapped_column(Integer, ForeignKey("platforms.id", ondelete="CASCADE"), nullable=False)
     tier_name: Mapped[str] = mapped_column(String(50), nullable=False, comment="e.g. Gold, Silver, Bronze")
-    fee: Mapped[float] = mapped_column(Float, nullable=False, comment="Flat fee in INR for this tier")
+    fee: Mapped[float] = mapped_column(Float, nullable=False, comment="Flat fee in INR (used when fee_pct is null)")
+    # Phase 5: dual-mode tier — either ₹ (fee) OR % (fee_pct). One is master.
+    fee_pct: Mapped[float | None] = mapped_column(Float, nullable=True, comment="If set, tier fee = base × fee_pct/100; takes precedence over `fee`")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -29,7 +29,12 @@ async def create_category(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Category already exists")
 
-    category = Category(name=payload.name)
+    category = Category(
+        name=payload.name,
+        default_cr_pct=payload.default_cr_pct,
+        default_damage_pct=payload.default_damage_pct,
+        default_profit_pct=payload.default_profit_pct,
+    )
     db.add(category)
     await db.commit()
     await db.refresh(category)

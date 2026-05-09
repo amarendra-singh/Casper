@@ -137,10 +137,11 @@ describe('FlipkartReport header', () => {
     expect(back).toBeInTheDocument()
   })
 
-  it('shows all 3 tabs', async () => {
+  it('shows all 4 tabs', async () => {
     renderReport()
     await screen.findByText(/flipkart report/i)
-    expect(screen.getByText(/real p&l/i)).toBeInTheDocument()
+    expect(screen.getByText(/unit economics/i)).toBeInTheDocument()
+    expect(screen.getByText(/operating p&l/i)).toBeInTheDocument()
     expect(screen.getByText(/insights/i)).toBeInTheDocument()
   })
 })
@@ -182,18 +183,18 @@ describe('Unit Economics table', () => {
     expect(screen.getByText('₹172.0')).toBeInTheDocument()
   })
 
-  it('displays negative variance with - prefix', async () => {
+  it('displays negative profit per unit with - prefix', async () => {
     renderReport('unit')
     await screen.findByText('SHJ-JS-VRI-N65-WHITE')
-    // var/unit = 97.67 - 172 = -74.3
-    expect(screen.getByText('-₹74.3')).toBeInTheDocument()
+    // profit_no_gst = (3320.98/34) − 137.04 = 97.68 − 137.04 = -39.36 → "-₹39.4"
+    expect(screen.getByText('-₹39.4')).toBeInTheDocument()
   })
 
   it('displays margin % with sign prefix', async () => {
     renderReport('unit')
     await screen.findByText('SHJ-JS-VRI-N65-WHITE')
-    // -43.2% appears in both the table row and summary bar (avg of 1 row)
-    expect(screen.getAllByText('-43.2%').length).toBeGreaterThanOrEqual(1)
+    // real_margin_pct = (97.68 − 137.04) / 137.04 × 100 = -28.72 → "-28.7%"
+    expect(screen.getAllByText('-28.7%').length).toBeGreaterThanOrEqual(1)
   })
 
   it('no Sell Price/unit column (removed)', async () => {
@@ -208,9 +209,9 @@ describe('Unit Economics table', () => {
     expect(screen.queryByText(/platform bs\/unit/i)).toBeNull()
   })
 
-  it('shows FK Fees/unit column', async () => {
+  it('shows Platform Fee column', async () => {
     renderReport('unit')
-    await screen.findByText(/fk fees\/unit/i)
+    await screen.findByText(/platform fee/i)
   })
 })
 
@@ -218,25 +219,31 @@ describe('Unit Economics table', () => {
 // ── Summary bar ───────────────────────────────────────────────────────────────
 
 describe('Unit Economics summary bar', () => {
-  it('shows FK Bank Settlement total', async () => {
+  // Note: these labels also appear as column headers, so we use findAllByText
+  // and assert at least one match exists in the rendered DOM.
+  it('shows Total Payout', async () => {
     renderReport('unit')
-    await screen.findByText(/fk bank settlement/i)
+    const matches = await screen.findAllByText(/total payout/i)
+    expect(matches.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('shows Total Expected BS', async () => {
+  it('shows Total Cost', async () => {
     renderReport('unit')
-    await screen.findByText(/total expected bs/i)
+    const matches = await screen.findAllByText(/total cost/i)
+    expect(matches.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('shows Net Variance', async () => {
+  it('shows Net Profit', async () => {
     renderReport('unit')
-    await screen.findByText(/net variance/i)
+    const matches = await screen.findAllByText(/net profit/i)
+    expect(matches.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('shows beating/missing counts', async () => {
+  it('shows profitable / loss-making counts', async () => {
     renderReport('unit')
-    await screen.findByText(/beating target/i)
-    expect(screen.getByText(/missing target/i)).toBeInTheDocument()
+    const profitable = await screen.findAllByText(/profitable/i)
+    expect(profitable.length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText(/loss-making/i).length).toBeGreaterThanOrEqual(1)
   })
 })
 
@@ -244,11 +251,11 @@ describe('Unit Economics summary bar', () => {
 // ── Filters ───────────────────────────────────────────────────────────────────
 
 describe('SKU filter pills', () => {
-  it('shows All, Beating, Missing pills', async () => {
+  it('shows All, Profitable, Loss-making pills', async () => {
     renderReport('unit')
-    await screen.findByText(/all matched/i)
-    expect(screen.getByText(/^Beating \(/)).toBeInTheDocument()
-    expect(screen.getByText(/^Missing \(/)).toBeInTheDocument()
+    await screen.findByText(/^All \(/)
+    expect(screen.getByText(/^Profitable \(/)).toBeInTheDocument()
+    expect(screen.getByText(/^Loss-making \(/)).toBeInTheDocument()
   })
 
   it('search input filters SKUs', async () => {

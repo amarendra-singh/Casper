@@ -405,6 +405,12 @@
 }
 .st-tier-input:focus { border-color: var(--accent, #7c5cfc); }
 .st-tier-fee { max-width: 80px; font-family: var(--font-mono); }
+.st-tier-mode {
+  width: 56px;
+  font-family: var(--font-mono);
+  text-align: center;
+  cursor: pointer;
+}
 .st-tier-save {
   height: 28px;
   padding: 0 12px;

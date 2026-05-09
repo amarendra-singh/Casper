@@ -3,7 +3,7 @@ import { getPlatforms, updatePlatform, createPlatform } from '../api/client'
 import api from '../api/client'
 import './Settings.css'
 
-const TIER_DEFAULTS = { tier_name: '', fee: '' }
+const TIER_DEFAULTS = { tier_name: '', fee: '', fee_pct: '', mode: 'amt' /* 'amt' = ₹, 'pct' = % */ }
 
 function Toast({ msg, type }) {
   return <div className={`st-toast st-toast-${type}`}>{msg}</div>
@@ -12,14 +12,28 @@ function Toast({ msg, type }) {
 function TierRow({ tier, platformId, onUpdated, onDeleted }) {
   const [editing, setEditing] = useState(false)
   const [name,    setName]    = useState(tier.tier_name)
-  const [fee,     setFee]     = useState(String(tier.fee))
+  // Determine current mode from existing data: pct if fee_pct is set, else amt
+  const startMode = tier.fee_pct != null ? 'pct' : 'amt'
+  const [mode,    setMode]    = useState(startMode)
+  const [fee,     setFee]     = useState(tier.fee != null ? String(tier.fee) : '')
+  const [feePct,  setFeePct]  = useState(tier.fee_pct != null ? String(tier.fee_pct) : '')
   const [busy,    setBusy]    = useState(false)
 
   const save = async () => {
-    if (!name.trim() || fee === '') return
+    if (!name.trim()) return
+    const payload = { tier_name: name.trim() }
+    if (mode === 'pct') {
+      if (feePct === '') return
+      payload.fee_pct = parseFloat(feePct)
+      payload.fee     = 0   // when in pct mode, store 0 for the unused field
+    } else {
+      if (fee === '') return
+      payload.fee     = parseFloat(fee)
+      payload.fee_pct = null
+    }
     setBusy(true)
     try {
-      const r = await api.patch(`/platforms/${platformId}/tiers/${tier.id}`, { tier_name: name.trim(), fee: parseFloat(fee) })
+      const r = await api.patch(`/platforms/${platformId}/tiers/${tier.id}`, payload)
       onUpdated(r.data)
       setEditing(false)
     } catch { /* ignore */ }
@@ -36,19 +50,38 @@ function TierRow({ tier, platformId, onUpdated, onDeleted }) {
     finally { setBusy(false) }
   }
 
+  const cancelEdit = () => {
+    setEditing(false)
+    setName(tier.tier_name)
+    setMode(startMode)
+    setFee(tier.fee != null ? String(tier.fee) : '')
+    setFeePct(tier.fee_pct != null ? String(tier.fee_pct) : '')
+  }
+
   if (editing) return (
     <div className="st-tier-row st-tier-edit">
       <input className="st-tier-input" value={name} onChange={e => setName(e.target.value)} placeholder="Tier name" />
-      <input className="st-tier-input st-tier-fee" type="number" value={fee} onChange={e => setFee(e.target.value)} placeholder="Fee %" />
+      <select className="st-tier-input st-tier-mode" value={mode} onChange={e => setMode(e.target.value)}>
+        <option value="amt">₹</option>
+        <option value="pct">%</option>
+      </select>
+      {mode === 'pct'
+        ? <input className="st-tier-input st-tier-fee" type="number" value={feePct}
+            onChange={e => setFeePct(e.target.value)} placeholder="% of base" />
+        : <input className="st-tier-input st-tier-fee" type="number" value={fee}
+            onChange={e => setFee(e.target.value)} placeholder="Fee in ₹" />
+      }
       <button className="st-tier-save" onClick={save} disabled={busy}>{busy ? '…' : 'Save'}</button>
-      <button className="st-tier-cancel" onClick={() => { setEditing(false); setName(tier.tier_name); setFee(String(tier.fee)) }}>✕</button>
+      <button className="st-tier-cancel" onClick={cancelEdit}>✕</button>
     </div>
   )
 
+  // Read-only view
+  const displayValue = tier.fee_pct != null ? `${tier.fee_pct}%` : `₹${tier.fee}`
   return (
     <div className="st-tier-row">
       <span className="st-tier-name">{tier.tier_name}</span>
-      <span className="st-tier-fee-val">{tier.fee}%</span>
+      <span className="st-tier-fee-val">{displayValue}</span>
       <button className="st-tier-edit-btn" onClick={() => setEditing(true)}>Edit</button>
       <button className="st-tier-del-btn" onClick={del} disabled={busy}>✕</button>
     </div>
@@ -108,10 +141,18 @@ function PlatformCard({ platform, onUpdated }) {
   }
 
   const handleTierAdded = async () => {
-    if (!newTier.tier_name.trim() || newTier.fee === '') return
+    if (!newTier.tier_name.trim()) return
+    const isPct = (newTier.mode || 'amt') === 'pct'
+    const valStr = isPct ? newTier.fee_pct : newTier.fee
+    if (valStr === '' || valStr === undefined) return
+    const payload = {
+      tier_name: newTier.tier_name.trim(),
+      fee:     isPct ? 0 : parseFloat(newTier.fee),
+      fee_pct: isPct ? parseFloat(newTier.fee_pct) : null,
+    }
     setBusy(true)
     try {
-      const r = await api.post(`/platforms/${platform.id}/tiers`, { tier_name: newTier.tier_name.trim(), fee: parseFloat(newTier.fee) })
+      const r = await api.post(`/platforms/${platform.id}/tiers`, payload)
       setTiers(p => [...p, r.data])
       setNewTier(TIER_DEFAULTS)
       setAddTier(false)
@@ -221,8 +262,18 @@ function PlatformCard({ platform, onUpdated }) {
               <div className="st-tier-row st-tier-edit">
                 <input className="st-tier-input" placeholder="Tier name (e.g. Standard)"
                   value={newTier.tier_name} onChange={e => setNewTier(p => ({ ...p, tier_name: e.target.value }))} />
-                <input className="st-tier-input st-tier-fee" type="number" placeholder="Fee %"
-                  value={newTier.fee} onChange={e => setNewTier(p => ({ ...p, fee: e.target.value }))} />
+                <select className="st-tier-input st-tier-mode"
+                  value={newTier.mode || 'amt'}
+                  onChange={e => setNewTier(p => ({ ...p, mode: e.target.value }))}>
+                  <option value="amt">₹</option>
+                  <option value="pct">%</option>
+                </select>
+                {(newTier.mode || 'amt') === 'pct'
+                  ? <input className="st-tier-input st-tier-fee" type="number" placeholder="% of base"
+                      value={newTier.fee_pct} onChange={e => setNewTier(p => ({ ...p, fee_pct: e.target.value }))} />
+                  : <input className="st-tier-input st-tier-fee" type="number" placeholder="Fee in ₹"
+                      value={newTier.fee} onChange={e => setNewTier(p => ({ ...p, fee: e.target.value }))} />
+                }
                 <button className="st-tier-save" onClick={handleTierAdded} disabled={busy}>{busy ? '…' : 'Add'}</button>
                 <button className="st-tier-cancel" onClick={() => { setAddTier(false); setNewTier(TIER_DEFAULTS) }}>✕</button>
               </div>
