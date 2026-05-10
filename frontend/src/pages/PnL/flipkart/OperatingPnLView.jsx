@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { fmt, fmtN, fmtPct } from './utils'
+import { fmt, fmtN } from './utils'
 import { useOperatingPnlData }    from './useOperatingPnlData'
 import OperatingPnlPatternCards   from './OperatingPnlPatternCards'
 import { updatePlatform }    from '../../../api/client'
@@ -18,33 +18,7 @@ import { updatePlatform }    from '../../../api/client'
  *   Surfaces the hidden loss from under-selling vs target volume.
  */
 export default function OperatingPnLView({ report, onRefresh }) {
-  const { rows, totals, killList, returnLeakage, dataGap } = useOperatingPnlData(report)
-
-  const [skuFilter, setSkuFilter] = useState('all')
-  const [skuSearch, setSkuSearch] = useState('')
-  const [sortCol,   setSortCol]   = useState('true_profit')
-  const [sortDir,   setSortDir]   = useState('asc')
-
-  const profitCount = rows.filter(r => r.true_status === 'profit').length
-  const lossCount   = rows.filter(r => r.true_status === 'loss').length
-
-  const filteredRows = rows
-    .filter(r => {
-      if (skuFilter === 'profit') return r.true_status === 'profit'
-      if (skuFilter === 'loss')   return r.true_status === 'loss'
-      return true
-    })
-    .filter(r => !skuSearch || r.platform_sku_name.toLowerCase().includes(skuSearch.toLowerCase()))
-    .sort((a, b) => {
-      const av = a[sortCol] ?? (sortDir === 'asc' ? Infinity : -Infinity)
-      const bv = b[sortCol] ?? (sortDir === 'asc' ? Infinity : -Infinity)
-      return sortDir === 'asc' ? av - bv : bv - av
-    })
-
-  function toggleSort(col) {
-    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    else { setSortCol(col); setSortDir('asc') }
-  }
+  const { totals, killList, returnLeakage, dataGap } = useOperatingPnlData(report)
 
   return (
     <div className="pnl-body pnl-body-full pnl-animate-in">
@@ -115,53 +89,9 @@ export default function OperatingPnLView({ report, onRefresh }) {
         totals={totals}
       />
 
-      {/* ── Table controls ─────────────────────────────────────────────────── */}
-      <div className="pnl-tbl-controls">
-        <input className="pnl-search" placeholder="Search SKU…" value={skuSearch}
-          onChange={e => setSkuSearch(e.target.value)} />
-        <div className="pnl-filter-pills">
-          {[
-            { key: 'all',    label: `All (${rows.length})` },
-            { key: 'profit', label: `Profitable (${profitCount})` },
-            { key: 'loss',   label: `Loss-making (${lossCount})` },
-          ].map(f => (
-            <button key={f.key}
-              className={`pnl-fpill${skuFilter === f.key ? ' active' : ''}`}
-              onClick={() => setSkuFilter(f.key)}>{f.label}</button>
-          ))}
-        </div>
-        <span className="pnl-row-count">{filteredRows.length} SKUs</span>
-      </div>
-
-      {/* ── Per-SKU Operating P&L table ───────────────────────────────────── */}
-      <div className="pnl-tbl-wrap">
-        <table className="pnl-tbl">
-          <thead>
-            <tr>
-              <th className="pnl-th sticky-col">SKU</th>
-              <SortTh col="net_units"            label="Units Sold"           sub="after returns" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="gross_units"          label="Gross Units"          sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="true_return_pct"      label="Return Rate"          sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="true_payout"          label="Net Payout"           sub="cash from Flipkart" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="true_bs_per_u"        label="Net Payout / unit"    sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="casper_breakeven"     label="Breakeven"            sub="per unit · cost recovery" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="casper_breakeven_gst" label="Breakeven (GST)"      sub="per unit · cost + GST" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="true_profit_u"        label="Profit / unit"        sub="Payout − Breakeven" primary sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="true_total_cost"      label="Total Cost"           sub="Breakeven × Units" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="true_profit"          label="Net Profit"           sub="Payout − Total Cost" primary sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="true_margin_pct"      label="Net Margin"           sub="Profit ÷ Total Cost" primary sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <th className="pnl-th center">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRows.map(row => <TrueRow key={row.id} row={row} />)}
-            {filteredRows.length === 0 && (
-              <tr><td colSpan={13} className="pnl-td center" style={{ padding: '32px', color: 'var(--text-3)' }}>
-                No SKUs match your filter
-              </td></tr>
-            )}
-          </tbody>
-        </table>
+      {/* Operating P&L is now a dashboard view — for per-SKU detail, see Profit & Loss tab */}
+      <div className="pnl-ops-hint">
+        Need per-SKU detail? See the <strong>Profit & Loss</strong> tab.
       </div>
 
     </div>
@@ -235,58 +165,3 @@ function SumItem({ label, value, valClass = '' }) {
   )
 }
 
-function SortTh({ col, label, sub, primary, sortCol, sortDir, onClick }) {
-  const icon = sortCol === col ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''
-  return (
-    <th className={`pnl-th sortable${primary ? ' pnl-th-primary' : ''}`} onClick={() => onClick(col)}>
-      <span className="pnl-th-label">{label}</span>
-      {sub && <span className="pnl-th-sub">{sub}</span>}
-      {icon}
-    </th>
-  )
-}
-
-function TrueRow({ row }) {
-  const isLoss = row.true_status === 'loss'
-  const pU     = row.true_profit_u
-  const p      = row.true_profit
-  const m      = row.true_margin_pct
-
-  return (
-    <tr className={`pnl-tr${isLoss ? ' pnl-tr-loss' : ''}`}>
-      <td className="pnl-td sku-col sticky-col">
-        <span className="pnl-sku-name">{row.platform_sku_name}</span>
-      </td>
-      <td className="pnl-td center"><span className="pnl-units-net">{fmtN(row.net_units)}</span></td>
-      <td className="pnl-td center muted">{fmtN(row.gross_units)}</td>
-      <td className="pnl-td center">
-        <span className={`pnl-ret-rate ${row.true_return_pct > 40 ? 'high' : row.true_return_pct > 20 ? 'mid' : 'low'}`}>
-          {fmtPct(row.true_return_pct)}
-        </span>
-      </td>
-      <td className="pnl-td right mono">{fmt(row.true_payout)}</td>
-      <td className="pnl-td right mono">{fmt(row.true_bs_per_u, 1)}</td>
-      <td className="pnl-td right mono muted">{fmt(row.casper_breakeven, 1)}</td>
-      <td className="pnl-td right mono muted">{row.casper_breakeven_gst != null ? fmt(row.casper_breakeven_gst, 1) : '—'}</td>
-      <td className={`pnl-td right mono pnl-td-primary variance ${pU >= 0 ? 'positive' : 'negative'}`}>
-        {(pU >= 0 ? '+' : '') + fmt(pU, 1)}
-      </td>
-      <td className="pnl-td right mono red">{fmt(row.true_total_cost)}</td>
-      <td className={`pnl-td right mono pnl-td-primary variance ${p >= 0 ? 'positive' : 'negative'}`}>
-        {(p >= 0 ? '+' : '') + fmt(p)}
-      </td>
-      <td className="pnl-td center pnl-td-primary">
-        {m == null ? '—' : (
-          <span className={`pnl-ret-rate ${m > 0 ? 'low' : m > -10 ? 'mid' : 'high'}`}>
-            {m >= 0 ? '+' : ''}{m.toFixed(1)}%
-          </span>
-        )}
-      </td>
-      <td className="pnl-td center">
-        <span className={`pnl-status-badge status-${row.true_status}`}>
-          {row.true_status === 'profit' ? '🟢' : '🔴'}
-        </span>
-      </td>
-    </tr>
-  )
-}

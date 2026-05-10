@@ -44,10 +44,26 @@ class PnlSkuRowResponse(BaseModel):
     variance_bs: Optional[float]
     variance_margin_pct: Optional[float]
 
-    # Casper pricing ladder (live from sku_pricing)
-    casper_breakeven: Optional[float] = None      # pure cost basis (no profit, no GST)
-    casper_breakeven_gst: Optional[float] = None  # breakeven + GST on breakeven (zero profit floor)
-    casper_misc_total: Optional[float] = None     # per-unit overhead allocation (rent/elec/manpower)
+    # Casper pricing ladder (live from sku_pricing) — full breakdown for P&L view
+    # ── Unit Economics group (cost components) ─────────────────────────
+    casper_price: Optional[float] = None
+    casper_package: Optional[float] = None
+    casper_logistics: Optional[float] = None         # inbound logistics
+    casper_addons: Optional[float] = None
+    casper_misc_total: Optional[float] = None
+    casper_cr_pct: Optional[float] = None
+    casper_cr_amt: Optional[float] = None
+    casper_dmg_pct: Optional[float] = None
+    casper_dmg_amt: Optional[float] = None
+    # ── Profitability group ────────────────────────────────────────────
+    casper_breakeven: Optional[float] = None         # pure cost basis (no profit, no GST)
+    casper_breakeven_gst: Optional[float] = None     # breakeven × (1 + GST%)
+    casper_profit_pct: Optional[float] = None
+    casper_profit_amt: Optional[float] = None        # profit % × breakeven
+    casper_gst_pct: Optional[float] = None
+    # ── Bank Settlement group ──────────────────────────────────────────
+    casper_target_pre_gst: Optional[float] = None    # breakeven + profit (rounded)
+    casper_target_post_gst: Optional[float] = None   # target_pre_gst × (1 + GST%)
 
     # Derived: is this SKU matched to Casper?
     is_matched: bool = False

@@ -67,7 +67,7 @@ export default function FlipkartPnL() {
       setReports(await getPnlReports(flipkartId))
       setShowUpload(false); setConflict(null); setFile(null)
       showToast(`Uploaded — ${result.matched_skus} SKUs matched, ${result.unmatched_skus} unmatched`)
-      navigate(`/pnl/flipkart/${result.report_id}?view=unit`)
+      navigate(`/pnl/flipkart/${result.report_id}?view=pnl`)
     } catch (err) {
       if (err.response?.status === 409) { setConflict(err.response.data.detail) }
       else {
@@ -185,7 +185,7 @@ export default function FlipkartPnL() {
                           <span>📄</span> Flipkart Report
                         </button>
                         <button className="pnl-card-action-btn pnl-card-action-pnl"
-                          onClick={() => navigate(`/pnl/flipkart/${r.id}?view=unit`)}>
+                          onClick={() => navigate(`/pnl/flipkart/${r.id}?view=pnl`)}>
                           <span>📊</span> Real P&amp;L
                         </button>
                       </div>
@@ -228,7 +228,7 @@ export default function FlipkartPnL() {
                         <button className="pnl-list-action-btn"
                           onClick={() => navigate(`/pnl/flipkart/${r.id}?view=fk`)}>📄 Report</button>
                         <button className="pnl-list-action-btn pnl-list-action-pnl"
-                          onClick={() => navigate(`/pnl/flipkart/${r.id}?view=unit`)}>📊 P&amp;L</button>
+                          onClick={() => navigate(`/pnl/flipkart/${r.id}?view=pnl`)}>📊 P&amp;L</button>
                         <button className="pnl-card-del" onClick={e => handleDelete(r.id, e)}>✕</button>
                       </div>
                     </div>
@@ -313,7 +313,7 @@ export default function FlipkartPnL() {
                               <button className="pnl-lt-open-btn" title="Flipkart Report"
                                 onClick={() => navigate(`/pnl/flipkart/${r.id}?view=fk`)}>📄</button>
                               <button className="pnl-lt-open-btn pnl-lt-open-pnl" title="Unit Economics"
-                                onClick={() => navigate(`/pnl/flipkart/${r.id}?view=unit`)}>📊</button>
+                                onClick={() => navigate(`/pnl/flipkart/${r.id}?view=pnl`)}>📊</button>
                             </div>
                           </td>
                         </tr>

@@ -207,7 +207,12 @@ def _build_sku_row_response(row) -> PnlSkuRowResponse:
     sp = row.sku_pricing  # may be None if unmatched
     casper_expected_bs   = sp.bank_settlement if sp else row.casper_expected_bs
     casper_breakeven     = sp.breakeven if sp else None
-    casper_breakeven_gst = round(sp.breakeven * (1 + (sp.gst or 0) / 100), 2) if sp else None
+    gst_pct              = sp.gst if sp else None
+    casper_breakeven_gst = round(sp.breakeven * (1 + (gst_pct or 0) / 100), 2) if sp else None
+    # Target Pre-GST = breakeven + profit_amt (matches SKU page math)
+    target_pre_gst       = round(sp.breakeven + (sp.net_profit_amt or 0), 0) if sp else None
+    # Target Post-GST = bank_settlement on sku_pricing (already includes GST)
+    target_post_gst      = round(sp.bank_settlement, 0) if sp else None
 
     return PnlSkuRowResponse(
         id=row.id,
@@ -240,9 +245,25 @@ def _build_sku_row_response(row) -> PnlSkuRowResponse:
         variance_bs=row.variance_bs,
         variance_margin_pct=row.variance_margin_pct,
         is_matched=row.sku_pricing_id is not None,
+        # Unit Economics breakdown
+        casper_price=sp.price if sp else None,
+        casper_package=sp.package if sp else None,
+        casper_logistics=sp.logistics if sp else None,
+        casper_addons=sp.addons if sp else None,
+        casper_misc_total=sp.misc_total if sp else None,
+        casper_cr_pct=sp.cr_percentage if sp else None,
+        casper_cr_amt=sp.cr_cost if sp else None,
+        casper_dmg_pct=sp.damage_percentage if sp else None,
+        casper_dmg_amt=sp.damage_cost if sp else None,
+        # Profitability
         casper_breakeven=casper_breakeven,
         casper_breakeven_gst=casper_breakeven_gst,
-        casper_misc_total=sp.misc_total if sp else None,
+        casper_profit_pct=sp.profit_percentage if sp else None,
+        casper_profit_amt=sp.net_profit_amt if sp else None,
+        casper_gst_pct=gst_pct,
+        # Bank Settlement (target)
+        casper_target_pre_gst=target_pre_gst,
+        casper_target_post_gst=target_post_gst,
     )
 
 

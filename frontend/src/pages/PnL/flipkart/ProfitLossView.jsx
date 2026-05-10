@@ -1,11 +1,23 @@
 import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { fmt, fmtN, fmtPct } from './utils'
 
 /**
- * Unit Economics tab — per-SKU profitability breakdown.
- * Shows Profit/unit, Margin, and totals (Cost, Payout, Net Profit) anchored on breakeven.
+ * Profit & Loss tab — per-SKU actual-vs-target reconciliation.
+ *
+ *  PURPOSE: Show how each SKU's actual Flipkart settlement compares to the
+ *  target we set in the SKU page (breakeven, target BS). This is the
+ *  reconciliation view — NOT a duplicate of the SKU page's cost breakdown.
+ *
+ *  Column groups (left → right):
+ *    SKU       — name + 🔗 deep-link to SKU page
+ *    Sold      — Gross Units, Units Sold, Return Rate (from FK)
+ *    Target    — Breakeven, Target Pre-GST, Target Post-GST (from SKU master)
+ *    Actual    — Platform Fees/u, Net Payout, Payout/u (from FK)
+ *    Variance  — Profit/u, Total Cost, Net Profit, Net Margin, Status (computed)
  */
-export default function UnitEconomicsView({ report, augmentedRows }) {
+export default function ProfitLossView({ report, augmentedRows }) {
+  const navigate = useNavigate()
   const [skuFilter, setSkuFilter] = useState('all')
   const [skuSearch, setSkuSearch] = useState('')
   const [sortCol,   setSortCol]   = useState('total_true_profit')
@@ -18,6 +30,7 @@ export default function UnitEconomicsView({ report, augmentedRows }) {
     const totalExpected = augmentedRows.reduce((s, r) => s + ((r.casper_breakeven || 0) * (r.net_units || 0)), 0)
     const totalActual   = augmentedRows.reduce((s, r) => s + (r.bank_settlement_projected || 0), 0)
     const totalProfit   = augmentedRows.reduce((s, r) => s + (r.total_true_profit || 0), 0)
+    const totalUnits    = augmentedRows.reduce((s, r) => s + (r.net_units || 0), 0)
     const overallVarPct = totalExpected > 0 ? ((totalActual - totalExpected) / totalExpected) * 100 : null
     const avgProfitPerUnit = augmentedRows.length
       ? augmentedRows.reduce((s, r) => s + (r.true_profit_per_unit || 0), 0) / augmentedRows.length
@@ -38,7 +51,7 @@ export default function UnitEconomicsView({ report, augmentedRows }) {
     })
     const weightedMarginPct    = totalCostNoGst > 0 ? (totalProfitNoGst / totalCostNoGst) * 100 : null
     const weightedMarginGstPct = totalCostGst   > 0 ? (totalProfitGst   / totalCostGst)   * 100 : null
-    return { totalExpected, totalActual, totalProfit, overallVarPct, avgProfitPerUnit, weightedMarginPct, weightedMarginGstPct }
+    return { totalExpected, totalActual, totalProfit, totalUnits, overallVarPct, avgProfitPerUnit, weightedMarginPct, weightedMarginGstPct }
   }, [augmentedRows])
 
   const filteredRows = augmentedRows
@@ -99,13 +112,13 @@ export default function UnitEconomicsView({ report, augmentedRows }) {
         <SumItem label="Profitable" valClass="green" value={profitSkus.length} />
         <SumItem label="Loss-making" valClass="red"   value={lossSkus.length} />
         <div className="pnl-sum-divider"/>
-        <SumItem label="Total Units" value={fmtN(report.net_units)} />
+        <SumItem label="Total Units" value={fmtN(totals.totalUnits)} />
         {report.unmatched_skus > 0 && (
           <SumItem label="No Pricing Data" valClass="amber" value={`${report.unmatched_skus} SKUs hidden`} />
         )}
       </div>
 
-      {/* Controls */}
+      {/* Controls: search + filter pills */}
       <div className="pnl-tbl-controls">
         <input className="pnl-search" placeholder="Search SKU…" value={skuSearch}
           onChange={e => setSkuSearch(e.target.value)} />
@@ -123,32 +136,50 @@ export default function UnitEconomicsView({ report, augmentedRows }) {
         <span className="pnl-row-count">{filteredRows.length} SKUs</span>
       </div>
 
-      {/* Table */}
+      {/* Table — focused on actual-vs-target reconciliation */}
       <div className="pnl-tbl-wrap">
-        <table className="pnl-tbl">
+        <table className="pnl-tbl pnl-tbl-grouped">
           <thead>
+            {/* Group header row */}
+            <tr className="pnl-gh-row">
+              <th className="pnl-gh pnl-gh-sku sticky-col">SKU</th>
+              <th className="pnl-gh pnl-gh-actual"  colSpan={3}>Sold</th>
+              <th className="pnl-gh pnl-gh-bs"      colSpan={3}>Target</th>
+              <th className="pnl-gh pnl-gh-ue"      colSpan={3}>Actual (Flipkart)</th>
+              <th className="pnl-gh pnl-gh-recon"   colSpan={6}>Variance / Bottom Line</th>
+            </tr>
+            {/* Sub-headers row */}
             <tr>
-              <th className="pnl-th sticky-col">SKU</th>
-              <SortTh col="net_units"            label="Units Sold"                  sub="after returns" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="return_rate_pct"     label="Return Rate"                  sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="fees_per_unit"       label="Platform Fee"                 sub="per unit · commission + tax" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="fk_bs_per_unit"      label="Net Payout"                   sub="per unit · Flipkart settlement" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="casper_breakeven"    label="Breakeven"                    sub="per unit · cost recovery" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="casper_breakeven_gst" label="Breakeven + GST"             sub="per unit · cost + 5% GST" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="profit_no_gst"       label="Profit / unit"                sub="Payout − Breakeven" primary sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="real_margin_pct"     label="Margin"                       sub="Profit ÷ Breakeven" primary sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="profit_with_gst"     label="Profit / unit (after GST)"    sub="Payout − Breakeven+GST" primary sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="margin_gst_pct"      label="Margin (after GST)"           sub="Profit ÷ Breakeven+GST" primary sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="casper_expected_bs"  label="Target Payout"                sub="per unit · cost + profit + GST" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="expected_total"      label="Total Cost"                   sub="Breakeven × Units" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="total_earned"        label="Total Payout"                 sub="Settled by Flipkart" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="total_true_profit"   label="Net Profit"                   sub="Total Payout − Total Cost" primary sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <th className="pnl-th sticky-col"></th>
+              {/* Sold */}
+              <SortTh col="gross_units"            label="Gross Units"     sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <SortTh col="net_units"              label="Units Sold"      sub="after returns" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <SortTh col="return_rate_pct"        label="Return Rate"     sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              {/* Target (from SKU master) */}
+              <SortTh col="casper_breakeven"       label="Breakeven"       sub="per unit · from SKU master" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <SortTh col="casper_target_pre_gst"  label="Target Pre-GST"  sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <SortTh col="casper_target_post_gst" label="Target Post-GST" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              {/* Actual (from FK) */}
+              <SortTh col="fees_per_unit"          label="Platform Fee/u"  sub="commission + tax" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <SortTh col="total_earned"           label="Net Payout"      sub="settled by Flipkart" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <SortTh col="fk_bs_per_unit"         label="Payout / unit"   sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              {/* Variance / Bottom Line — primary */}
+              <SortTh col="profit_no_gst"          label="Profit / unit"   sub="Payout − Breakeven" primary sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <SortTh col="expected_total"         label="Total Cost"      sub="Breakeven × Units" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <SortTh col="total_true_profit"      label="Net Profit"      sub="Payout − Cost" primary sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <SortTh col="real_margin_pct"        label="Net Margin"      sub="Profit ÷ Cost" primary
+                tooltip="Net Margin = (Payout − Breakeven) ÷ Breakeven × 100. Return-on-cost. NOTE: This differs from FK report's 'Net Margins %' which uses (Earnings ÷ Net Sales) — revenue-anchored. Our denominator is YOUR cost, so we can show negative margins on losing SKUs."
+                sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <SortTh col="margin_gst_pct"         label="Net Margin (after GST)" sub="GST-anchored" primary
+                tooltip="Net Margin anchored on breakeven + GST. More conservative — treats GST as cost burden, not pass-through tax."
+                sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <th className="pnl-th center pnl-th-primary">Status</th>
             </tr>
           </thead>
           <tbody>
-            {filteredRows.map(row => <PnLRow key={row.id} row={row} />)}
+            {filteredRows.map(row => <PnLRow key={row.id} row={row} onJumpToSku={() => navigate(`/skus?sku=${encodeURIComponent(row.platform_sku_name)}`)} />)}
             {filteredRows.length === 0 && (
-              <tr><td colSpan={15} className="pnl-td center" style={{ padding: '32px', color: 'var(--text-3)' }}>
+              <tr><td colSpan={16} className="pnl-td center" style={{ padding: '32px', color: 'var(--text-3)' }}>
                 No SKUs match your filter
               </td></tr>
             )}
@@ -170,42 +201,61 @@ function SumItem({ label, value, valClass = '' }) {
   )
 }
 
-function SortTh({ col, label, sub, primary, sortCol, sortDir, onClick }) {
+function SortTh({ col, label, sub, primary, sortCol, sortDir, onClick, tooltip }) {
   const icon = sortCol === col ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''
   return (
-    <th className={`pnl-th sortable${primary ? ' pnl-th-primary' : ''}`} onClick={() => onClick(col)}>
-      <span className="pnl-th-label">{label}</span>
+    <th
+      className={`pnl-th sortable${primary ? ' pnl-th-primary' : ''}`}
+      onClick={() => onClick(col)}
+      title={tooltip}
+    >
+      <span className="pnl-th-label">{label}{tooltip ? ' ⓘ' : ''}</span>
       {sub && <span className="pnl-th-sub">{sub}</span>}
       {icon}
     </th>
   )
 }
 
-function PnLRow({ row }) {
+function PnLRow({ row, onJumpToSku }) {
   const profitNo   = row.profit_no_gst
-  const profitWith = row.profit_with_gst
   const totalP     = row.total_true_profit
-  const noCls      = profitNo == null   ? '' : profitNo > 0   ? 'positive' : 'negative'
-  const withCls    = profitWith == null ? '' : profitWith > 0 ? 'positive' : 'negative'
-  const totalCls   = totalP == null     ? '' : totalP > 0     ? 'positive' : 'negative'
+  const noCls      = profitNo == null ? '' : profitNo > 0 ? 'positive' : 'negative'
+  const totalCls   = totalP == null   ? '' : totalP > 0   ? 'positive' : 'negative'
+  const isLoss     = profitNo != null && profitNo < 0
 
   return (
-    <tr className={`pnl-tr${profitWith != null && profitWith < 0 ? ' pnl-tr-loss' : ''}`}>
+    <tr className={`pnl-tr${isLoss ? ' pnl-tr-loss' : ''}`}>
       <td className="pnl-td sku-col sticky-col">
         <span className="pnl-sku-name">{row.platform_sku_name}</span>
+        <button className="pnl-sku-link" title="View in SKUs page" onClick={onJumpToSku}>🔗</button>
       </td>
+
+      {/* ── Sold ─────────────────────────────────────────────────── */}
+      <td className="pnl-td center muted">{fmtN(row.gross_units)}</td>
       <td className="pnl-td center"><span className="pnl-units-net">{fmtN(row.net_units)}</span></td>
       <td className="pnl-td center">
         {row.return_rate_pct != null
           ? <span className={`pnl-ret-rate ${row.return_rate_pct > 40 ? 'high' : row.return_rate_pct > 20 ? 'mid' : 'low'}`}>{fmtPct(row.return_rate_pct)}</span>
           : '—'}
       </td>
-      <td className="pnl-td right mono red">{row.fees_per_unit != null ? fmt(row.fees_per_unit, 1) : '—'}</td>
-      <td className="pnl-td right mono">{row.fk_bs_per_unit != null ? fmt(row.fk_bs_per_unit, 1) : '—'}</td>
+
+      {/* ── Target (from SKU master) ─────────────────────────────── */}
       <td className="pnl-td right mono muted">{row.casper_breakeven != null ? fmt(row.casper_breakeven, 1) : '—'}</td>
-      <td className="pnl-td right mono muted">{row.casper_breakeven_gst != null ? fmt(row.casper_breakeven_gst, 1) : '—'}</td>
+      <td className="pnl-td right mono muted">{row.casper_target_pre_gst != null ? fmt(row.casper_target_pre_gst, 0) : '—'}</td>
+      <td className="pnl-td right mono muted">{row.casper_target_post_gst != null ? fmt(row.casper_target_post_gst, 0) : '—'}</td>
+
+      {/* ── Actual (FK) ──────────────────────────────────────────── */}
+      <td className="pnl-td right mono red">{row.fees_per_unit != null ? fmt(row.fees_per_unit, 1) : '—'}</td>
+      <td className="pnl-td right mono">{row.total_earned != null ? fmt(row.total_earned) : '—'}</td>
+      <td className="pnl-td right mono">{row.fk_bs_per_unit != null ? fmt(row.fk_bs_per_unit, 1) : '—'}</td>
+
+      {/* ── Variance / Bottom Line — primary highlight ───────────── */}
       <td className={`pnl-td right mono pnl-td-primary variance ${noCls}`}>
         {profitNo == null ? '—' : (profitNo >= 0 ? '+' : '') + fmt(profitNo, 1)}
+      </td>
+      <td className="pnl-td right mono muted">{row.expected_total != null ? fmt(row.expected_total) : '—'}</td>
+      <td className={`pnl-td right mono pnl-td-primary variance ${totalCls}`}>
+        {totalP == null ? '—' : (totalP >= 0 ? '+' : '') + fmt(totalP)}
       </td>
       <td className="pnl-td center pnl-td-primary">
         {row.real_margin_pct == null ? '—' : (
@@ -214,9 +264,6 @@ function PnLRow({ row }) {
           </span>
         )}
       </td>
-      <td className={`pnl-td right mono pnl-td-primary variance ${withCls}`}>
-        {profitWith == null ? '—' : (profitWith >= 0 ? '+' : '') + fmt(profitWith, 1)}
-      </td>
       <td className="pnl-td center pnl-td-primary">
         {row.margin_gst_pct == null ? '—' : (
           <span className={`pnl-ret-rate ${row.margin_gst_pct > 0 ? 'low' : row.margin_gst_pct > -10 ? 'mid' : 'high'}`}>
@@ -224,11 +271,10 @@ function PnLRow({ row }) {
           </span>
         )}
       </td>
-      <td className="pnl-td right mono muted">{fmt(row.casper_expected_bs, 1)}</td>
-      <td className="pnl-td right mono muted">{row.expected_total != null ? fmt(row.expected_total) : '—'}</td>
-      <td className="pnl-td right mono">{row.total_earned != null ? fmt(row.total_earned) : '—'}</td>
-      <td className={`pnl-td right mono pnl-td-primary variance ${totalCls}`}>
-        {totalP == null ? '—' : (totalP >= 0 ? '+' : '') + fmt(totalP)}
+      <td className="pnl-td center pnl-td-primary">
+        <span className={`pnl-status-badge status-${isLoss ? 'loss' : 'profit'}`}>
+          {isLoss ? '🔴' : '🟢'}
+        </span>
       </td>
     </tr>
   )

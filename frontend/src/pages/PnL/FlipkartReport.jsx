@@ -4,13 +4,13 @@ import { getPnlReport } from '../../api/client'
 import { fmtPeriod }      from './flipkart/utils'
 import { useFlipkartData } from './flipkart/useFlipkartData'
 import FlipkartOverview   from './flipkart/FlipkartOverview'
-import UnitEconomicsView  from './flipkart/UnitEconomicsView'
+import ProfitLossView     from './flipkart/ProfitLossView'
 import OperatingPnLView   from './flipkart/OperatingPnLView'
 import InsightsPanel      from './flipkart/InsightsPanel'
 import './Flipkart.css'
 
-const VIEWS       = ['fk', 'unit', 'ops', 'insights']
-const VIEW_LABELS = ['Flipkart Report', 'Unit Economics', 'Operating P&L', 'Insights']
+const VIEWS       = ['fk', 'pnl', 'ops', 'insights']
+const VIEW_LABELS = ['Flipkart Report', 'Profit & Loss', 'Operating P&L', 'Insights']
 
 /**
  * Top-level route component for /pnl/flipkart/:reportId.
@@ -96,8 +96,8 @@ export default function FlipkartReport() {
         </div>
       </div>
 
-      {view === 'fk'       && <FlipkartOverview report={report} insightsData={insightsData} onViewPnL={() => setView('unit')} />}
-      {view === 'unit'     && <UnitEconomicsView report={report} augmentedRows={augmentedRows} />}
+      {view === 'fk'       && <FlipkartOverview report={report} insightsData={insightsData} onViewPnL={() => setView('pnl')} />}
+      {view === 'pnl'      && <ProfitLossView    report={report} augmentedRows={augmentedRows} />}
       {view === 'ops'      && <OperatingPnLView  report={report} onRefresh={() => fetchReport(false)} />}
       {view === 'insights' && <InsightsPanel    report={report} insightsData={insightsData} />}
 
