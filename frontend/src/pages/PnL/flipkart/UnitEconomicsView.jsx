@@ -84,13 +84,13 @@ export default function UnitEconomicsView({ report, augmentedRows }) {
           </div>
         </div>
         <div className="pnl-sum-item">
-          <div className="pnl-sum-label">Wtd Margin</div>
+          <div className="pnl-sum-label">Net Margin</div>
           <div className={`pnl-sum-val ${(totals.weightedMarginPct ?? 0) >= 0 ? 'green' : 'red'}`}>
             {totals.weightedMarginPct != null ? ((totals.weightedMarginPct >= 0 ? '+' : '') + totals.weightedMarginPct.toFixed(1) + '%') : '—'}
           </div>
         </div>
         <div className="pnl-sum-item">
-          <div className="pnl-sum-label">Wtd Margin (after GST)</div>
+          <div className="pnl-sum-label">Net Margin (after GST)</div>
           <div className={`pnl-sum-val ${(totals.weightedMarginGstPct ?? 0) >= 0 ? 'green' : 'red'}`}>
             {totals.weightedMarginGstPct != null ? ((totals.weightedMarginGstPct >= 0 ? '+' : '') + totals.weightedMarginGstPct.toFixed(1) + '%') : '—'}
           </div>

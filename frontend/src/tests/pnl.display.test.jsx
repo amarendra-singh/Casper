@@ -337,13 +337,15 @@ describe('Operating P&L tab', () => {
 
   it('renders verdict banner with loss state', async () => {
     renderReport('ops')
-    const banner = await screen.findByText(/Real loss/i)
+    const banner = await screen.findByText(/Final loss/i)
     expect(banner).toBeInTheDocument()
   })
 
-  it('shows FK Cash In KPI', async () => {
+  it('shows Total Payout KPI', async () => {
     renderReport('ops')
-    await screen.findByText(/FK Cash In/i)
+    // "Total Payout" appears as both summary label and table column header
+    const matches = await screen.findAllByText(/total payout/i)
+    expect(matches.length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows Net Profit KPI', async () => {
@@ -353,9 +355,11 @@ describe('Operating P&L tab', () => {
     expect(matches.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('shows True Margin %', async () => {
+  it('shows Net Margin', async () => {
     renderReport('ops')
-    await screen.findByText(/True Margin/i)
+    // "Net Margin" appears in summary + column header
+    const matches = await screen.findAllByText(/net margin/i)
+    expect(matches.length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows Kill List card', async () => {
@@ -389,12 +393,12 @@ describe('Operating P&L tab', () => {
     expect(matches.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('flags loss-making SKU as kill (BS/u 97.7 < breakeven 137)', async () => {
+  it('flags loss-making SKU with pnl-tr-loss (BS/u 97.7 < breakeven 137)', async () => {
     renderReport('ops')
     const skuMatches = await screen.findAllByText('SHJ-JS-VRI-N65-WHITE')
     // Find the one inside the main table (not the pattern card)
     const tableRow = skuMatches.map(el => el.closest('tr')).find(tr => tr != null)
-    expect(tableRow).toHaveClass('pnl-tr-kill')
+    expect(tableRow).toHaveClass('pnl-tr-loss')
   })
 
   it('shows target units (700) in editor', async () => {
@@ -407,10 +411,11 @@ describe('Operating P&L tab', () => {
     renderReport('fk')
     await screen.findByText(/revenue flow/i)
     fireEvent.click(screen.getByText('Operating P&L'))
-    await screen.findByText(/FK Cash In/i)
+    const matches = await screen.findAllByText(/total payout/i)
+    expect(matches.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('profitable SKU does NOT have pnl-tr-kill class', async () => {
+  it('profitable SKU does NOT have pnl-tr-loss class', async () => {
     getPnlReport.mockResolvedValue(makeReport({
       bank_settlement_projected: 7000,  // 7000/34 = 205.88 > 137 breakeven
     }))
@@ -423,6 +428,6 @@ describe('Operating P&L tab', () => {
     )
     const skuMatches = await screen.findAllByText('SHJ-JS-VRI-N65-WHITE')
     const tableRow = skuMatches.map(el => el.closest('tr')).find(tr => tr != null)
-    expect(tableRow).not.toHaveClass('pnl-tr-kill')
+    expect(tableRow).not.toHaveClass('pnl-tr-loss')
   })
 })

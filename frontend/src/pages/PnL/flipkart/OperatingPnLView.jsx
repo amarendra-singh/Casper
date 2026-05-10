@@ -9,9 +9,10 @@ import { updatePlatform }    from '../../../api/client'
  *
  * Answers: "Did the business actually make money this month, after ALL costs?"
  *
- *   Revenue       = Flipkart Bank Settlement
- *   Variable Cost = breakeven × units (incl. misc/rent/elec allocation)
- *   Net Profit    = Revenue − Variable Cost − Overhead Drag (un-recovered fixed cost)
+ *   Total Payout  = Flipkart Bank Settlement (cash received)
+ *   Total Cost    = breakeven × units (incl. misc/rent/elec allocation)
+ *   Net Profit    = Total Payout − Total Cost − Overhead Drag (un-recovered fixed cost)
+ *   Net Margin %  = Net Profit / Total Cost × 100  (return on cost — same as Unit Economics)
  *
  * Overhead Drag = (target_units − delivered_units) × misc_per_unit  (only if positive)
  *   Surfaces the hidden loss from under-selling vs target volume.
@@ -25,13 +26,12 @@ export default function OperatingPnLView({ report, onRefresh }) {
   const [sortDir,   setSortDir]   = useState('asc')
 
   const profitCount = rows.filter(r => r.true_status === 'profit').length
-  const lossCount   = rows.filter(r => r.true_status !== 'profit').length
+  const lossCount   = rows.filter(r => r.true_status === 'loss').length
 
   const filteredRows = rows
     .filter(r => {
       if (skuFilter === 'profit') return r.true_status === 'profit'
-      if (skuFilter === 'loss')   return r.true_status !== 'profit'
-      if (skuFilter === 'kill')   return r.true_status === 'kill'
+      if (skuFilter === 'loss')   return r.true_status === 'loss'
       return true
     })
     .filter(r => !skuSearch || r.platform_sku_name.toLowerCase().includes(skuSearch.toLowerCase()))
@@ -54,21 +54,9 @@ export default function OperatingPnLView({ report, onRefresh }) {
 
       {/* ── KPI strip ──────────────────────────────────────────────────────── */}
       <div className="pnl-summary-bar">
-        <SumItem label="FK Cash In" value={fmt(totals.revenue)} valClass="gold" />
-        <SumItem label="Variable Cost" value={fmt(totals.var_cost)} valClass="red" />
-        <div className="pnl-sum-item">
-          <div className="pnl-sum-label">Gross Profit</div>
-          <div className={`pnl-sum-val ${totals.gross_profit >= 0 ? 'green' : 'red'}`}>
-            {totals.gross_profit >= 0 ? '+' : ''}{fmt(totals.gross_profit)}
-          </div>
-        </div>
-        <div className="pnl-sum-item">
-          <div className="pnl-sum-label">Overhead Drag</div>
-          <div className="pnl-sum-val red">
-            {totals.overhead_drag > 0 ? '-' + fmt(totals.overhead_drag) : fmt(0)}
-          </div>
-        </div>
-        <div className="pnl-sum-divider"/>
+        <SumItem label="Total Payout" value={fmt(totals.payout)} valClass="gold" />
+        <SumItem label="Total Cost"   value={fmt(totals.total_cost)} valClass="red" />
+        <SumItem label="Total Cost (after GST)" value={fmt(totals.total_cost_gst)} valClass="muted" />
         <div className="pnl-sum-item">
           <div className="pnl-sum-label">Net Profit</div>
           <div className={`pnl-sum-val ${totals.net_profit >= 0 ? 'green' : 'red'}`}>
@@ -76,13 +64,38 @@ export default function OperatingPnLView({ report, onRefresh }) {
           </div>
         </div>
         <div className="pnl-sum-item">
-          <div className="pnl-sum-label">True Margin %</div>
+          <div className="pnl-sum-label">Net Margin</div>
           <div className={`pnl-sum-val ${(totals.net_margin ?? 0) >= 0 ? 'green' : 'red'}`}>
             {totals.net_margin == null ? '—' : (totals.net_margin >= 0 ? '+' : '') + totals.net_margin.toFixed(1) + '%'}
           </div>
         </div>
+        <div className="pnl-sum-item">
+          <div className="pnl-sum-label">Net Margin (after GST)</div>
+          <div className={`pnl-sum-val ${(totals.net_margin_gst ?? 0) >= 0 ? 'green' : 'red'}`}>
+            {totals.net_margin_gst == null ? '—' : (totals.net_margin_gst >= 0 ? '+' : '') + totals.net_margin_gst.toFixed(1) + '%'}
+          </div>
+        </div>
         <div className="pnl-sum-divider"/>
-        <SumItem label="Net Units" value={fmtN(totals.net_units)} />
+        <div className="pnl-sum-item">
+          <div className="pnl-sum-label">Overhead Drag</div>
+          <div className="pnl-sum-val red">
+            {totals.overhead_drag > 0 ? '-' + fmt(totals.overhead_drag) : fmt(0)}
+          </div>
+        </div>
+        <div className="pnl-sum-item">
+          <div className="pnl-sum-label">Final Profit</div>
+          <div className={`pnl-sum-val ${totals.final_profit >= 0 ? 'green' : 'red'}`}>
+            {totals.final_profit >= 0 ? '+' : ''}{fmt(totals.final_profit)}
+          </div>
+        </div>
+        <div className="pnl-sum-item">
+          <div className="pnl-sum-label">Final Margin</div>
+          <div className={`pnl-sum-val ${(totals.final_margin ?? 0) >= 0 ? 'green' : 'red'}`}>
+            {totals.final_margin == null ? '—' : (totals.final_margin >= 0 ? '+' : '') + totals.final_margin.toFixed(1) + '%'}
+          </div>
+        </div>
+        <div className="pnl-sum-divider"/>
+        <SumItem label="Total Units" value={fmtN(totals.total_units)} />
         <TargetUnitsEditor
           platformId={report.platform_id}
           initial={totals.target_units}
@@ -110,8 +123,7 @@ export default function OperatingPnLView({ report, onRefresh }) {
           {[
             { key: 'all',    label: `All (${rows.length})` },
             { key: 'profit', label: `Profitable (${profitCount})` },
-            { key: 'loss',   label: `Losing (${lossCount})` },
-            { key: 'kill',   label: `Kill List (${totals.kill_count})` },
+            { key: 'loss',   label: `Loss-making (${lossCount})` },
           ].map(f => (
             <button key={f.key}
               className={`pnl-fpill${skuFilter === f.key ? ' active' : ''}`}
@@ -127,23 +139,24 @@ export default function OperatingPnLView({ report, onRefresh }) {
           <thead>
             <tr>
               <th className="pnl-th sticky-col">SKU</th>
-              <SortTh col="net_units"        label="Net U"         sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="gross_units"      label="Gross U"       sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="true_return_pct"  label="Return %"      sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="true_revenue"     label="FK BS"         sub="Cash received" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="true_bs_per_u"    label="BS/unit"       sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="casper_breakeven" label="Breakeven"     sub="Our full cost/unit" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="true_profit_u"    label="Profit/unit"   sub="BS/u − breakeven" primary sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="true_var_cost"    label="Var Cost"      sub="Breakeven × net" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="true_profit"      label="Net Profit"    sub="FK BS − Var Cost" primary sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
-              <SortTh col="true_margin_pct"  label="Margin %"      sub="Profit ÷ FK BS" primary sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <SortTh col="net_units"            label="Units Sold"           sub="after returns" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <SortTh col="gross_units"          label="Gross Units"          sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <SortTh col="true_return_pct"      label="Return Rate"          sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <SortTh col="true_payout"          label="Net Payout"           sub="cash from Flipkart" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <SortTh col="true_bs_per_u"        label="Net Payout / unit"    sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <SortTh col="casper_breakeven"     label="Breakeven"            sub="per unit · cost recovery" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <SortTh col="casper_breakeven_gst" label="Breakeven (GST)"      sub="per unit · cost + GST" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <SortTh col="true_profit_u"        label="Profit / unit"        sub="Payout − Breakeven" primary sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <SortTh col="true_total_cost"      label="Total Cost"           sub="Breakeven × Units" sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <SortTh col="true_profit"          label="Net Profit"           sub="Payout − Total Cost" primary sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
+              <SortTh col="true_margin_pct"      label="Net Margin"           sub="Profit ÷ Total Cost" primary sortCol={sortCol} sortDir={sortDir} onClick={toggleSort}/>
               <th className="pnl-th center">Status</th>
             </tr>
           </thead>
           <tbody>
             {filteredRows.map(row => <TrueRow key={row.id} row={row} />)}
             {filteredRows.length === 0 && (
-              <tr><td colSpan={12} className="pnl-td center" style={{ padding: '32px', color: 'var(--text-3)' }}>
+              <tr><td colSpan={13} className="pnl-td center" style={{ padding: '32px', color: 'var(--text-3)' }}>
                 No SKUs match your filter
               </td></tr>
             )}
@@ -158,19 +171,19 @@ export default function OperatingPnLView({ report, onRefresh }) {
 // ── Sub-components ──────────────────────────────────────────────────────────
 
 function VerdictBanner({ totals }) {
-  if (totals.net_profit == null || totals.revenue === 0) return null
-  const losing = totals.net_profit < 0
+  if (totals.final_profit == null || totals.payout === 0) return null
+  const losing = totals.final_profit < 0
   return (
     <div className={`pnl-verdict-banner ${losing ? 'losing' : 'winning'}`}>
       <span className="pnl-verdict-icon">{losing ? '🔴' : '🟢'}</span>
       <span>
-        You received <strong>{fmt(totals.revenue)}</strong> from Flipkart but spent{' '}
-        <strong>{fmt(totals.var_cost)}</strong> on these products
+        You received <strong>{fmt(totals.payout)}</strong> from Flipkart but spent{' '}
+        <strong>{fmt(totals.total_cost)}</strong> on these products
         {totals.overhead_drag > 0 && <> and under-absorbed <strong>{fmt(totals.overhead_drag)}</strong> of fixed costs</>}.
         {' '}
-        Real {losing ? 'loss' : 'profit'}:{' '}
-        <strong>{losing ? '' : '+'}{fmt(totals.net_profit)}</strong>
-        {totals.net_margin != null && <> ({totals.net_margin >= 0 ? '+' : ''}{totals.net_margin.toFixed(1)}%)</>}
+        Final {losing ? 'loss' : 'profit'}:{' '}
+        <strong>{losing ? '' : '+'}{fmt(totals.final_profit)}</strong>
+        {totals.final_margin != null && <> ({totals.final_margin >= 0 ? '+' : ''}{totals.final_margin.toFixed(1)}%)</>}
       </span>
     </div>
   )
@@ -234,14 +247,13 @@ function SortTh({ col, label, sub, primary, sortCol, sortDir, onClick }) {
 }
 
 function TrueRow({ row }) {
-  const isKill = row.true_status === 'kill'
-  const isLoss = row.true_status !== 'profit'
+  const isLoss = row.true_status === 'loss'
   const pU     = row.true_profit_u
   const p      = row.true_profit
   const m      = row.true_margin_pct
 
   return (
-    <tr className={`pnl-tr${isLoss ? ' pnl-tr-loss' : ''}${isKill ? ' pnl-tr-kill' : ''}`}>
+    <tr className={`pnl-tr${isLoss ? ' pnl-tr-loss' : ''}`}>
       <td className="pnl-td sku-col sticky-col">
         <span className="pnl-sku-name">{row.platform_sku_name}</span>
       </td>
@@ -252,13 +264,14 @@ function TrueRow({ row }) {
           {fmtPct(row.true_return_pct)}
         </span>
       </td>
-      <td className="pnl-td right mono">{fmt(row.true_revenue)}</td>
+      <td className="pnl-td right mono">{fmt(row.true_payout)}</td>
       <td className="pnl-td right mono">{fmt(row.true_bs_per_u, 1)}</td>
       <td className="pnl-td right mono muted">{fmt(row.casper_breakeven, 1)}</td>
+      <td className="pnl-td right mono muted">{row.casper_breakeven_gst != null ? fmt(row.casper_breakeven_gst, 1) : '—'}</td>
       <td className={`pnl-td right mono pnl-td-primary variance ${pU >= 0 ? 'positive' : 'negative'}`}>
         {(pU >= 0 ? '+' : '') + fmt(pU, 1)}
       </td>
-      <td className="pnl-td right mono red">{fmt(row.true_var_cost)}</td>
+      <td className="pnl-td right mono red">{fmt(row.true_total_cost)}</td>
       <td className={`pnl-td right mono pnl-td-primary variance ${p >= 0 ? 'positive' : 'negative'}`}>
         {(p >= 0 ? '+' : '') + fmt(p)}
       </td>
@@ -271,7 +284,7 @@ function TrueRow({ row }) {
       </td>
       <td className="pnl-td center">
         <span className={`pnl-status-badge status-${row.true_status}`}>
-          {row.true_status === 'profit' ? '🟢' : row.true_status === 'kill' ? '☠️' : '🔴'}
+          {row.true_status === 'profit' ? '🟢' : '🔴'}
         </span>
       </td>
     </tr>

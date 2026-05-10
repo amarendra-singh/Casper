@@ -3,11 +3,11 @@ import { useMemo } from 'react'
 /**
  * Operating P&L calculations — full-business profitability with overhead absorption.
  *
- * Core formula:
- *   Revenue       = FK bank_settlement_projected      (cash FK actually wires us)
- *   Variable Cost = casper_breakeven × net_units      (our full cost, already includes misc/overhead allocation)
- *   Net Profit    = Revenue − Variable Cost
- *   True Margin % = Net Profit / Revenue              (user preference: denominator = money received from FK)
+ * Core formula (aligned with Unit Economics):
+ *   Total Payout  = FK bank_settlement_projected      (cash FK actually wires us)
+ *   Total Cost    = casper_breakeven × net_units      (our full cost, already includes misc/overhead allocation)
+ *   Net Profit    = Total Payout − Total Cost
+ *   Net Margin %  = Net Profit / Total Cost × 100     (return on cost — same anchor as Unit Economics)
  *
  * Absorption variance:
  *   We allocate overhead (rent/electricity/manpower) via `misc_total` per unit in pricing.
@@ -15,11 +15,11 @@ import { useMemo } from 'react'
  *   Under-absorbed = (target − actual) × misc_per_unit
  *   misc_per_unit is the weighted average of casper_misc_total across delivered SKUs.
  *
- * Status codes for each matched SKU:
- *   'profit'     — profit per unit > 0
- *   'loss'       — profit per unit ≤ 0 but BS/unit ≥ breakeven (selling above cost but
- *                  producing below target profit)  [actually impossible — if BS≥BE then profit≥0]
- *   'kill'       — BS/unit < 0 OR BS/unit < breakeven (selling below cost ⇒ unit-level loss)
+ * Status codes for each matched SKU (cleaned up):
+ *   'profit'     — Net Payout / unit > breakeven           (selling above cost AND has positive profit)
+ *   'thin'       — Net Payout / unit ≥ breakeven but margin < target%   (above cost, below profit goal)
+ *                  [reserved — currently same as profit unless target % is enforced]
+ *   'loss'       — Net Payout / unit < breakeven           (selling below cost — unit-level loss)
  */
 export function useOperatingPnlData(report) {
   return useMemo(() => {
@@ -31,42 +31,49 @@ export function useOperatingPnlData(report) {
 
     // Per-SKU calculations
     const enriched = matchedRows.map(r => {
-      const revenue    = r.bank_settlement_projected || 0
-      const netUnits   = r.net_units || 0
-      const grossUnits = r.gross_units || 0
-      const breakeven  = r.casper_breakeven || 0
+      const payout      = r.bank_settlement_projected || 0
+      const netUnits    = r.net_units || 0
+      const grossUnits  = r.gross_units || 0
+      const breakeven   = r.casper_breakeven || 0
+      const breakevenG  = r.casper_breakeven_gst || 0
 
-      const bsPerUnit  = netUnits > 0 ? revenue / netUnits : 0
-      const varCost    = breakeven * netUnits
-      const profit     = revenue - varCost
-      const profitU    = netUnits > 0 ? profit / netUnits : 0
-      const marginPct  = revenue !== 0 ? (profit / revenue) * 100 : null
-      const returnRate = grossUnits > 0 ? ((grossUnits - netUnits) / grossUnits) * 100 : 0
+      const payoutPerU  = netUnits > 0 ? payout / netUnits : 0
+      const totalCost   = breakeven * netUnits
+      const totalCostG  = breakevenG * netUnits
+      const profit      = payout - totalCost
+      const profitU     = netUnits > 0 ? profit / netUnits : 0
+      // Return-on-cost margin — same anchor as Unit Economics view
+      const marginPct   = totalCost > 0 ? (profit / totalCost) * 100 : null
+      const returnRate  = grossUnits > 0 ? ((grossUnits - netUnits) / grossUnits) * 100 : 0
 
-      // Status
-      let status = 'profit'
-      if (bsPerUnit < breakeven || bsPerUnit < 0) status = 'kill'
-      else if (profit <= 0)                         status = 'loss'
+      // Status: 'loss' if selling below cost, else 'profit'
+      const status = (payoutPerU < breakeven || payoutPerU < 0) ? 'loss' : 'profit'
 
       return {
         ...r,
-        true_revenue:    revenue,
-        true_var_cost:   varCost,
-        true_profit:     profit,
-        true_profit_u:   profitU,
-        true_margin_pct: marginPct,
-        true_bs_per_u:   bsPerUnit,
-        true_return_pct: returnRate,
-        true_status:     status,
+        true_payout:      payout,
+        true_total_cost:  totalCost,
+        true_total_cost_gst: totalCostG,
+        true_profit:      profit,
+        true_profit_u:    profitU,
+        true_margin_pct:  marginPct,
+        true_bs_per_u:    payoutPerU,
+        true_return_pct:  returnRate,
+        true_status:      status,
       }
     })
 
-    // Totals
-    const totalRevenue  = enriched.reduce((s, r) => s + r.true_revenue, 0)
-    const totalVarCost  = enriched.reduce((s, r) => s + r.true_var_cost, 0)
-    const totalNetUnits = enriched.reduce((s, r) => s + (r.net_units || 0), 0)
-    const grossProfit   = totalRevenue - totalVarCost
-    const grossMargin   = totalRevenue !== 0 ? (grossProfit / totalRevenue) * 100 : null
+    // Totals — uniform naming across Unit Economics + Operating P&L
+    const totalPayout    = enriched.reduce((s, r) => s + r.true_payout, 0)
+    const totalCost      = enriched.reduce((s, r) => s + r.true_total_cost, 0)
+    const totalCostGst   = enriched.reduce((s, r) => s + r.true_total_cost_gst, 0)
+    const totalNetUnits  = enriched.reduce((s, r) => s + (r.net_units || 0), 0)
+    // Net Profit = Payout − Cost (no overhead adjustment yet) — same definition as Unit Economics
+    const netProfit      = totalPayout - totalCost
+    const netMargin      = totalCost > 0 ? (netProfit / totalCost) * 100 : null
+    // After-GST counterparts
+    const netProfitGst   = totalPayout - totalCostGst
+    const netMarginGst   = totalCostGst > 0 ? (netProfitGst / totalCostGst) * 100 : null
 
     // Absorption (volume variance against target)
     const targetUnits      = report.target_monthly_units || 0
@@ -78,16 +85,16 @@ export function useOperatingPnlData(report) {
     const absorptionGap    = targetAbsorption - actualAbsorption   // positive = under-absorbed
     const volumePct        = targetUnits > 0 ? (totalNetUnits / targetUnits) * 100 : null
 
-    // Final net profit = gross profit − any un-recovered overhead
-    // (gross already accounts for miscPerUnit × netUnits via breakeven, so the "extra"
-    //  drag is only the overhead we FAILED to recover on the missing units)
+    // "Final" line items = Net Profit minus un-recovered overhead drag
+    // (Net Profit already accounts for miscPerUnit × netUnits via breakeven, so the
+    //  drag is only the overhead we FAILED to recover on the MISSING units)
     const overheadDrag = Math.max(0, absorptionGap)
-    const netProfit    = grossProfit - overheadDrag
-    const netMarginPct = totalRevenue !== 0 ? (netProfit / totalRevenue) * 100 : null
+    const finalProfit  = netProfit - overheadDrag
+    const finalMargin  = totalCost > 0 ? (finalProfit / totalCost) * 100 : null
 
-    // Pattern groupings
+    // Pattern groupings — "Kill List" (industry term) = SKUs selling below cost
     const killList = enriched
-      .filter(r => r.true_status === 'kill')
+      .filter(r => r.true_status === 'loss')
       .sort((a, b) => a.true_profit_u - b.true_profit_u)
 
     const returnLeakage = enriched
@@ -101,22 +108,25 @@ export function useOperatingPnlData(report) {
     return {
       rows: enriched,
       totals: {
-        revenue:         totalRevenue,
-        var_cost:        totalVarCost,
-        gross_profit:    grossProfit,
-        gross_margin:    grossMargin,
-        overhead_drag:   overheadDrag,
-        net_profit:      netProfit,
-        net_margin:      netMarginPct,
-        net_units:       totalNetUnits,
-        misc_per_unit:   miscPerUnit,
-        target_units:    targetUnits,
-        target_absorp:   targetAbsorption,
-        actual_absorp:   actualAbsorption,
-        absorption_gap:  absorptionGap,
-        volume_pct:      volumePct,
-        kill_count:      killList.length,
-        gap_count:       dataGap.length,
+        payout:           totalPayout,
+        total_cost:       totalCost,
+        total_cost_gst:   totalCostGst,
+        net_profit:       netProfit,         // Payout − Cost (matches Unit Economics)
+        net_margin:       netMargin,         // Net Profit / Cost × 100
+        net_profit_gst:   netProfitGst,
+        net_margin_gst:   netMarginGst,      // Net Profit (GST) / Cost (GST) × 100
+        overhead_drag:    overheadDrag,
+        final_profit:     finalProfit,       // Net Profit − Overhead Drag (real bottom line)
+        final_margin:     finalMargin,
+        total_units:      totalNetUnits,     // renamed from "Net Units"
+        misc_per_unit:    miscPerUnit,
+        target_units:     targetUnits,
+        target_absorp:    targetAbsorption,
+        actual_absorp:    actualAbsorption,
+        absorption_gap:   absorptionGap,
+        volume_pct:       volumePct,
+        kill_count:       killList.length,
+        gap_count:        dataGap.length,
       },
       killList,
       returnLeakage,
@@ -129,9 +139,11 @@ function emptyResult() {
   return {
     rows: [],
     totals: {
-      revenue: 0, var_cost: 0, gross_profit: 0, gross_margin: null,
-      overhead_drag: 0, net_profit: 0, net_margin: null, net_units: 0,
-      misc_per_unit: 0, target_units: 0, target_absorp: 0, actual_absorp: 0,
+      payout: 0, total_cost: 0, total_cost_gst: 0,
+      net_profit: 0, net_margin: null, net_profit_gst: 0, net_margin_gst: null,
+      overhead_drag: 0, final_profit: 0, final_margin: null,
+      total_units: 0, misc_per_unit: 0,
+      target_units: 0, target_absorp: 0, actual_absorp: 0,
       absorption_gap: 0, volume_pct: null, kill_count: 0, gap_count: 0,
     },
     killList: [],
