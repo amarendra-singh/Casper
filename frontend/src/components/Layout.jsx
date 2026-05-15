@@ -1,15 +1,44 @@
 import { useState, useRef, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getPnlPlatformsWithReports } from '../api/client'
+import { getPlatforms } from '../api/client'
 import './Layout.css'
 
+/**
+ * WORKSPACE items.
+ * - `subItems` (optional) makes the item expandable with intro/manage sub-links.
+ * - Without subItems, item renders as a single flat NavLink (current behavior).
+ */
 const WORKSPACE = [
-  { to: '/',          label: 'Dashboard', end: true  },
-  { to: '/skus',      label: 'SKUs',      end: false },
-  { to: '/vendors',   label: 'Vendors',   end: false },
-  { to: '/pricing',   label: 'Pricing',   end: false },
-  { to: '/settings',  label: 'Settings',  end: false },
+  { to: '/',         label: 'Dashboard', end: true  },
+  {
+    to: '/skus',     label: 'SKUs',
+    subItems: [
+      { to: '/skus/intro', label: '📖 Intro' },
+      { to: '/skus',       label: 'Manage SKUs', end: true },
+    ],
+  },
+  {
+    to: '/vendors', label: 'Vendors',
+    subItems: [
+      { to: '/vendors/intro', label: '📖 Intro' },
+      { to: '/vendors',       label: 'Manage Vendors', end: true },
+    ],
+  },
+  {
+    to: '/pricing', label: 'Pricing',
+    subItems: [
+      { to: '/pricing/intro', label: '📖 Intro' },
+      { to: '/pricing',       label: 'New Pricing', end: true },
+    ],
+  },
+  {
+    to: '/settings', label: 'Settings',
+    subItems: [
+      { to: '/settings/intro', label: '📖 Intro' },
+      { to: '/settings',       label: 'Platforms & Tiers', end: true },
+    ],
+  },
 ]
 const ANALYTICS      = ['Overview','Revenue','Platform Performance','SKU Analysis']
 const REPORTS_MY     = ['Sales Report','Profitability','Platform Compare']
@@ -52,6 +81,9 @@ export default function Layout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === 'true')
   const toggleSidebar = () => setSidebarCollapsed(p => { localStorage.setItem('sidebarCollapsed', !p); return !p })
   const [open,      setOpen]      = useState({ workspace:true, pnl:true, analytics:true, reports:true, settings:true })
+  // Each WORKSPACE item with subItems can collapse independently
+  const [openWsItem, setOpenWsItem] = useState({})
+  const togWsItem = key => setOpenWsItem(p => ({ ...p, [key]: !p[key] }))
   const [treeOpen,  setTreeOpen]  = useState({ my:true, shared:true })
   const [company,   setCompany]   = useState(COMPANIES[0])
   const [showCo,    setShowCo]    = useState(false)
@@ -72,7 +104,7 @@ export default function Layout() {
   }, [])
 
   useEffect(() => {
-    getPnlPlatformsWithReports().then(setPnlPlatforms).catch(() => {})
+    getPlatforms().then(setPnlPlatforms).catch(() => {})
   }, [])
 
   const togSec  = k => setOpen(p => ({ ...p, [k]: !p[k] }))
@@ -162,12 +194,31 @@ export default function Layout() {
                 <span className="sec-lbl">Workspace</span>
                 <span className={`sec-chev ${open.workspace ? '' : 'closed'}`}>▾</span>
               </div>
-              {open.workspace && WORKSPACE.map(item => (
-                <NavLink key={item.to} to={item.to} end={item.end}
-                  className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-                  {item.label}
-                </NavLink>
-              ))}
+              {open.workspace && WORKSPACE.map(item => {
+                // Flat item — no sub-items
+                if (!item.subItems) return (
+                  <NavLink key={item.to} to={item.to} end={item.end}
+                    className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+                    {item.label}
+                  </NavLink>
+                )
+                // Expandable item — header + sub-links
+                const expanded = openWsItem[item.to] ?? true
+                return (
+                  <div key={item.to} className="nav-ws-group">
+                    <div className="nav-item nav-ws-hdr" onClick={() => togWsItem(item.to)}>
+                      <span>{item.label}</span>
+                      <span className={`sec-chev sec-chev-sm ${expanded ? '' : 'closed'}`}>▾</span>
+                    </div>
+                    {expanded && item.subItems.map(sub => (
+                      <NavLink key={sub.to} to={sub.to} end={sub.end}
+                        className={({ isActive }) => `nav-item nav-sub-item${isActive ? ' active' : ''}`}>
+                        {sub.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                )
+              })}
             </div>
 
             {/* P&L */}
@@ -176,20 +227,20 @@ export default function Layout() {
                 <span className="sec-lbl">P&amp;L</span>
                 <span className={`sec-chev ${open.pnl ? '' : 'closed'}`}>▾</span>
               </div>
-              {open.pnl && (
-                pnlPlatforms.length === 0
-                  ? <NavLink to="/pnl/flipkart"
-                      className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-                      Flipkart
-                    </NavLink>
-                  : pnlPlatforms.map(p => (
-                      <NavLink key={p.id}
-                        to={`/pnl/${p.name.toLowerCase()}`}
-                        className={({ isActive }) => `nav-item nav-sub-item${isActive ? ' active' : ''}`}>
-                        {p.name}
-                      </NavLink>
-                    ))
-              )}
+              {open.pnl && <>
+                {/* In-app intro / help page */}
+                <NavLink to="/pnl/intro"
+                  className={({ isActive }) => `nav-item nav-sub-item${isActive ? ' active' : ''}`}>
+                  📖 Intro
+                </NavLink>
+                {pnlPlatforms.map(p => (
+                  <NavLink key={p.id}
+                    to={`/pnl/${p.name.toLowerCase()}`}
+                    className={({ isActive }) => `nav-item nav-sub-item${isActive ? ' active' : ''}`}>
+                    {p.name}
+                  </NavLink>
+                ))}
+              </>}
             </div>
 
             {/* Analytics */}

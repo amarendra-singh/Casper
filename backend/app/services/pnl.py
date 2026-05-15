@@ -324,6 +324,147 @@ def _parse_sku_sheet(ws, col_map: dict) -> list[dict]:
     return rows
 
 
+# ── Meesho parser ─────────────────────────────────────────────────────────────
+
+_MEESHO_DELIVERED = {"Delivered", "Shipped"}
+_MEESHO_RETURN    = {"Return"}
+_MEESHO_RTO       = {"RTO"}
+_MEESHO_CANCELLED = {"Cancelled"}
+
+
+def _parse_meesho_workbook(file_bytes: bytes) -> tuple[dict, list[dict]]:
+    """
+    Parse Meesho P&L xlsx using pandas.
+    Returns (summary_dict, sku_rows_list) in the same shape as _parse_workbook().
+    """
+    from io import BytesIO
+    import pandas as pd
+    import warnings
+    warnings.filterwarnings("ignore", category=UserWarning)
+
+    df = pd.read_excel(BytesIO(file_bytes), sheet_name="Order Payments", skiprows=[0, 2], header=0)
+
+    # Ads Cost sheet
+    try:
+        ads_df = pd.read_excel(BytesIO(file_bytes), sheet_name="Ads Cost", skiprows=[0, 2], header=0)
+        ads_total = float(ads_df["Total Ads Cost"].sum()) if "Total Ads Cost" in ads_df.columns else 0.0
+    except Exception:
+        ads_total = 0.0
+
+    del_mask = df["Live Order Status"].isin(_MEESHO_DELIVERED)
+    ret_mask = df["Live Order Status"].isin(_MEESHO_RETURN)
+    rto_mask = df["Live Order Status"].isin(_MEESHO_RTO)
+    can_mask = df["Live Order Status"].isin(_MEESHO_CANCELLED)
+    shipped_mask = del_mask | ret_mask | rto_mask  # anything that was dispatched
+
+    def _s(series):
+        v = float(series.sum())
+        return round(v, 2) if v != 0 else None
+
+    gross_units    = int(df.loc[shipped_mask, "Quantity"].sum())
+    returned_units = int(df.loc[ret_mask | rto_mask, "Quantity"].sum())
+    net_units      = int(df.loc[del_mask, "Quantity"].sum())
+
+    gross_sales     = _s(df["Total Sale Amount (Incl. Shipping & GST)"])
+    returns_amount  = _s(df["Total Sale Return Amount (Incl. Shipping & GST)"])
+    net_sales       = round((gross_sales or 0) + (returns_amount or 0), 2)
+    bank_settlement = _s(df["Final Settlement Amount"])
+    tcs_total       = _s(df["TCS"])
+    tds_total       = _s(df["TDS"])
+    net_earnings    = bank_settlement
+    net_margin_pct  = round(net_earnings / net_sales * 100, 2) if net_sales else None
+
+    gross_orders  = int(del_mask.sum())
+    return_orders = int((ret_mask | rto_mask).sum())
+
+    summary = {
+        "gross_sales":    gross_sales,
+        "gross_units":    gross_units,
+        "returns_amount": returns_amount,
+        "returned_units": returned_units,
+        "net_sales":      net_sales,
+        "net_units":      net_units,
+        "bank_settlement": bank_settlement,
+        "net_earnings":   net_earnings,
+        "net_margin_pct": net_margin_pct,
+        "tcs_amount":     tcs_total,
+        "tds_amount":     tds_total,
+        "marketing_fee":  round(ads_total, 2) if ads_total else None,
+        "gross_orders":   gross_orders,
+        "return_orders":  return_orders,
+        "net_orders":     gross_orders - return_orders,
+        "total_expenses": round((bank_settlement or 0) - (net_sales or 0), 2),
+    }
+
+    # ── Per-SKU rows ──────────────────────────────────────────────────────────
+    sku_rows: list[dict] = []
+    for sku, grp in df.groupby("Supplier SKU"):
+        g_del = grp[grp["Live Order Status"].isin(_MEESHO_DELIVERED)]
+        g_ret = grp[grp["Live Order Status"].isin(_MEESHO_RETURN)]
+        g_rto = grp[grp["Live Order Status"].isin(_MEESHO_RTO)]
+        g_can = grp[grp["Live Order Status"].isin(_MEESHO_CANCELLED)]
+
+        g_units = int(grp[grp["Live Order Status"].isin(_MEESHO_DELIVERED | _MEESHO_RETURN | _MEESHO_RTO)]["Quantity"].sum())
+        n_units = int(g_del["Quantity"].sum())
+
+        bs  = round(float(grp["Final Settlement Amount"].sum()), 2)
+        ans = round(float(g_del["Total Sale Amount (Incl. Shipping & GST)"].sum()), 2)
+        tcs = round(float(grp["TCS"].sum()), 2)
+        tds = round(float(grp["TDS"].sum()), 2)
+        shipping     = round(float(g_del["Shipping Charge (Incl. GST)"].sum()), 2)
+        ret_shipping = round(float(grp.get("Return Shipping Charge (Incl. GST)", pd.Series(dtype=float)).sum()), 2) if "Return Shipping Charge (Incl. GST)" in grp.columns else 0.0
+
+        epu        = round(bs / n_units, 2) if n_units > 0 else None
+        net_margin = round(bs / ans * 100, 2) if ans else None
+
+        sku_rows.append({
+            "platform_sku_name":         str(sku),
+            "gross_units":               g_units,
+            "rto_units":                 int(g_rto["Quantity"].sum()),
+            "rvp_units":                 int(g_ret["Quantity"].sum()),
+            "cancelled_units":           int(g_can["Quantity"].sum()),
+            "net_units":                 n_units,
+            "accounted_net_sales":       ans,
+            "commission_fee":            0.0,
+            "collection_fee":            shipping if shipping else None,
+            "fixed_fee":                 None,
+            "reverse_shipping_fee":      ret_shipping if ret_shipping else None,
+            "taxes_gst":                 None,
+            "taxes_tcs":                 tcs if tcs else None,
+            "taxes_tds":                 tds if tds else None,
+            "rewards_benefits":          None,
+            "bank_settlement_projected": bs,
+            "input_tax_credits":         None,
+            "net_earnings":              bs,
+            "earnings_per_unit":         epu,
+            "net_margin_pct":            net_margin,
+            "amount_settled":            None,
+            "amount_pending":            None,
+        })
+
+    return summary, sku_rows
+
+
+def extract_period_from_bytes_meesho(file_bytes: bytes) -> tuple[date, date]:
+    """Extract period from Meesho Excel via min/max of Order Date column."""
+    from io import BytesIO
+    import pandas as pd
+    import warnings
+    warnings.filterwarnings("ignore", category=UserWarning)
+
+    df = pd.read_excel(
+        BytesIO(file_bytes),
+        sheet_name="Order Payments",
+        skiprows=[0, 2],
+        header=0,
+        usecols=["Order Date"],
+    )
+    dates = pd.to_datetime(df["Order Date"], errors="coerce").dropna()
+    if dates.empty:
+        raise ValueError("Could not extract period: 'Order Date' column has no valid dates.")
+    return dates.min().date(), dates.max().date()
+
+
 async def check_duplicate(
     session: AsyncSession,
     platform_id: int,
@@ -406,6 +547,7 @@ def _build_report_model(summary: dict, platform_id: int, filename: str,
         uploaded_by=uploaded_by,
         uploaded_at=datetime.utcnow(),
         status="done",
+        # Common fields
         gross_sales=summary.get("gross_sales"),
         gross_units=summary.get("gross_units"),
         returns_amount=summary.get("returns_amount"),
@@ -419,6 +561,22 @@ def _build_report_model(summary: dict, platform_id: int, filename: str,
         net_margin_pct=summary.get("net_margin_pct"),
         amount_settled=summary.get("amount_settled"),
         amount_pending=summary.get("amount_pending"),
+        # Platform-specific fields (null if not applicable)
+        gross_orders=summary.get("gross_orders"),
+        return_orders=summary.get("return_orders"),
+        net_orders=summary.get("net_orders"),
+        tcs_amount=summary.get("tcs_amount"),
+        tds_amount=summary.get("tds_amount"),
+        marketing_fee=summary.get("marketing_fee"),
+        seller_name=summary.get("seller_name"),
+        seller_code=summary.get("seller_code"),
+        cod_orders=summary.get("cod_orders"),
+        ncod_orders=summary.get("ncod_orders"),
+        courier_fee=summary.get("courier_fee"),
+        payment_collection_fee=summary.get("payment_collection_fee"),
+        commission_total=summary.get("commission_total"),
+        opening_balance=summary.get("opening_balance"),
+        closing_balance=summary.get("closing_balance"),
     )
 
 
@@ -474,12 +632,17 @@ async def parse_and_store(
     uploaded_by: int,
     period_start,
     period_end,
+    platform_name: str = "flipkart",
 ) -> PnlUploadResult:
     """
     Main entry point. Parse xlsx, match SKUs against Casper pricing, store report + rows.
+    Dispatches to platform-specific parser based on platform_name.
     Returns upload result with match counts.
     """
-    summary, sku_rows_raw = _parse_workbook(file_bytes)
+    if platform_name.lower() == "meesho":
+        summary, sku_rows_raw = _parse_meesho_workbook(file_bytes)
+    else:
+        summary, sku_rows_raw = _parse_workbook(file_bytes)
 
     platform = await session.scalar(select(Platform).where(Platform.id == platform_id))
     platform_name = platform.name if platform else "Unknown"

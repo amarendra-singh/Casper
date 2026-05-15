@@ -311,7 +311,6 @@ export default function SKUs() {
   const [adReportPlat, setAdReportPlat] = useState(null)
   const [pendingRowId,  setPendingRowId]  = useState(null)
   const [loading, setLoading] = useState(true)
-  const [aliasOpen,       setAliasOpen]       = useState(new Set())
 
   // ── Load data on mount ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -369,14 +368,6 @@ export default function SKUs() {
   }, [])
 
   // ── Platform alias handlers ────────────────────────────────────────────────
-  const toggleAlias = useCallback((rowId, plId) => {
-    setAliasOpen(prev => {
-      const key = `${rowId}-${plId}`
-      const next = new Set(prev)
-      next.has(key) ? next.delete(key) : next.add(key)
-      return next
-    })
-  }, [])
 
   const handleAlias = useCallback((rowId, plId, value) => {
     setRows(prev => prev.map(r =>
@@ -1120,11 +1111,9 @@ export default function SKUs() {
                     const plc      = computePlatform(row, pl, c, miscDef)
                     const override = row.platOverrides?.[pl.id] || {}
                     const alias    = row.platAliases?.[pl.id] || ''
-                    const aliasKey = `${row.id}-${pl.id}`
-                    const isAliasOpen = aliasOpen.has(aliasKey)
                     return ([
                       <td key={`${pl.id}-ad`} className="ec ec-plat w-plat-ad">
-                        <div className={`plat-cell-a${isAliasOpen ? ' alias-open' : ''}`}>
+                        <div className="plat-cell-a">
                           {/* % input — placeholder shows back-computed % when ₹ is set */}
                           <div className="plat-field">
                             <span className="plat-field-lbl">%</span>
@@ -1147,23 +1136,16 @@ export default function SKUs() {
                               onChange={e => handlePlatOverride(row.id, pl.id, 'adAmt', e.target.value)}
                             />
                           </div>
-                          {/* Alias toggle */}
-                          <button
-                            className={`plat-alias-btn${alias ? ' has-alias' : ''}`}
-                            title={alias ? `Alias: ${alias}` : 'Set platform SKU name'}
-                            onClick={() => toggleAlias(row.id, pl.id)}
-                          >🏷</button>
-                          {/* Alias input row */}
-                          {isAliasOpen && (
-                            <div className="plat-alias-row">
-                              <input
-                                className="plat-alias-inp"
-                                placeholder={`${pl.name} SKU name...`}
-                                value={alias}
-                                onChange={e => handleAlias(row.id, pl.id, e.target.value)}
-                              />
-                            </div>
-                          )}
+                          {/* Alias — always visible; dim placeholder when empty, gold border when set */}
+                          <div className="plat-alias-row">
+                            <input
+                              className={`plat-alias-inp${alias ? ' has-value' : ''}`}
+                              placeholder={`${pl.name} SKU name…`}
+                              value={alias}
+                              onChange={e => handleAlias(row.id, pl.id, e.target.value)}
+                              title={alias ? `${pl.name} alias: ${alias}` : `Map this SKU's name on ${pl.name}`}
+                            />
+                          </div>
                         </div>
                       </td>,
                       <td key={`${pl.id}-tier`} className="ec ec-plat w-plat-tier">

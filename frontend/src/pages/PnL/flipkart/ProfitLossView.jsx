@@ -16,7 +16,8 @@ import { fmt, fmtN, fmtPct } from './utils'
  *    Actual    — Platform Fees/u, Net Payout, Payout/u (from FK)
  *    Variance  — Profit/u, Total Cost, Net Profit, Net Margin, Status (computed)
  */
-export default function ProfitLossView({ report, augmentedRows }) {
+export default function ProfitLossView({ report, augmentedRows, platform = 'flipkart' }) {
+  const platformName = platform.charAt(0).toUpperCase() + platform.slice(1)
   const navigate = useNavigate()
   const [skuFilter, setSkuFilter] = useState('all')
   const [skuSearch, setSkuSearch] = useState('')
@@ -145,7 +146,7 @@ export default function ProfitLossView({ report, augmentedRows }) {
               <th className="pnl-gh pnl-gh-sku sticky-col">SKU</th>
               <th className="pnl-gh pnl-gh-actual"  colSpan={3}>Sold</th>
               <th className="pnl-gh pnl-gh-bs"      colSpan={3}>Target</th>
-              <th className="pnl-gh pnl-gh-ue"      colSpan={3}>Actual (Flipkart)</th>
+              <th className="pnl-gh pnl-gh-ue"      colSpan={3}>Actual ({platformName})</th>
               <th className="pnl-gh pnl-gh-recon"   colSpan={6}>Variance / Bottom Line</th>
             </tr>
             {/* Sub-headers row */}

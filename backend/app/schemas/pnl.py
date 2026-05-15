@@ -113,6 +113,14 @@ class PnlReportDetail(PnlReportSummary):
     amount_settled: Optional[float]
     amount_pending: Optional[float]
 
+    # Platform-specific summary fields (Meesho / Snapdeal)
+    gross_orders: Optional[int] = None
+    return_orders: Optional[int] = None
+    net_orders: Optional[int] = None
+    tcs_amount: Optional[float] = None
+    tds_amount: Optional[float] = None
+    marketing_fee: Optional[float] = None
+
     sku_rows: list[PnlSkuRowResponse] = []
 
     model_config = {"from_attributes": True}

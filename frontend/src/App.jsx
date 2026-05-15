@@ -6,9 +6,14 @@ import Dashboard from './pages/Dashboard'
 import SKUs from './pages/SKUs'
 import Pricing from './pages/Pricing'
 import Vendors from './pages/Vendors'
-import FlipkartPnL from './pages/PnL/Flipkart'
-import FlipkartReport from './pages/PnL/FlipkartReport'
+import PnLList from './pages/PnL/PnLList'
+import PnLReport from './pages/PnL/PnLReport'
 import Settings from './pages/Settings'
+import PnLIntro from './pages/intros/PnLIntro'
+import SKUsIntro from './pages/intros/SKUsIntro'
+import VendorsIntro from './pages/intros/VendorsIntro'
+import PricingIntro from './pages/intros/PricingIntro'
+import SettingsIntro from './pages/intros/SettingsIntro'
 // import Entries from './pages/Entries'
 
 function ProtectedRoute({ children }) {
@@ -29,11 +34,16 @@ function AppRoutes() {
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
+        <Route path="skus/intro" element={<SKUsIntro />} />
         <Route path="skus" element={<SKUs />} />
+        <Route path="vendors/intro" element={<VendorsIntro />} />
         <Route path="vendors" element={<Vendors />} />
+        <Route path="pricing/intro" element={<PricingIntro />} />
         <Route path="pricing/:skuId?" element={<Pricing />} />
-        <Route path="pnl/flipkart" element={<FlipkartPnL />} />
-        <Route path="pnl/flipkart/:reportId" element={<FlipkartReport />} />
+        <Route path="settings/intro" element={<SettingsIntro />} />
+        <Route path="pnl/intro" element={<PnLIntro />} />
+        <Route path="pnl/:platform" element={<PnLList />} />
+        <Route path="pnl/:platform/:reportId" element={<PnLReport />} />
         <Route path="settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

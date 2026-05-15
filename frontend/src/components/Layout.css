@@ -175,6 +175,17 @@
 .nav-item.active { color: var(--accent); font-weight: 600; background: var(--accent-dim); }
 .nav-sub-item { padding-left: 20px; font-size: 12px; }
 
+/* Workspace expandable group (item with sub-items) */
+.nav-ws-group { margin-bottom: 2px; }
+.nav-ws-hdr {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+.sec-chev-sm { font-size: 8px; }
+
 /* Tree */
 .tree-body {
   position: relative; padding-left: 16px; margin-left: 14px;

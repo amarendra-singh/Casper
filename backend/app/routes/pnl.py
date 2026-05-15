@@ -34,6 +34,7 @@ from app.services.pnl import (
     parse_and_store,
     check_duplicate,
     extract_period_from_bytes,
+    extract_period_from_bytes_meesho,
     get_all_reports,
     get_report_detail,
     delete_report,
@@ -79,9 +80,16 @@ async def upload_pnl(
 
     pnl_logger.info(f"File read — size={len(file_bytes)} bytes")
 
-    # Auto-extract period from file
+    # Resolve platform name for platform-specific parsing
+    plat_obj = await db.get(Platform, platform_id)
+    platform_name = plat_obj.name.lower() if plat_obj else "flipkart"
+
+    # Auto-extract period from file (platform-specific)
     try:
-        period_start, period_end = extract_period_from_bytes(file_bytes)
+        if platform_name == "meesho":
+            period_start, period_end = extract_period_from_bytes_meesho(file_bytes)
+        else:
+            period_start, period_end = extract_period_from_bytes(file_bytes)
         pnl_logger.info(f"Period extracted — {period_start} to {period_end}")
     except ValueError as e:
         pnl_logger.error(f"Period extraction failed — {e}")
@@ -122,6 +130,7 @@ async def upload_pnl(
             uploaded_by=current_user.id,
             period_start=period_start,
             period_end=period_end,
+            platform_name=platform_name,
         )
         # Save original file to disk for future reference / debugging
         ext = Path(file.filename).suffix or ".xlsx"
@@ -310,6 +319,13 @@ async def get_report(
         net_earnings=report.net_earnings,
         amount_settled=report.amount_settled,
         amount_pending=report.amount_pending,
+        # Platform-specific
+        gross_orders=report.gross_orders,
+        return_orders=report.return_orders,
+        net_orders=report.net_orders,
+        tcs_amount=report.tcs_amount,
+        tds_amount=report.tds_amount,
+        marketing_fee=report.marketing_fee,
         sku_rows=sku_rows,
     )
 

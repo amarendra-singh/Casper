@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import FlipkartReport from '../pages/PnL/FlipkartReport'
+import PnLReport from '../pages/PnL/PnLReport'
 
 // ── Mock API ──────────────────────────────────────────────────────────────────
 
@@ -88,7 +88,7 @@ const renderReport = (view = 'pnl') => {
   return render(
     <MemoryRouter initialEntries={[`/pnl/flipkart/1?view=${view}`]}>
       <Routes>
-        <Route path="/pnl/flipkart/:reportId" element={<FlipkartReport />} />
+        <Route path="/pnl/:platform/:reportId" element={<PnLReport />} />
       </Routes>
     </MemoryRouter>
   )
@@ -102,7 +102,7 @@ describe('FlipkartReport loading', () => {
     render(
       <MemoryRouter initialEntries={['/pnl/flipkart/1?view=pnl']}>
         <Routes>
-          <Route path="/pnl/flipkart/:reportId" element={<FlipkartReport />} />
+          <Route path="/pnl/:platform/:reportId" element={<PnLReport />} />
         </Routes>
       </MemoryRouter>
     )
@@ -114,7 +114,7 @@ describe('FlipkartReport loading', () => {
     render(
       <MemoryRouter initialEntries={['/pnl/flipkart/999?view=pnl']}>
         <Routes>
-          <Route path="/pnl/flipkart/:reportId" element={<FlipkartReport />} />
+          <Route path="/pnl/:platform/:reportId" element={<PnLReport />} />
         </Routes>
       </MemoryRouter>
     )
@@ -266,7 +266,7 @@ describe('SKU filter pills', () => {
     render(
       <MemoryRouter initialEntries={['/pnl/flipkart/1?view=pnl']}>
         <Routes>
-          <Route path="/pnl/flipkart/:reportId" element={<FlipkartReport />} />
+          <Route path="/pnl/:platform/:reportId" element={<PnLReport />} />
         </Routes>
       </MemoryRouter>
     )
@@ -319,7 +319,7 @@ describe('row styling', () => {
     render(
       <MemoryRouter initialEntries={['/pnl/flipkart/1?view=pnl']}>
         <Routes>
-          <Route path="/pnl/flipkart/:reportId" element={<FlipkartReport />} />
+          <Route path="/pnl/:platform/:reportId" element={<PnLReport />} />
         </Routes>
       </MemoryRouter>
     )
@@ -425,7 +425,7 @@ describe('Operating P&L tab', () => {
     render(
       <MemoryRouter initialEntries={['/pnl/flipkart/1?view=pnl']}>
         <Routes>
-          <Route path="/pnl/flipkart/:reportId" element={<FlipkartReport />} />
+          <Route path="/pnl/:platform/:reportId" element={<PnLReport />} />
         </Routes>
       </MemoryRouter>
     )

@@ -32,6 +32,23 @@ class PnlReport(Base):
     amount_settled: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     amount_pending: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
+    # ── Snapdeal-specific fields (null for other platforms) ──────────────────
+    seller_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    seller_code: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    gross_orders: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    return_orders: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    net_orders: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    cod_orders: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    ncod_orders: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    marketing_fee: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    courier_fee: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    payment_collection_fee: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    commission_total: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    tcs_amount: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    tds_amount: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    opening_balance: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    closing_balance: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
     # Relationships
     platform: Mapped["Platform"] = relationship("Platform")
     uploader: Mapped["User"] = relationship("User")
