@@ -113,6 +113,9 @@ html, body, #root {
 .btn-sm { padding: 5px 10px; font-size: 11px; }
 .btn-xs { padding: 3px 8px;  font-size: 11px; }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-gold { background: var(--accent); color: #fff; }
+.btn-gold:hover { background: var(--accent-hover); }
+.btn-gold:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── Inputs ── */
 .input {
@@ -149,6 +152,7 @@ select.input { cursor: pointer; }
 .badge-accent { background: var(--pink-soft);  color: var(--pink); }
 .badge-gray   { background: var(--chip);       color: var(--text-2); }
 .badge-amber  { background: var(--amber-dim);  color: var(--amber-text); }
+.badge-gold   { background: var(--gold-dim);   color: var(--accent); }
 
 /* ── Table ── */
 .table-wrap { overflow-x: auto; }

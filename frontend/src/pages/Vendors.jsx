@@ -41,7 +41,10 @@ export default function Vendors() {
   }
 
   const handleDelete = async v => {
-    if ((skuCounts[v.id] || 0) > 0) return
+    if ((skuCounts[v.id] || 0) > 0) {
+      setError(`Cannot delete "${v.name}" — it has ${skuCounts[v.id]} active SKU(s). Remove or reassign them first.`)
+      return
+    }
     if (!confirm(`Delete vendor "${v.name}"?`)) return
     setBusy(v.id)
     try {

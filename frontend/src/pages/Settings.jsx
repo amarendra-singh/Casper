@@ -9,7 +9,7 @@ function Toast({ msg, type }) {
   return <div className={`st-toast st-toast-${type}`}>{msg}</div>
 }
 
-function TierRow({ tier, platformId, onUpdated, onDeleted }) {
+function TierRow({ tier, platformId, onUpdated, onDeleted, onError }) {
   const [editing, setEditing] = useState(false)
   const [name,    setName]    = useState(tier.tier_name)
   // Determine current mode from existing data: pct if fee_pct is set, else amt
@@ -36,7 +36,7 @@ function TierRow({ tier, platformId, onUpdated, onDeleted }) {
       const r = await api.patch(`/platforms/${platformId}/tiers/${tier.id}`, payload)
       onUpdated(r.data)
       setEditing(false)
-    } catch { /* ignore */ }
+    } catch(e) { onError?.(e.response?.data?.detail || 'Failed to save tier') }
     finally { setBusy(false) }
   }
 
@@ -46,7 +46,7 @@ function TierRow({ tier, platformId, onUpdated, onDeleted }) {
     try {
       await api.delete(`/platforms/${platformId}/tiers/${tier.id}`)
       onDeleted(tier.id)
-    } catch { /* ignore */ }
+    } catch(e) { onError?.(e.response?.data?.detail || 'Failed to delete tier') }
     finally { setBusy(false) }
   }
 
@@ -88,7 +88,7 @@ function TierRow({ tier, platformId, onUpdated, onDeleted }) {
   )
 }
 
-function PlatformCard({ platform, onUpdated }) {
+function PlatformCard({ platform, onUpdated, onError }) {
   const [expanded, setExpanded] = useState(false)
   const [editing,  setEditing]  = useState(false)
   const [busy,     setBusy]     = useState(false)
@@ -127,7 +127,7 @@ function PlatformCard({ platform, onUpdated }) {
       })
       onUpdated(updated)
       setEditing(false)
-    } catch { /* ignore */ }
+    } catch(e) { onError?.(e.response?.data?.detail || 'Failed to save platform') }
     finally { setBusy(false) }
   }
 
@@ -136,7 +136,7 @@ function PlatformCard({ platform, onUpdated }) {
     try {
       const updated = await updatePlatform(platform.id, { is_active: !platform.is_active })
       onUpdated(updated)
-    } catch { /* ignore */ }
+    } catch(e) { onError?.(e.response?.data?.detail || 'Failed to toggle status') }
     finally { setBusy(false) }
   }
 
@@ -156,7 +156,7 @@ function PlatformCard({ platform, onUpdated }) {
       setTiers(p => [...p, r.data])
       setNewTier(TIER_DEFAULTS)
       setAddTier(false)
-    } catch { /* ignore */ }
+    } catch(e) { onError?.(e.response?.data?.detail || 'Failed to add tier') }
     finally { setBusy(false) }
   }
 
@@ -256,6 +256,7 @@ function PlatformCard({ platform, onUpdated }) {
               <TierRow key={t.id} tier={t} platformId={platform.id}
                 onUpdated={updated => setTiers(p => p.map(x => x.id === updated.id ? updated : x))}
                 onDeleted={id => setTiers(p => p.filter(x => x.id !== id))}
+                onError={onError}
               />
             ))}
             {addTier && (
@@ -387,7 +388,8 @@ export default function Settings() {
         {platforms.length === 0
           ? <div className="st-empty">No platforms. Add one above.</div>
           : platforms.map(p => (
-              <PlatformCard key={p.id} platform={p} onUpdated={handleUpdated} />
+              <PlatformCard key={p.id} platform={p} onUpdated={handleUpdated}
+                onError={msg => showToast(msg, 'error')} />
             ))
         }
       </div>

@@ -167,7 +167,7 @@ function compute(row, miscDef, profDef, platforms) {
   const log    = parseFloat(row.log)    || 0
   const addons = parseFloat(row.addons) || 0
   const misc   = row.misc !== '' ? parseFloat(row.misc) : miscDef
-  const crCharge = platforms[0]?.cr_charge || 160
+  const crCharge = platforms[0]?.cr_charge ?? 0
 
   let crPct, crAmt
   if (row.crAmt !== '') {
@@ -468,20 +468,6 @@ export default function SKUs() {
     }, 2000)
     return () => clearTimeout(timer)
   }, [rows, saveRows])
-
-  // ── Hard fallback: save every 30s ──────────────────────────────────────────
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setRows(current => {
-        const dirty = current.filter(r =>
-          (r.status === STATUS.DIRTY || r.status === STATUS.NEW) && r.sku && r.price
-        )
-        if (dirty.length > 0) saveRows(dirty)
-        return current
-      })
-    }, 30000)
-    return () => clearInterval(interval)
-  }, [saveRows])
 
   // ── Warn on page close if unsaved ──────────────────────────────────────────
   useEffect(() => {

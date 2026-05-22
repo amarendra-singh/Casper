@@ -6,6 +6,7 @@ AD is now per-platform via SkuPlatformConfig; the base breakeven excludes AD.
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from typing import List, Optional, Tuple
 
 from app.schemas.entries import EntryRowInput, EntryRowResult
@@ -59,9 +60,9 @@ def calculate_pricing(
     """
     breakeven   = price + package + logistics + addons + misc_total + cr_cost + damage_cost
     net_profit  = breakeven * (profit_percentage / 100)
-    bs_wo_gst   = round(breakeven + net_profit)
-    gst_amount  = round(bs_wo_gst * gst_rate / 100)
-    bank_settlement = bs_wo_gst + gst_amount
+    bs_wo_gst       = round(breakeven + net_profit, 2)
+    gst_amount      = round(bs_wo_gst * gst_rate / 100, 2)
+    bank_settlement = round(bs_wo_gst + gst_amount, 2)
 
     return {
         'breakeven':        round(breakeven, 2),
@@ -318,68 +319,32 @@ async def upsert_batch(
 async def get_all_entries(session: AsyncSession) -> list:
     """
     Load all SKUs with their latest pricing and per-platform configs.
-    Returns data shaped for the SKUs page.
+    Uses selectinload to eliminate N+1 queries (5 flat queries regardless of SKU count).
     """
-    from app.models.vendor import Vendor
-    from app.models.category import Category
-    from app.models.hsn_code import HsnCode
-
     sku_result = await session.execute(
         select(Sku)
         .where(Sku.is_active == True)
+        .options(
+            selectinload(Sku.vendor),
+            selectinload(Sku.category),
+            selectinload(Sku.pricing).selectinload(SkuPricing.platform_configs),
+        )
         .order_by(Sku.id.desc())
     )
     skus = sku_result.scalars().all()
 
     rows = []
     for sku in skus:
-        pricing_result = await session.execute(
-            select(SkuPricing)
-            .where(SkuPricing.sku_id == sku.id)
-            .order_by(SkuPricing.id.desc())
-            .limit(1)
-        )
-        pricing = pricing_result.scalar_one_or_none()
+        # Pick latest pricing record without extra query
+        pricing = max(sku.pricing, key=lambda p: p.id) if sku.pricing else None
+        platform_configs = pricing.platform_configs if pricing else []
 
-        # Load per-platform configs for this pricing record
-        platform_configs = []
-        if pricing:
-            cfg_result = await session.execute(
-                select(SkuPlatformConfig)
-                .where(SkuPlatformConfig.sku_pricing_id == pricing.id)
-            )
-            platform_configs = cfg_result.scalars().all()
-
-        vendor_name  = None
-        vendor_short = None
-        if sku.vendor_id:
-            v_result = await session.execute(
-                select(Vendor).where(Vendor.id == sku.vendor_id)
-            )
-            vendor = v_result.scalar_one_or_none()
-            if vendor:
-                vendor_name  = vendor.name
-                vendor_short = vendor.short_code
-
-        category_name = None
-        if sku.category_id:
-            c_result = await session.execute(
-                select(Category).where(Category.id == sku.category_id)
-            )
-            category = c_result.scalar_one_or_none()
-            if category:
-                category_name = category.name
-
-        hsn_code = None
-        gst_rate = None
-        if sku.hsn_code_id:
-            h_result = await session.execute(
-                select(HsnCode).where(HsnCode.id == sku.hsn_code_id)
-            )
-            hsn = h_result.scalar_one_or_none()
-            if hsn:
-                hsn_code = hsn.code
-                gst_rate = hsn.gst_rate
+        vendor_name  = sku.vendor.name       if sku.vendor   else None
+        vendor_short = sku.vendor.short_code if sku.vendor   else None
+        category_name = sku.category.name    if sku.category else None
+        # hsn_code uses lazy="joined" on the model — already loaded in main query
+        hsn_code = sku.hsn_code.code         if sku.hsn_code else None
+        gst_rate = sku.hsn_code.gst_rate     if sku.hsn_code else None
 
         rows.append({
             'id':               sku.id,

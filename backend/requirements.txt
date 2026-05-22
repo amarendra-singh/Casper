@@ -3,10 +3,8 @@ fastapi==0.111.0
 uvicorn[standard]==0.30.1
 
 # Database
-sqlalchemy==2.0.30
-aiomysql==0.2.0
+sqlalchemy==2.0.49
 alembic==1.13.1
-pymysql==1.1.0
 
 # Auth
 python-jose[cryptography]==3.3.0
@@ -17,11 +15,7 @@ python-multipart==0.0.9
 python-decouple==3.8
 
 # Validation
-pydantic
-pydantic-settings==2.2.1
-
-# Utils
-httpx==0.27.0
+pydantic>=2.0.0
 
 # File parsing
 openpyxl==3.1.2

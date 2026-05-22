@@ -28,7 +28,8 @@ api.interceptors.response.use(
           original.headers.Authorization = `Bearer ${data.access_token}`
           return api(original)
         } catch {
-          localStorage.clear()
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('refresh_token')
           window.location.href = '/login'
         }
       }
@@ -41,6 +42,7 @@ api.interceptors.response.use(
 export const login         = (email, password) => api.post('/auth/login', { email, password }).then(r => r.data)
 export const getMe         = ()                => api.get('/auth/me').then(r => r.data)
 export const changePassword= (data)            => api.post('/auth/change-password', data).then(r => r.data)
+export const apiLogout     = ()                => api.post('/auth/logout').then(r => r.data)
 
 // Platforms
 export const getPlatforms  = ()        => api.get('/platforms/').then(r => r.data)
