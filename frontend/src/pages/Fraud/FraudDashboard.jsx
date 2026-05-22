@@ -202,8 +202,8 @@ export default function FraudDashboard() {
     <div className="fd-root">
       <div className="fd-header">
         <div className="fd-title-block">
-          <h1 className="fd-title">Risk Intelligence</h1>
-          <p className="fd-subtitle">Z-score based return & fraud analysis across all platforms</p>
+          <h1 className="fd-title">Fraud Detection</h1>
+          <p className="fd-subtitle">Return risk & anomaly analysis across all platforms</p>
         </div>
         <div className="fd-last-updated">Live · {totalSkus} SKUs scored</div>
       </div>
