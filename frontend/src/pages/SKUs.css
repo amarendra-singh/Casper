@@ -501,6 +501,42 @@ select.ec-input,
 }
 .plat-alias-inp.has-value:focus { opacity: 1; }
 
+/* ── SKU alias chips (in SKU code cell) ── */
+.sku-alias-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 3px;
+}
+.sku-alias-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(0,0,0,0.04);
+  border: 1px solid var(--gold);
+  border-radius: 3px;
+  padding: 1px 4px;
+  max-width: 100%;
+  overflow: hidden;
+}
+.sku-alias-chip-plat {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--gold);
+  text-transform: uppercase;
+  font-family: var(--font-ui);
+  flex-shrink: 0;
+}
+.sku-alias-chip-val {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
 /* Labelled input box: [ % | 0 ] */
 .plat-field {
   display: flex;

@@ -13,7 +13,7 @@ from typing import Optional, Tuple
 import re
 import openpyxl
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.models.pnl import PnlReport, PnlSkuRow
 from app.models.sku import SkuPlatformConfig, SkuPricing
@@ -445,6 +445,125 @@ def _parse_meesho_workbook(file_bytes: bytes) -> tuple[dict, list[dict]]:
     return summary, sku_rows
 
 
+def _parse_snapdeal_workbook(file_bytes: bytes) -> tuple[dict, list[dict]]:
+    """
+    Parse Snapdeal P&L xlsx (Payment Settlement Report).
+    No per-SKU data available in this report format — returns empty sku_rows.
+    Returns (summary_dict, []).
+    """
+    from io import BytesIO
+    import pandas as pd
+    import warnings
+    warnings.filterwarnings("ignore", category=UserWarning)
+
+    bio = BytesIO(file_bytes)
+
+    # ── Summary sheet: seller info, opening/closing balance ──────────────────
+    df_sum = pd.read_excel(bio, sheet_name="Summary", header=None)
+    seller_name    = str(df_sum.iloc[6, 5]).strip() if pd.notna(df_sum.iloc[6, 5]) else None
+    seller_code    = str(df_sum.iloc[7, 5]).strip() if pd.notna(df_sum.iloc[7, 5]) else None
+    opening_balance = float(df_sum.iloc[11, 7]) if pd.notna(df_sum.iloc[11, 7]) else None
+    closing_balance = float(df_sum.iloc[36, 7]) if pd.notna(df_sum.iloc[36, 7]) else None
+
+    # ── Total_Suboders: gross order rows (exclude "Total" text row) ───────────
+    bio.seek(0)
+    df_ord = pd.read_excel(bio, sheet_name="Total_Suboders", header=0)
+    df_ord = df_ord[pd.to_datetime(df_ord["Transaction Date"], errors="coerce").notna()]
+    gross_sales   = round(float(df_ord["Invoice Amount"].sum()), 2)
+    cod_orders    = int((df_ord["Transaction Type"] == "COD Vendor Invoice").sum())
+    ncod_orders   = int((df_ord["Transaction Type"] == "NCOD Vendor Invoice").sum())
+    gross_orders  = cod_orders + ncod_orders
+
+    # ── Returns ───────────────────────────────────────────────────────────────
+    bio.seek(0)
+    df_ret = pd.read_excel(bio, sheet_name="Returns", header=0)
+    df_ret = df_ret[pd.to_datetime(df_ret["Transaction Date"], errors="coerce").notna()]
+    returns_amount = round(float(df_ret["Invoice Amount"].sum()), 2)
+    return_orders  = len(df_ret)
+
+    net_sales = round(gross_sales + returns_amount, 2)
+
+    # ── Commission and other charges ──────────────────────────────────────────
+    bio.seek(0)
+    df_com = pd.read_excel(bio, sheet_name="Commission and other charges", header=0)
+    commission_total    = round(float(df_com["Total Commission Amount"].sum()), 2)
+    marketing_fee       = round(float(df_com["Marketing Fee"].sum()), 2) if "Marketing Fee" in df_com.columns else None
+    courier_fee         = round(float(df_com["Courier Fee"].sum()), 2) if "Courier Fee" in df_com.columns else None
+    payment_coll_fee    = round(float(df_com["Payment Collection Fee"].sum()), 2) if "Payment Collection Fee" in df_com.columns else None
+
+    # ── TCS ───────────────────────────────────────────────────────────────────
+    bio.seek(0)
+    df_tcs = pd.read_excel(bio, sheet_name="TCS", header=0)
+    tcs_amount = round(float(df_tcs["Tax Amount"].sum()), 2) if "Tax Amount" in df_tcs.columns else None
+
+    # ── Non Order Transactions (TDS) ──────────────────────────────────────────
+    bio.seek(0)
+    df_non = pd.read_excel(bio, sheet_name="Non Order Transactions", header=0)
+    tds_amount = round(float(df_non["Gross Amount"].sum()), 2) if "Gross Amount" in df_non.columns else None
+
+    # ── Payments (actual bank transfers) ─────────────────────────────────────
+    bio.seek(0)
+    df_pay = pd.read_excel(bio, sheet_name="Payments", header=0)
+    # Exclude summary "Total" row (Transaction Date = "Total" or Gross Amount = 0 at end)
+    df_pay_real = df_pay[pd.to_datetime(df_pay["Transaction Date"], errors="coerce").notna()]
+    bank_settlement = round(float(df_pay_real["Gross Amount"].sum()), 2)
+
+    # ── Derived ───────────────────────────────────────────────────────────────
+    tcs  = tcs_amount or 0.0
+    tds  = tds_amount or 0.0
+    net_earnings   = round(net_sales + commission_total + tcs + tds, 2)
+    net_margin_pct = round(net_earnings / net_sales * 100, 2) if net_sales else None
+    total_expenses = round(commission_total + tcs + tds, 2)
+    amount_pending = round(closing_balance, 2) if closing_balance is not None else None
+
+    summary = {
+        "seller_name":          seller_name,
+        "seller_code":          seller_code,
+        "gross_sales":          gross_sales,
+        "returns_amount":       returns_amount,
+        "net_sales":            net_sales,
+        "gross_orders":         gross_orders,
+        "return_orders":        return_orders,
+        "net_orders":           gross_orders - return_orders,
+        "cod_orders":           cod_orders,
+        "ncod_orders":          ncod_orders,
+        "commission_total":     commission_total,
+        "marketing_fee":        marketing_fee,
+        "courier_fee":          courier_fee,
+        "payment_collection_fee": payment_coll_fee,
+        "tcs_amount":           tcs_amount,
+        "tds_amount":           tds_amount,
+        "bank_settlement":      bank_settlement,
+        "net_earnings":         net_earnings,
+        "net_margin_pct":       net_margin_pct,
+        "total_expenses":       total_expenses,
+        "opening_balance":      opening_balance,
+        "closing_balance":      closing_balance,
+        "amount_settled":       bank_settlement,
+        "amount_pending":       amount_pending,
+    }
+
+    return summary, []     # no per-SKU data in this report format
+
+
+def extract_period_from_bytes_snapdeal(file_bytes: bytes) -> tuple[date, date]:
+    """Extract period from Snapdeal Summary sheet (row 8: Date | start | 'to' | end)."""
+    from io import BytesIO
+    import pandas as pd
+    import warnings
+    warnings.filterwarnings("ignore", category=UserWarning)
+
+    df = pd.read_excel(BytesIO(file_bytes), sheet_name="Summary", header=None)
+    try:
+        start_str = str(df.iloc[8, 5]).strip()   # e.g. "01-APR-2026"
+        end_str   = str(df.iloc[8, 7]).strip()   # e.g. "30-APR-2026"
+        period_start = pd.to_datetime(start_str, format="%d-%b-%Y").date()
+        period_end   = pd.to_datetime(end_str,   format="%d-%b-%Y").date()
+        return period_start, period_end
+    except Exception as e:
+        raise ValueError(f"Snapdeal period extraction failed: {e}")
+
+
 def extract_period_from_bytes_meesho(file_bytes: bytes) -> tuple[date, date]:
     """Extract period from Meesho Excel via min/max of Order Date column."""
     from io import BytesIO
@@ -639,8 +758,11 @@ async def parse_and_store(
     Dispatches to platform-specific parser based on platform_name.
     Returns upload result with match counts.
     """
-    if platform_name.lower() == "meesho":
+    _pname = platform_name.lower()
+    if _pname == "meesho":
         summary, sku_rows_raw = _parse_meesho_workbook(file_bytes)
+    elif _pname == "snapdeal":
+        summary, sku_rows_raw = _parse_snapdeal_workbook(file_bytes)
     else:
         summary, sku_rows_raw = _parse_workbook(file_bytes)
 
@@ -708,3 +830,96 @@ async def delete_report(session: AsyncSession, report_id: int) -> bool:
     await session.delete(report)
     await session.commit()
     return True
+
+
+async def get_dashboard_summary(session: AsyncSession) -> dict:
+    """
+    Aggregate all P&L reports into dashboard-level stats.
+    Returns platform totals, monthly breakdown, and overall KPIs.
+    """
+    result = await session.execute(
+        select(PnlReport, Platform.name.label("platform_name"))
+        .join(Platform, Platform.id == PnlReport.platform_id)
+        .order_by(PnlReport.period_start)
+    )
+    rows = result.all()
+
+    if not rows:
+        return {
+            "platforms": [], "monthly": [],
+            "total_bank_settlement": 0, "total_gross_sales": 0,
+            "total_net_earnings": 0, "report_count": 0,
+            "latest_period_start": None, "latest_period_end": None,
+        }
+
+    # ── Per-platform aggregation ──────────────────────────────────────────────
+    plat_map: dict[int, dict] = {}
+    for report, pname in rows:
+        pid = report.platform_id
+        if pid not in plat_map:
+            plat_map[pid] = {
+                "platform_id":       pid,
+                "platform_name":     pname,
+                "bank_settlement":   0.0,
+                "gross_sales":       0.0,
+                "net_sales":         0.0,
+                "net_earnings":      0.0,
+                "gross_units":       0,
+                "net_units":         0,
+                "report_count":      0,
+            }
+        p = plat_map[pid]
+        p["bank_settlement"] += report.bank_settlement or 0
+        p["gross_sales"]     += report.gross_sales or 0
+        p["net_sales"]       += report.net_sales or 0
+        p["net_earnings"]    += report.net_earnings or 0
+        p["gross_units"]     += report.gross_units or report.gross_orders or 0
+        p["net_units"]       += report.net_units or report.net_orders or 0
+        p["report_count"]    += 1
+
+    total_bs = sum(p["bank_settlement"] for p in plat_map.values())
+    platforms = []
+    for p in sorted(plat_map.values(), key=lambda x: -x["bank_settlement"]):
+        p["bank_settlement"] = round(p["bank_settlement"], 2)
+        p["gross_sales"]     = round(p["gross_sales"], 2)
+        p["net_sales"]       = round(p["net_sales"], 2)
+        p["net_earnings"]    = round(p["net_earnings"], 2)
+        p["pct"]             = round(p["bank_settlement"] / total_bs * 100, 2) if total_bs else 0
+        platforms.append(p)
+
+    # ── Monthly breakdown ─────────────────────────────────────────────────────
+    monthly_map: dict[tuple, dict] = {}
+    for report, pname in rows:
+        month_key = report.period_start.strftime("%Y-%m")
+        key = (month_key, report.platform_id)
+        if key not in monthly_map:
+            monthly_map[key] = {
+                "month":           month_key,
+                "platform_id":     report.platform_id,
+                "platform_name":   pname,
+                "bank_settlement": 0.0,
+                "gross_sales":     0.0,
+                "report_count":    0,
+            }
+        m = monthly_map[key]
+        m["bank_settlement"] += report.bank_settlement or 0
+        m["gross_sales"]     += report.gross_sales or 0
+        m["report_count"]    += 1
+
+    monthly = [
+        {**v, "bank_settlement": round(v["bank_settlement"], 2),
+               "gross_sales": round(v["gross_sales"], 2)}
+        for v in sorted(monthly_map.values(), key=lambda x: (x["month"], x["platform_id"]))
+    ]
+
+    all_reports = [r for r, _ in rows]
+    return {
+        "platforms":             platforms,
+        "monthly":               monthly,
+        "total_bank_settlement": round(total_bs, 2),
+        "total_gross_sales":     round(sum(p["gross_sales"] for p in platforms), 2),
+        "total_net_earnings":    round(sum(p["net_earnings"] for p in platforms), 2),
+        "report_count":          len(all_reports),
+        "latest_period_start":   str(min(r.period_start for r in all_reports)),
+        "latest_period_end":     str(max(r.period_end   for r in all_reports)),
+    }

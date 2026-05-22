@@ -607,6 +607,43 @@
   font-size: 13px;
 }
 
+/* Parse warnings */
+.pnl-parse-warnings {
+  background: rgba(234, 120, 40, 0.08);
+  border: 1px solid rgba(234, 120, 40, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+.pnl-warn-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5a8a4a;
+}
+.pnl-warn-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #b85a10;
+  margin-top: 2px;
+}
+.pnl-warn-item {
+  font-size: 12px;
+  color: #b85a10;
+  padding-left: 4px;
+}
+.pnl-warn-note {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 2px;
+  font-style: italic;
+}
+
 /* Conflict modal */
 .pnl-conflict-info { display: flex; flex-direction: column; gap: 12px; font-size: 13px; color: var(--text-2); }
 .pnl-conflict-detail {

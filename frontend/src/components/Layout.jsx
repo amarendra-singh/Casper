@@ -1,90 +1,87 @@
 import { useState, useRef, useEffect } from 'react'
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getPlatforms } from '../api/client'
 import './Layout.css'
 
-/**
- * WORKSPACE items.
- * - `subItems` (optional) makes the item expandable with intro/manage sub-links.
- * - Without subItems, item renders as a single flat NavLink (current behavior).
- */
-const WORKSPACE = [
-  { to: '/',         label: 'Dashboard', end: true  },
-  {
-    to: '/skus',     label: 'SKUs',
-    subItems: [
-      { to: '/skus/intro', label: '📖 Intro' },
-      { to: '/skus',       label: 'Manage SKUs', end: true },
-    ],
-  },
-  {
-    to: '/vendors', label: 'Vendors',
-    subItems: [
-      { to: '/vendors/intro', label: '📖 Intro' },
-      { to: '/vendors',       label: 'Manage Vendors', end: true },
-    ],
-  },
-  {
-    to: '/pricing', label: 'Pricing',
-    subItems: [
-      { to: '/pricing/intro', label: '📖 Intro' },
-      { to: '/pricing',       label: 'New Pricing', end: true },
-    ],
-  },
-  {
-    to: '/settings', label: 'Settings',
-    subItems: [
-      { to: '/settings/intro', label: '📖 Intro' },
-      { to: '/settings',       label: 'Platforms & Tiers', end: true },
-    ],
-  },
+// ── SVG Icons ──────────────────────────────────────────────────────────────
+const IcHome    = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9.5L10 3l7 6.5V17a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/><path d="M7 18V11h6v7"/></svg>
+const IcLayers  = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12l8 4 8-4M2 8l8 4 8-4M2 4l8 4 8-4"/></svg>
+const IcChart   = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17V7m4 10V3m4 14v-6m4 6v-4"/></svg>
+const IcDoc     = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6l-3-4z"/><path d="M13 2v4h4M7 9h6M7 12h6M7 15h4"/></svg>
+const IcEdit    = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2.5a2.12 2.12 0 0 1 3 3L6 17l-4 1 1-4 11.5-11.5z"/></svg>
+const IcHelp    = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="10" r="8"/><path d="M7.5 7.5a2.5 2.5 0 0 1 5 .83c0 1.67-2.5 2.5-2.5 2.5M10 14.5h.01"/></svg>
+const IcSettings= () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="10" r="2.5"/><path d="M10 2v1.5M10 16.5V18M2 10h1.5M16.5 10H18M4.22 4.22l1.06 1.06M14.72 14.72l1.06 1.06M4.22 15.78l1.06-1.06M14.72 5.28l1.06-1.06"/></svg>
+const IcSearch  = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="9" r="6"/><path d="M17 17l-3.5-3.5"/></svg>
+const IcMenu    = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+const IcPlus    = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 4v12M4 10h12"/></svg>
+const IcChevron = () => <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+const IcUsers   = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M13 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM3 17a7 7 0 0 1 14 0"/></svg>
+const IcTag     = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h6l8 8a2 2 0 0 1 0 2.83l-3.17 3.17a2 2 0 0 1-2.83 0L3 9V3z"/><circle cx="7" cy="7" r="1" fill="currentColor" stroke="none"/></svg>
+const IcPnl     = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="16" height="14" rx="2"/><path d="M6 8h5M6 11h8M6 14h4"/><path d="M14 6l1.5 1.5L14 9"/></svg>
+
+// ── Nav data ──────────────────────────────────────────────────────────────
+const RAIL_NAV = [
+  { to: '/',        title: 'Dashboard', Icon: IcHome,   end: true },
+  { to: '/skus',    title: 'SKUs',      Icon: IcLayers },
+  { to: '/pricing', title: 'Pricing',   Icon: IcTag },
+  { to: null,       title: 'Analytics', Icon: IcChart },
+  { to: null,       title: 'Reports',   Icon: IcDoc,   badge: 7 },
 ]
+
+const WORKSPACE = [
+  { to: '/',         label: 'Dashboard', Icon: IcHome,     end: true },
+  { to: '/skus',     label: 'SKUs',      Icon: IcLayers,   subItems: [
+    { to: '/skus',         label: 'Manage SKUs',    end: true },
+    { to: '/skus/intro',   label: 'Overview' },
+  ]},
+  { to: '/vendors',  label: 'Vendors',   Icon: IcUsers,    subItems: [
+    { to: '/vendors',        label: 'Manage Vendors', end: true },
+    { to: '/vendors/intro',  label: 'Overview' },
+  ]},
+  { to: '/pricing',  label: 'Pricing',   Icon: IcTag,      subItems: [
+    { to: '/pricing',        label: 'New Pricing',   end: true },
+    { to: '/pricing/intro',  label: 'Overview' },
+  ]},
+  { to: '/settings', label: 'Settings',  Icon: IcSettings, subItems: [
+    { to: '/settings',       label: 'Platforms & Tiers', end: true },
+    { to: '/settings/intro', label: 'Overview' },
+  ]},
+]
+
 const ANALYTICS      = ['Overview','Revenue','Platform Performance','SKU Analysis']
 const REPORTS_MY     = ['Sales Report','Profitability','Platform Compare']
 const REPORTS_SHARED = ['Weekly Summary','Deal Duration']
+
 const COMPANIES = [
-  { name: 'Shringar House Jewellery', color: '#16A34A', sub: 'Active' },
+  { name: 'Shringar House Jewellery', color: '#EC2D6E', sub: 'Active' },
   { name: 'My Fashion Brand',         color: '#7C5CFC', sub: '3 SKUs' },
-  { name: 'Electronics Store',        color: '#E8365D', sub: '12 SKUs' },
-]
-const ALL_SEARCH = [
-  { label:'Dashboard',            sub:'Workspace',      to:'/' },
-  { label:'SKUs',                 sub:'Workspace',      to:'/skus' },
-  { label:'Pricing',              sub:'Workspace',      to:'/pricing' },
-  { label:'Overview',             sub:'Analytics',      to:null },
-  { label:'Revenue',              sub:'Analytics',      to:null },
-  { label:'Platform Performance', sub:'Analytics',      to:null },
-  { label:'SKU Analysis',         sub:'Analytics',      to:null },
-  { label:'Sales Report',         sub:'My Reports',     to:null },
-  { label:'Profitability',        sub:'My Reports',     to:null },
-  { label:'Platform Compare',     sub:'My Reports',     to:null },
-  { label:'Weekly Summary',       sub:'Shared with me', to:null },
-  { label:'Deal Duration',        sub:'Shared with me', to:null },
-  { label:'Settings',             sub:'Settings',       to:'/settings' },
-]
-const ICON_BTNS = [
-  { icon:'⊞', title:'Dashboard', to:'/' },
-  { icon:'◇', title:'SKUs',      to:'/skus' },
-  { icon:'◆', title:'Pricing',   to:'/pricing' },
-  { icon:'📊', title:'Analytics', to:null },
-  { icon:'📋', title:'Reports',   to:null, badge:7 },
+  { name: 'Electronics Store',        color: '#F59E0B', sub: '12 SKUs' },
 ]
 
+const ALL_SEARCH = [
+  { label: 'Dashboard',           sub: 'Workspace', to: '/' },
+  { label: 'SKUs',                sub: 'Workspace', to: '/skus' },
+  { label: 'Pricing',             sub: 'Workspace', to: '/pricing' },
+  { label: 'Platform Performance',sub: 'Analytics', to: null },
+  { label: 'Revenue',             sub: 'Analytics', to: null },
+  { label: 'Sales Report',        sub: 'Reports',   to: null },
+  { label: 'Profitability',       sub: 'Reports',   to: null },
+  { label: 'Settings',            sub: 'Settings',  to: '/settings' },
+]
+
+// ── Component ──────────────────────────────────────────────────────────────
 export default function Layout() {
   const { user, logout } = useAuth()
-  const navigate = useNavigate()
-  const initials = user?.name?.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase() || 'U'
+  const navigate  = useNavigate()
+  const location  = useLocation()
+  const initials  = user?.name?.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase() || 'U'
   const handleLogout = () => { logout(); navigate('/login') }
 
   const [pnlPlatforms, setPnlPlatforms] = useState([])
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === 'true')
-  const toggleSidebar = () => setSidebarCollapsed(p => { localStorage.setItem('sidebarCollapsed', !p); return !p })
-  const [open,      setOpen]      = useState({ workspace:true, pnl:true, analytics:true, reports:true, settings:true })
-  // Each WORKSPACE item with subItems can collapse independently
-  const [openWsItem, setOpenWsItem] = useState({})
-  const togWsItem = key => setOpenWsItem(p => ({ ...p, [key]: !p[key] }))
-  const [treeOpen,  setTreeOpen]  = useState({ my:true, shared:true })
+  const [open,      setOpen]      = useState({ workspace:true, pnl:true, analytics:false, reports:true, settings:false })
+  const [openWsItem,setOpenWsItem]= useState({})
+  const [treeOpen,  setTreeOpen]  = useState({ my:true, shared:false })
   const [company,   setCompany]   = useState(COMPANIES[0])
   const [showCo,    setShowCo]    = useState(false)
   const [query,     setQuery]     = useState('')
@@ -107,8 +104,9 @@ export default function Layout() {
     getPlatforms().then(setPnlPlatforms).catch(() => {})
   }, [])
 
-  const togSec  = k => setOpen(p => ({ ...p, [k]: !p[k] }))
-  const togTree = k => setTreeOpen(p => ({ ...p, [k]: !p[k] }))
+  const togSec    = k => setOpen(p => ({ ...p, [k]: !p[k] }))
+  const togTree   = k => setTreeOpen(p => ({ ...p, [k]: !p[k] }))
+  const togWsItem = k => setOpenWsItem(p => ({ ...p, [k]: !p[k] }))
 
   const handleSearch = q => {
     setQuery(q)
@@ -120,234 +118,245 @@ export default function Layout() {
     setShowSR(true)
   }
 
+  // Determine active rail button
+  const isRailActive = (item) => {
+    if (!item.to) return false
+    if (item.end) return location.pathname === item.to
+    return location.pathname.startsWith(item.to)
+  }
+
   return (
-    <div className="layout">
+    <div className="app">
 
-      {/* ── Sidebar — same warm gray as outer bg ── */}
-      <aside className={`sidebar${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
+      {/* ══ RAIL ══ */}
+      <aside className="rail">
+        <div className="rail-logo" onClick={() => navigate('/')}>C</div>
 
-        {/* Icon strip */}
-        <div className="ic-strip">
-          <div className="ic-logo" onClick={() => navigate('/')}>C</div>
-          <div className="ic-collapse" onClick={toggleSidebar} title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
-            {sidebarCollapsed ? '›' : '‹'}
-          </div>
-          <div className="ic-nav">
-            {ICON_BTNS.map((b, i) => (
-              <div key={i} className="ic-btn" title={b.title}
-                onClick={() => b.to ? navigate(b.to) : null}
-                style={{ position:'relative' }}>
-                {b.icon}
-                {b.badge && <span className="ic-badge">{b.badge}</span>}
-              </div>
-            ))}
-          </div>
-          <div className="ic-bottom">
-            <div className="ic-btn" style={{ position:'relative' }} title="Notifications">
-              🔔<span className="ic-badge">3</span>
-            </div>
-            <div className="ic-btn" title="Settings" onClick={() => navigate('/settings')}>⚙</div>
-            <div className="ic-avatar" title={user?.name}>{initials}</div>
-          </div>
+        <nav className="rail-nav">
+          {RAIL_NAV.map((item, i) => (
+            <button key={i}
+              className={`rail-btn${isRailActive(item) ? ' active' : ''}`}
+              title={item.title}
+              onClick={() => item.to ? navigate(item.to) : null}
+            >
+              <item.Icon />
+              {item.badge && <span className="rail-badge">{item.badge}</span>}
+            </button>
+          ))}
+        </nav>
+
+        <div className="rail-spacer" />
+
+        <div className="rail-bottom">
+          <button className="rail-btn" title="Help" style={{ position:'relative' }}>
+            <IcHelp />
+            <span className="rail-dot" />
+          </button>
+          <button className="rail-btn" title="Settings" onClick={() => navigate('/settings')}>
+            <IcSettings />
+          </button>
+          <div className="rail-avatar" title={user?.name} onClick={handleLogout} />
+        </div>
+      </aside>
+
+      {/* ══ TREE NAV ══ */}
+      <nav className="tree">
+
+        {/* Brand */}
+        <div className="tree-brand">
+          Casper.com
+          <span className="tree-brand-caret">›</span>
         </div>
 
-        {/* Text nav */}
-        <div className="nav-text">
-          <div className="nav-brand">
-            <span className="nav-brand-name">Casper</span>
-            <span className="nav-brand-chev">▾</span>
+        {/* Company switcher */}
+        <div className="co-wrap" ref={coRef}>
+          <div className="co-btn" onClick={() => setShowCo(p => !p)}>
+            <div className="co-dot" style={{ background: company.color }} />
+            <span className="co-name">{company.name}</span>
+            <span className="co-chev">▾</span>
+          </div>
+          {showCo && (
+            <div className="co-dd">
+              {COMPANIES.map((c, i) => (
+                <div key={i} className="co-row" onClick={() => { setCompany(c); setShowCo(false) }}>
+                  <div className="co-rdot" style={{ background: c.color }} />
+                  <div>
+                    <div className="co-rname">{c.name}</div>
+                    <div className="co-rsub">{c.sub}</div>
+                  </div>
+                </div>
+              ))}
+              <div className="co-add">
+                <span className="co-add-plus">+</span>
+                <span className="co-add-label">Add new company</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Scrollable nav */}
+        <div className="tree-scroll">
+
+          {/* Workspace */}
+          <div className="nav-sec">
+            <div className="sec-hdr" onClick={() => togSec('workspace')}>
+              <span className="sec-lbl">Workspace</span>
+              <span className={`sec-chev ${open.workspace ? '' : 'closed'}`}>▾</span>
+            </div>
+            {open.workspace && WORKSPACE.map(item => {
+              if (!item.subItems) return (
+                <NavLink key={item.to} to={item.to} end={item.end}
+                  className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+                  {item.Icon && <span className="nav-icon"><item.Icon /></span>}
+                  {item.label}
+                </NavLink>
+              )
+              const expanded = openWsItem[item.to] ?? true
+              return (
+                <div key={item.to} className="nav-ws-group">
+                  <div className="nav-item nav-ws-hdr" onClick={() => togWsItem(item.to)}>
+                    {item.Icon && <span className="nav-icon"><item.Icon /></span>}
+                    <span>{item.label}</span>
+                    <span className={`sec-chev sec-chev-sm ${expanded ? '' : 'closed'}`}>▾</span>
+                  </div>
+                  {expanded && item.subItems.map(sub => (
+                    <NavLink key={sub.to} to={sub.to} end={sub.end}
+                      className={({ isActive }) => `nav-item nav-sub-item${isActive ? ' active' : ''}`}>
+                      {sub.label}
+                    </NavLink>
+                  ))}
+                </div>
+              )
+            })}
           </div>
 
-          {/* Company switcher */}
-          <div className="co-wrap" ref={coRef}>
-            <div className="co-btn" onClick={() => setShowCo(p => !p)}>
-              <div className="co-dot" style={{ background: company.color }}/>
-              <span className="co-name">{company.name}</span>
-              <span className="co-chev">▾</span>
+          {/* P&L */}
+          <div className="nav-sec">
+            <div className="sec-hdr" onClick={() => togSec('pnl')}>
+              <span className="sec-lbl">P&amp;L</span>
+              <span className={`sec-chev ${open.pnl ? '' : 'closed'}`}>▾</span>
             </div>
-            {showCo && (
-              <div className="co-dd">
-                {COMPANIES.map((c, i) => (
-                  <div key={i} className="co-row"
-                    onClick={() => { setCompany(c); setShowCo(false) }}>
-                    <div className="co-rdot" style={{ background: c.color }}/>
-                    <div>
-                      <div className="co-rname">{c.name}</div>
-                      <div className="co-rsub">{c.sub}</div>
-                    </div>
+            {open.pnl && <>
+              <NavLink to="/pnl/intro"
+                className={({ isActive }) => `nav-item nav-sub-item${isActive ? ' active' : ''}`}>
+                Overview
+              </NavLink>
+              {pnlPlatforms.map(p => (
+                <NavLink key={p.id} to={`/pnl/${p.name.toLowerCase()}`}
+                  className={({ isActive }) => `nav-item nav-sub-item${isActive ? ' active' : ''}`}>
+                  <span className="nav-plat-dot" style={{ background: p.color || 'var(--muted-2)' }} />
+                  {p.name}
+                </NavLink>
+              ))}
+            </>}
+          </div>
+
+          {/* Analytics */}
+          <div className="nav-sec">
+            <div className="sec-hdr" onClick={() => togSec('analytics')}>
+              <span className="sec-lbl">Analytics</span>
+              <span className={`sec-chev ${open.analytics ? '' : 'closed'}`}>▾</span>
+            </div>
+            {open.analytics && (
+              <div className="tree-body">
+                {ANALYTICS.map(label => (
+                  <div key={label} className="tree-item">
+                    <div className="tree-dot" />{label}
+                    <span className="soon-pill">Soon</span>
                   </div>
                 ))}
-                <div className="co-add">
-                  <span className="co-add-plus">+</span>
-                  <span className="co-add-label">Add new company</span>
-                </div>
               </div>
             )}
           </div>
 
-          {/* Scrollable nav */}
-          <div className="nav-scroll">
-
-            {/* Workspace */}
-            <div className="nav-sec">
-              <div className="sec-hdr" onClick={() => togSec('workspace')}>
-                <span className="sec-lbl">Workspace</span>
-                <span className={`sec-chev ${open.workspace ? '' : 'closed'}`}>▾</span>
+          {/* Reports */}
+          <div className="nav-sec">
+            <div className="sec-hdr" onClick={() => togSec('reports')}>
+              <span className="sec-lbl">Reports</span>
+              <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                <span className="rp-badge">7</span>
+                <span className={`sec-chev ${open.reports ? '' : 'closed'}`}>▾</span>
               </div>
-              {open.workspace && WORKSPACE.map(item => {
-                // Flat item — no sub-items
-                if (!item.subItems) return (
-                  <NavLink key={item.to} to={item.to} end={item.end}
-                    className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-                    {item.label}
-                  </NavLink>
-                )
-                // Expandable item — header + sub-links
-                const expanded = openWsItem[item.to] ?? true
-                return (
-                  <div key={item.to} className="nav-ws-group">
-                    <div className="nav-item nav-ws-hdr" onClick={() => togWsItem(item.to)}>
-                      <span>{item.label}</span>
-                      <span className={`sec-chev sec-chev-sm ${expanded ? '' : 'closed'}`}>▾</span>
-                    </div>
-                    {expanded && item.subItems.map(sub => (
-                      <NavLink key={sub.to} to={sub.to} end={sub.end}
-                        className={({ isActive }) => `nav-item nav-sub-item${isActive ? ' active' : ''}`}>
-                        {sub.label}
-                      </NavLink>
-                    ))}
-                  </div>
-                )
-              })}
             </div>
-
-            {/* P&L */}
-            <div className="nav-sec">
-              <div className="sec-hdr" onClick={() => togSec('pnl')}>
-                <span className="sec-lbl">P&amp;L</span>
-                <span className={`sec-chev ${open.pnl ? '' : 'closed'}`}>▾</span>
+            {open.reports && <>
+              <div className="tree-group-hdr" onClick={() => togTree('my')}>
+                My Reports
+                <span className={`tree-chev${treeOpen.my ? ' open' : ''}`}>▶</span>
               </div>
-              {open.pnl && <>
-                {/* In-app intro / help page */}
-                <NavLink to="/pnl/intro"
-                  className={({ isActive }) => `nav-item nav-sub-item${isActive ? ' active' : ''}`}>
-                  📖 Intro
-                </NavLink>
-                {pnlPlatforms.map(p => (
-                  <NavLink key={p.id}
-                    to={`/pnl/${p.name.toLowerCase()}`}
-                    className={({ isActive }) => `nav-item nav-sub-item${isActive ? ' active' : ''}`}>
-                    {p.name}
-                  </NavLink>
-                ))}
-              </>}
-            </div>
-
-            {/* Analytics */}
-            <div className="nav-sec">
-              <div className="sec-hdr" onClick={() => togSec('analytics')}>
-                <span className="sec-lbl">Analytics</span>
-                <span className={`sec-chev ${open.analytics ? '' : 'closed'}`}>▾</span>
-              </div>
-              {open.analytics && (
+              {treeOpen.my && (
                 <div className="tree-body">
-                  {ANALYTICS.map(label => (
+                  {REPORTS_MY.map(label => (
                     <div key={label} className="tree-item">
-                      <div className="tree-dot"/>{label}
-                      <span className="soon-pill">Soon</span>
+                      <div className="tree-dot" />{label}
                     </div>
                   ))}
                 </div>
               )}
-            </div>
-
-            {/* Reports */}
-            <div className="nav-sec">
-              <div className="sec-hdr" onClick={() => togSec('reports')}>
-                <span className="sec-lbl">Reports</span>
-                <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                  <span className="rp-badge">7</span>
-                  <span className={`sec-chev ${open.reports ? '' : 'closed'}`}>▾</span>
-                </div>
+              <div className="tree-group-hdr" onClick={() => togTree('shared')}>
+                Shared with me
+                <span className={`tree-chev${treeOpen.shared ? ' open' : ''}`}>▶</span>
               </div>
-              {open.reports && <>
-                <div className="tree-group-hdr" onClick={() => togTree('my')}>
-                  My Reports
-                  <span className={`tree-chev${treeOpen.my ? ' open' : ''}`}>▶</span>
+              {treeOpen.shared && (
+                <div className="tree-body">
+                  {REPORTS_SHARED.map(label => (
+                    <div key={label} className="tree-item">
+                      <div className="tree-dot" />{label}
+                    </div>
+                  ))}
                 </div>
-                {treeOpen.my && (
-                  <div className="tree-body">
-                    {REPORTS_MY.map(label => (
-                      <div key={label} className="tree-item">
-                        <div className="tree-dot"/>{label}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <div className="tree-group-hdr" onClick={() => togTree('shared')}>
-                  Shared with me
-                  <span className={`tree-chev${treeOpen.shared ? ' open' : ''}`}>▶</span>
-                </div>
-                {treeOpen.shared && (
-                  <div className="tree-body">
-                    {REPORTS_SHARED.map(label => (
-                      <div key={label} className="tree-item">
-                        <div className="tree-dot"/>{label}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>}
-            </div>
-
-            {/* Settings */}
-            <div className="nav-sec">
-              <div className="sec-hdr" onClick={() => togSec('settings')}>
-                <span className="sec-lbl">Settings</span>
-                <span className={`sec-chev ${open.settings ? '' : 'closed'}`}>▾</span>
-              </div>
-              {open.settings && <>
-                <NavLink to="/settings"
-                  className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-                  Settings
-                </NavLink>
-                <div className="nav-item" style={{ cursor:'pointer' }}
-                  onClick={() => navigate('/settings')}>
-                  Users
-                </div>
-              </>}
-            </div>
-
+              )}
+            </>}
           </div>
 
-          {/* Footer */}
-          <div className="nav-footer">
-            <div className="nf-row">
-              <div className="nf-avatar">{initials}</div>
-              <div>
-                <div className="nf-name">{user?.name}</div>
-                <div className="nf-role">{user?.role?.replace('_', ' ')}</div>
-              </div>
-              <div className="nf-actions">
-                <button className="nf-btn" onClick={handleLogout} title="Logout">⎋</button>
-              </div>
+          {/* Settings */}
+          <div className="nav-sec">
+            <div className="sec-hdr" onClick={() => togSec('settings')}>
+              <span className="sec-lbl">Settings</span>
+              <span className={`sec-chev ${open.settings ? '' : 'closed'}`}>▾</span>
+            </div>
+            {open.settings && <>
+              <NavLink to="/settings"
+                className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+                Platforms & Tiers
+              </NavLink>
+              <NavLink to="/vendors"
+                className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+                Vendors
+              </NavLink>
+            </>}
+          </div>
+
+        </div>
+
+        {/* Footer */}
+        <div className="tree-footer">
+          <div className="nf-row">
+            <div className="nf-avatar">{initials}</div>
+            <div>
+              <div className="nf-name">{user?.name}</div>
+              <div className="nf-role">{user?.role?.replace('_', ' ')}</div>
+            </div>
+            <div className="nf-actions">
+              <button className="nf-btn" onClick={handleLogout} title="Logout">⎋</button>
             </div>
           </div>
         </div>
-      </aside>
 
-      {/* ── Right side: topbar (on gray) + white content box ── */}
-      <div className="right-col">
+      </nav>
 
-        {/* Topbar sits on gray background */}
+      {/* ══ MAIN COLUMN ══ */}
+      <div className="main-col">
+
+        {/* Topbar */}
         <div className="topbar">
+          <div className="topbar-brand">
+            Casper.com
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M5 3l4 4-4 4"/></svg>
+          </div>
+
           <div className="topbar-search-wrap" ref={srRef}>
             <div className="topbar-search">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                stroke="#A8A59F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8"/>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </svg>
+              <IcSearch />
               <input className="topbar-input"
                 placeholder='Try searching "insights"'
                 value={query}
@@ -360,10 +369,7 @@ export default function Layout() {
                 {searchRes.length > 0
                   ? searchRes.map((item, i) => (
                     <div key={i} className="sd-item"
-                      onClick={() => {
-                        setQuery(''); setShowSR(false)
-                        if (item.to) navigate(item.to)
-                      }}>
+                      onClick={() => { setQuery(''); setShowSR(false); if (item.to) navigate(item.to) }}>
                       <div>
                         <div className="sd-label">{item.label}</div>
                         <div className="sd-sub">{item.sub}</div>
@@ -376,23 +382,17 @@ export default function Layout() {
               </div>
             )}
           </div>
+
           <div className="topbar-right">
-            <button className="tb-btn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="3" y1="6" x2="21" y2="6"/>
-                <line x1="3" y1="12" x2="21" y2="12"/>
-                <line x1="3" y1="18" x2="21" y2="18"/>
-              </svg>
-            </button>
-            <div className="tb-avatar-grad"/>
-            <button className="tb-plus">+</button>
+            <button className="tb-btn" title="Menu"><IcMenu /></button>
+            <div className="tb-avatar-grad" title={user?.name} />
+            <button className="tb-plus" title="New" onClick={() => navigate('/pricing')}><IcPlus /></button>
           </div>
         </div>
 
-        {/* White content box */}
-        <div className="main-wrap">
-          <main className="page-content">
+        {/* Canvas */}
+        <div className="canvas-wrap">
+          <main className="canvas">
             <Outlet />
           </main>
         </div>

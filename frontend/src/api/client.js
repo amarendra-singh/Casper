@@ -104,6 +104,7 @@ export const getPnlReports              = (platformId) => api.get('/pnl/reports'
 export const getPnlReport               = (id)         => api.get(`/pnl/reports/${id}`).then(r => r.data)
 export const deletePnlReport            = (id)         => api.delete(`/pnl/reports/${id}`)
 export const getPnlPlatformsWithReports = ()           => api.get('/pnl/platforms-with-reports').then(r => r.data)
+export const getPnlDashboard            = ()           => api.get('/pnl/dashboard').then(r => r.data)
 export const uploadPnlReport            = (formData)   => api.post('/pnl/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
 
 export default api

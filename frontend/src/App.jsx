@@ -1,5 +1,19 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { Component } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
+
+class ErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { error: null } }
+  static getDerivedStateFromError(e) { return { error: e } }
+  render() {
+    if (this.state.error) return (
+      <pre style={{ padding: 24, color: 'red', whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 13 }}>
+        {this.state.error?.message}{'\n\n'}{this.state.error?.stack}
+      </pre>
+    )
+    return this.props.children
+  }
+}
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -53,8 +67,10 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </ErrorBoundary>
   )
 }

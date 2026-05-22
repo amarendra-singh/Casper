@@ -35,9 +35,11 @@ from app.services.pnl import (
     check_duplicate,
     extract_period_from_bytes,
     extract_period_from_bytes_meesho,
+    extract_period_from_bytes_snapdeal,
     get_all_reports,
     get_report_detail,
     delete_report,
+    get_dashboard_summary,
 )
 
 
@@ -88,6 +90,8 @@ async def upload_pnl(
     try:
         if platform_name == "meesho":
             period_start, period_end = extract_period_from_bytes_meesho(file_bytes)
+        elif platform_name == "snapdeal":
+            period_start, period_end = extract_period_from_bytes_snapdeal(file_bytes)
         else:
             period_start, period_end = extract_period_from_bytes(file_bytes)
         pnl_logger.info(f"Period extracted — {period_start} to {period_end}")
@@ -149,6 +153,28 @@ async def upload_pnl(
             detail=f"Failed to parse report: {str(e)}",
         )
 
+    # ── Parse validation warnings (critical fields with >30% nulls) ──────────
+    CRITICAL_FIELDS = {
+        'bank_settlement_projected': 'Bank Settlement',
+        'net_units':                 'Net Units',
+        'commission_fee':            'Commission Fee',
+    }
+    parse_warnings: list[str] = []
+    if result.total_skus > 0:
+        for field, label in CRITICAL_FIELDS.items():
+            null_count_result = await db.execute(
+                select(func.count()).select_from(PnlSkuRow).where(
+                    PnlSkuRow.report_id == result.report_id,
+                    getattr(PnlSkuRow, field).is_(None),
+                )
+            )
+            null_count = null_count_result.scalar() or 0
+            pct = null_count / result.total_skus
+            if pct > 0.30:
+                parse_warnings.append(f"{label} missing for {round(pct * 100)}% of SKUs")
+                pnl_logger.warning(f"Parse warning — report_id={result.report_id} {label}: {null_count}/{result.total_skus} null")
+
+    result.parse_warnings = parse_warnings
     return result
 
 
@@ -370,6 +396,15 @@ async def download_report_file(
 
 
 # ── Platforms with reports (for dynamic sidebar) ──────────────────────────────
+
+@router.get("/dashboard")
+async def dashboard_summary(
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_any),
+):
+    """Aggregated P&L stats across all platforms and periods for the dashboard."""
+    return await get_dashboard_summary(db)
+
 
 @router.get("/platforms-with-reports")
 async def platforms_with_reports(

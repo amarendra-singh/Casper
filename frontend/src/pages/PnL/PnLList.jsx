@@ -48,6 +48,7 @@ export default function PnLList() {
   const [file,           setFile]          = useState(null)
   const [toast,          setToast]         = useState(null)
   const [conflict,       setConflict]      = useState(null)
+  const [uploadResult,   setUploadResult]  = useState(null)   // holds result when parse warnings exist
 
   useEffect(() => {
     setTab(0)
@@ -84,9 +85,15 @@ export default function PnLList() {
       fd.append('file', file); fd.append('platform_id', platformId); fd.append('force', force)
       const result = await uploadPnlReport(fd)
       setReports(await getPnlReports(platformId))
-      setShowUpload(false); setConflict(null); setFile(null)
-      showToast(`Uploaded — ${result.matched_skus} SKUs matched, ${result.unmatched_skus} unmatched`)
-      navigate(`/pnl/${platformKey}/${result.report_id}?view=pnl`)
+      setConflict(null); setFile(null)
+      if (result.parse_warnings?.length > 0) {
+        // Stay in modal, show warnings — user must acknowledge before navigating
+        setUploadResult(result)
+      } else {
+        setShowUpload(false)
+        showToast(`Uploaded — ${result.matched_skus} matched, ${result.unmatched_skus} unmatched`)
+        navigate(`/pnl/${platformKey}/${result.report_id}?view=pnl`)
+      }
     } catch (err) {
       if (err.response?.status === 409) { setConflict(err.response.data.detail) }
       else {
@@ -98,7 +105,14 @@ export default function PnLList() {
 
   function closeUpload() {
     if (uploading) return
-    setShowUpload(false); setUploadError(''); setFile(null)
+    setShowUpload(false); setUploadError(''); setFile(null); setUploadResult(null)
+  }
+
+  function goToUploadResult() {
+    const r = uploadResult
+    setShowUpload(false); setUploadResult(null)
+    showToast(`Uploaded — ${r.matched_skus} matched, ${r.unmatched_skus} unmatched`, 'success')
+    navigate(`/pnl/${platformKey}/${r.report_id}?view=pnl`)
   }
 
   async function handleDelete(reportId, e) {
@@ -157,7 +171,9 @@ export default function PnLList() {
             <div className="pnl-empty">Loading reports…</div>
           ) : reports.length === 0 ? (
             <div className="pnl-empty-state">
-              <div className="pnl-empty-icon">📊</div>
+              <div className="pnl-empty-icon">
+                <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="5" y="5" width="30" height="30" rx="4"/><path d="M12 28v-8M20 28V15M28 28v-5"/></svg>
+              </div>
               <div className="pnl-empty-title">No reports yet</div>
               <div className="pnl-empty-sub">Upload your first {platformName} P&amp;L report to get started</div>
               <button className="pnl-upload-btn" onClick={() => setShowUpload(true)}>+ Upload Report</button>
@@ -204,11 +220,11 @@ export default function PnLList() {
                       <div className="pnl-card-actions">
                         <button className="pnl-card-action-btn"
                           onClick={() => navigate(`/pnl/${platformKey}/${r.id}?view=overview`)}>
-                          <span>📄</span> {platformName} Report
+                          {platformName} Report
                         </button>
                         <button className="pnl-card-action-btn pnl-card-action-pnl"
                           onClick={() => navigate(`/pnl/${platformKey}/${r.id}?view=pnl`)}>
-                          <span>📊</span> Real P&amp;L
+                          Real P&amp;L
                         </button>
                       </div>
                     </div>
@@ -248,9 +264,9 @@ export default function PnLList() {
                       </div>
                       <div className="pnl-lc-act pnl-list-actions">
                         <button className="pnl-list-action-btn"
-                          onClick={() => navigate(`/pnl/${platformKey}/${r.id}?view=overview`)}>📄 Report</button>
+                          onClick={() => navigate(`/pnl/${platformKey}/${r.id}?view=overview`)}>Report</button>
                         <button className="pnl-list-action-btn pnl-list-action-pnl"
-                          onClick={() => navigate(`/pnl/${platformKey}/${r.id}?view=pnl`)}>📊 P&amp;L</button>
+                          onClick={() => navigate(`/pnl/${platformKey}/${r.id}?view=pnl`)}>P&amp;L</button>
                         <button className="pnl-card-del" onClick={e => handleDelete(r.id, e)}>✕</button>
                       </div>
                     </div>
@@ -267,7 +283,9 @@ export default function PnLList() {
         <div className="pnl-body pnl-animate-in">
           {!lifetimeData ? (
             <div className="pnl-empty-state">
-              <div className="pnl-empty-icon">📊</div>
+              <div className="pnl-empty-icon">
+                <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="5" y="5" width="30" height="30" rx="4"/><path d="M12 28v-8M20 28V15M28 28v-5"/></svg>
+              </div>
               <div className="pnl-empty-title">No reports yet</div>
               <div className="pnl-empty-sub">Upload reports to see lifetime P&amp;L</div>
               <button className="pnl-btn-ghost" onClick={() => setTab(0)}>← Go to Reports</button>
@@ -333,9 +351,9 @@ export default function PnLList() {
                           <td className="pnl-td center">
                             <div className="pnl-lt-btns">
                               <button className="pnl-lt-open-btn" title={`${platformName} Report`}
-                                onClick={() => navigate(`/pnl/${platformKey}/${r.id}?view=overview`)}>📄</button>
+                                onClick={() => navigate(`/pnl/${platformKey}/${r.id}?view=overview`)}>↗</button>
                               <button className="pnl-lt-open-btn pnl-lt-open-pnl" title="Unit Economics"
-                                onClick={() => navigate(`/pnl/${platformKey}/${r.id}?view=pnl`)}>📊</button>
+                                onClick={() => navigate(`/pnl/${platformKey}/${r.id}?view=pnl`)}>P&L</button>
                             </div>
                           </td>
                         </tr>
@@ -367,7 +385,9 @@ export default function PnLList() {
       {/* ── Tab 2: By SKU ── */}
       {tab === 2 && (
         <div className="pnl-body pnl-animate-in pnl-empty-state">
-          <div className="pnl-empty-icon">🔬</div>
+          <div className="pnl-empty-icon">
+            <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><circle cx="20" cy="20" r="14"/><path d="M20 13v7l5 3"/></svg>
+          </div>
           <div className="pnl-empty-title">Lifetime By SKU</div>
           <div className="pnl-empty-sub">Cross-report SKU performance — coming soon</div>
         </div>
@@ -382,7 +402,7 @@ export default function PnLList() {
               <button className="pnl-modal-close" onClick={closeUpload}>✕</button>
             </div>
             <div className="pnl-modal-body">
-              <div className="pnl-period-note">📅 Period will be auto-detected from the report file.</div>
+              <div className="pnl-period-note">Period will be auto-detected from the report file.</div>
               <div className="pnl-field">
                 <label className="pnl-label">Excel File (.xlsx / .xls)</label>
                 <div className={`pnl-dropzone${file ? ' has-file' : ''}`}
@@ -391,7 +411,9 @@ export default function PnLList() {
                   onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) setFile(f) }}>
                   {file ? (
                     <>
-                      <span className="pnl-file-icon">📄</span>
+                      <span className="pnl-file-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" width="22" height="22"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      </span>
                       <span className="pnl-file-name">{file.name}</span>
                       <button className="pnl-file-clear" onClick={e => { e.stopPropagation(); setFile(null) }}>✕ Clear</button>
                     </>
@@ -407,12 +429,36 @@ export default function PnLList() {
                 </div>
               </div>
               {uploadError && <div className="pnl-error">{uploadError}</div>}
+
+              {/* Parse warnings — shown after upload if critical fields have >30% nulls */}
+              {uploadResult?.parse_warnings?.length > 0 && (
+                <div className="pnl-parse-warnings">
+                  <div className="pnl-warn-head">
+                    <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2L1 17h18L10 2zm0 3l6.5 11H3.5L10 5zm-1 4v3h2V9H9zm0 4v2h2v-2H9z"/></svg>
+                    Upload successful — {uploadResult.matched_skus} matched · {uploadResult.unmatched_skus} unmatched
+                  </div>
+                  <div className="pnl-warn-title">⚠ Data quality issues detected</div>
+                  {uploadResult.parse_warnings.map((w, i) => (
+                    <div key={i} className="pnl-warn-item">• {w}</div>
+                  ))}
+                  <div className="pnl-warn-note">These fields may affect P&L accuracy. Check the parser or re-upload a corrected file.</div>
+                </div>
+              )}
             </div>
             <div className="pnl-modal-footer">
-              <button className="pnl-btn-ghost" onClick={closeUpload} disabled={uploading}>Cancel</button>
-              <button className="pnl-btn-primary" onClick={() => handleUpload(false)} disabled={uploading || !file}>
-                {uploading ? 'Uploading…' : 'Upload'}
-              </button>
+              {uploadResult ? (
+                <>
+                  <button className="pnl-btn-ghost" onClick={closeUpload}>Close</button>
+                  <button className="pnl-btn-primary" onClick={goToUploadResult}>View Report →</button>
+                </>
+              ) : (
+                <>
+                  <button className="pnl-btn-ghost" onClick={closeUpload} disabled={uploading}>Cancel</button>
+                  <button className="pnl-btn-primary" onClick={() => handleUpload(false)} disabled={uploading || !file}>
+                    {uploading ? 'Uploading…' : 'Upload'}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -744,7 +744,7 @@ export default function SKUs() {
           <button className="btn btn-accent" onClick={saveAll} disabled={isSaving || dirtyCount === 0}>
             {isSaving
               ? <><span className="loader" style={{ width:12, height:12, borderWidth:2 }}/> Saving</>
-              : '💾 Save All'
+              : 'Save All'
             }
           </button>
           <button className="btn btn-primary" onClick={addRow}>+ Add Row</button>
@@ -942,6 +942,21 @@ export default function SKUs() {
                       <input className="ec-input mono" size={1} value={row.sku} placeholder="SHJ-JS-VRI-N6"
                         onChange={e => upd(row.id, { sku:e.target.value.toUpperCase() })} />
                     </div>
+                    {/* Platform alias chips */}
+                    {activePlats.some(pl => row.platAliases?.[pl.id]) && (
+                      <div className="sku-alias-chips">
+                        {activePlats.map(pl => {
+                          const alias = row.platAliases?.[pl.id]
+                          if (!alias) return null
+                          return (
+                            <span key={pl.id} className="sku-alias-chip" title={`${pl.name}: ${alias}`}>
+                              <span className="sku-alias-chip-plat">{pl.name[0]}</span>
+                              <span className="sku-alias-chip-val">{alias}</span>
+                            </span>
+                          )
+                        })}
+                      </div>
+                    )}
                   </td>
 
                   {vis('series') && (

@@ -139,6 +139,7 @@ class PnlUploadResult(BaseModel):
     unmatched_skus: int
     duplicate: bool = False               # True if a report for this period already existed
     duplicate_report_id: Optional[int] = None
+    parse_warnings: list[str] = []        # Critical fields with >30% null values
 
 
 # ── Duplicate check ───────────────────────────────────────────────────────────

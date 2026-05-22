@@ -135,7 +135,9 @@ export default function FlipkartPnL() {
             <div className="pnl-empty">Loading reports…</div>
           ) : reports.length === 0 ? (
             <div className="pnl-empty-state">
-              <div className="pnl-empty-icon">📊</div>
+              <div className="pnl-empty-icon">
+                <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="5" y="5" width="30" height="30" rx="4"/><path d="M12 28v-8M20 28V15M28 28v-5"/></svg>
+              </div>
               <div className="pnl-empty-title">No reports yet</div>
               <div className="pnl-empty-sub">Upload your first Flipkart P&amp;L report to get started</div>
               <button className="pnl-upload-btn" onClick={() => setShowUpload(true)}>+ Upload Report</button>
@@ -182,11 +184,11 @@ export default function FlipkartPnL() {
                       <div className="pnl-card-actions">
                         <button className="pnl-card-action-btn"
                           onClick={() => navigate(`/pnl/flipkart/${r.id}?view=fk`)}>
-                          <span>📄</span> Flipkart Report
+                          Flipkart Report
                         </button>
                         <button className="pnl-card-action-btn pnl-card-action-pnl"
                           onClick={() => navigate(`/pnl/flipkart/${r.id}?view=pnl`)}>
-                          <span>📊</span> Real P&amp;L
+                          Real P&amp;L
                         </button>
                       </div>
                     </div>
@@ -226,9 +228,9 @@ export default function FlipkartPnL() {
                       </div>
                       <div className="pnl-lc-act pnl-list-actions">
                         <button className="pnl-list-action-btn"
-                          onClick={() => navigate(`/pnl/flipkart/${r.id}?view=fk`)}>📄 Report</button>
+                          onClick={() => navigate(`/pnl/flipkart/${r.id}?view=fk`)}>Report</button>
                         <button className="pnl-list-action-btn pnl-list-action-pnl"
-                          onClick={() => navigate(`/pnl/flipkart/${r.id}?view=pnl`)}>📊 P&amp;L</button>
+                          onClick={() => navigate(`/pnl/flipkart/${r.id}?view=pnl`)}>P&amp;L</button>
                         <button className="pnl-card-del" onClick={e => handleDelete(r.id, e)}>✕</button>
                       </div>
                     </div>
@@ -245,7 +247,9 @@ export default function FlipkartPnL() {
         <div className="pnl-body pnl-animate-in">
           {!lifetimeData ? (
             <div className="pnl-empty-state">
-              <div className="pnl-empty-icon">📊</div>
+              <div className="pnl-empty-icon">
+                <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="5" y="5" width="30" height="30" rx="4"/><path d="M12 28v-8M20 28V15M28 28v-5"/></svg>
+              </div>
               <div className="pnl-empty-title">No reports yet</div>
               <div className="pnl-empty-sub">Upload reports to see lifetime P&amp;L</div>
               <button className="pnl-btn-ghost" onClick={() => setTab(0)}>← Go to Reports</button>
@@ -311,9 +315,9 @@ export default function FlipkartPnL() {
                           <td className="pnl-td center">
                             <div className="pnl-lt-btns">
                               <button className="pnl-lt-open-btn" title="Flipkart Report"
-                                onClick={() => navigate(`/pnl/flipkart/${r.id}?view=fk`)}>📄</button>
+                                onClick={() => navigate(`/pnl/flipkart/${r.id}?view=fk`)}>↗</button>
                               <button className="pnl-lt-open-btn pnl-lt-open-pnl" title="Unit Economics"
-                                onClick={() => navigate(`/pnl/flipkart/${r.id}?view=pnl`)}>📊</button>
+                                onClick={() => navigate(`/pnl/flipkart/${r.id}?view=pnl`)}>P&amp;L</button>
                             </div>
                           </td>
                         </tr>
@@ -345,7 +349,9 @@ export default function FlipkartPnL() {
       {/* ── Tab 2: By SKU ── */}
       {tab === 2 && (
         <div className="pnl-body pnl-animate-in pnl-empty-state">
-          <div className="pnl-empty-icon">🔬</div>
+          <div className="pnl-empty-icon">
+            <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M20 8v24M8 20h24"/><circle cx="20" cy="20" r="13"/></svg>
+          </div>
           <div className="pnl-empty-title">Lifetime By SKU</div>
           <div className="pnl-empty-sub">Cross-report SKU performance — coming soon</div>
         </div>
@@ -360,7 +366,7 @@ export default function FlipkartPnL() {
               <button className="pnl-modal-close" onClick={closeUpload}>✕</button>
             </div>
             <div className="pnl-modal-body">
-              <div className="pnl-period-note">📅 Period will be auto-detected from the report file.</div>
+              <div className="pnl-period-note">Period will be auto-detected from the report file.</div>
               <div className="pnl-field">
                 <label className="pnl-label">Excel File (.xlsx / .xls)</label>
                 <div className={`pnl-dropzone${file ? ' has-file' : ''}`}
@@ -369,7 +375,9 @@ export default function FlipkartPnL() {
                   onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) setFile(f) }}>
                   {file ? (
                     <>
-                      <span className="pnl-file-icon">📄</span>
+                      <span className="pnl-file-icon">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M13 2H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6l-3-4z"/><path d="M13 2v4h4M7 9h6M7 12h6M7 15h4"/></svg>
+                      </span>
                       <span className="pnl-file-name">{file.name}</span>
                       <button className="pnl-file-clear" onClick={e => { e.stopPropagation(); setFile(null) }}>✕ Clear</button>
                     </>
