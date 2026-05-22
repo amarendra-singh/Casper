@@ -19,6 +19,13 @@ from app.models.pnl import PnlReport, PnlSkuRow
 from app.models.sku import SkuPlatformConfig, SkuPricing
 from app.models.platform import Platform
 from app.schemas.pnl import PnlUploadResult, PnlDuplicateInfo
+from app.services.fraud import (
+    extract_order_events_fk,
+    extract_order_events_meesho,
+    extract_order_events_snapdeal_cpr,
+    store_order_events,
+    compute_sku_risk_scores,
+)
 
 
 # ── Column header keywords for dynamic mapping ────────────────────────────────
@@ -968,7 +975,29 @@ async def parse_and_store(
             unmatched += 1
         session.add(_build_sku_row(raw, report.id, sp))
 
+    # ── Extract + store order-level events for fraud intelligence ─────────────
+    try:
+        if _pname == "flipkart":
+            order_events = extract_order_events_fk(file_bytes)
+        elif _pname == "meesho":
+            order_events = extract_order_events_meesho(file_bytes)
+        elif _pname == "snapdeal" and _is_snapdeal_cpr(file_bytes):
+            order_events = extract_order_events_snapdeal_cpr(file_bytes)
+        else:
+            order_events = []
+
+        await store_order_events(session, order_events, report.id, platform_id)
+    except Exception:
+        pass  # Never fail a P&L upload due to fraud extraction error
+
     await session.commit()
+
+    # ── Recompute risk scores for this platform ───────────────────────────────
+    try:
+        await compute_sku_risk_scores(session, platform_id)
+        await session.commit()
+    except Exception:
+        pass  # Risk score failure is non-critical
 
     return PnlUploadResult(
         report_id=report.id,

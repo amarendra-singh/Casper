@@ -9,6 +9,7 @@ from app.middleware.logging_middleware import LoggingMiddleware
 from app.routes import entries, auth, users, platforms, vendors, categories, misc_items, global_settings, hsn_codes
 from app.routes.skus import sku_router, pricing_router
 from app.routes import pnl
+from app.routes import fraud
 
 # Initialise logging before anything else
 setup_logging(log_dir="logs", dev=(settings.APP_ENV == "development"))
@@ -58,6 +59,7 @@ def create_app() -> FastAPI:
     app.include_router(hsn_codes.router, prefix=prefix)
     app.include_router(entries.router, prefix=prefix)
     app.include_router(pnl.router, prefix=prefix)
+    app.include_router(fraud.router, prefix=prefix)
 
     app_logger.info(f"Routes registered under {prefix}")
 
