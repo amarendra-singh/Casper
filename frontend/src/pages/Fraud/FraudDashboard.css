@@ -1,0 +1,251 @@
+/* ── Root ─────────────────────────────────────────────────────────────────── */
+.fd-root {
+  padding: 24px 28px;
+  max-width: 1400px;
+}
+
+.fd-loading {
+  display: flex; align-items: center; justify-content: center;
+  height: 300px;
+}
+.fd-error {
+  padding: 24px; color: #ef4444;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+.fd-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 24px;
+}
+.fd-title {
+  font-size: 1.4rem; font-weight: 700; color: var(--text-primary);
+  margin: 0 0 4px;
+}
+.fd-subtitle {
+  font-size: 0.82rem; color: var(--muted-3); margin: 0;
+}
+.fd-last-updated {
+  font-size: 0.78rem; color: var(--muted-3);
+  background: var(--surface-2); padding: 4px 10px; border-radius: 6px;
+}
+
+/* ── KPI strip ────────────────────────────────────────────────────────────── */
+.fd-stats-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.fd-stat-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border-1);
+  border-top: 3px solid;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.fd-stat-val {
+  font-size: 1.5rem; font-weight: 700; line-height: 1;
+  margin-bottom: 4px;
+}
+.fd-stat-lbl {
+  font-size: 0.78rem; color: var(--text-primary); font-weight: 600;
+}
+.fd-stat-sub {
+  font-size: 0.72rem; color: var(--muted-3); margin-top: 2px;
+}
+
+/* ── Tier distribution bar ────────────────────────────────────────────────── */
+.fd-tier-bar-wrap {
+  display: flex; height: 10px; border-radius: 5px; overflow: hidden;
+  margin-bottom: 8px;
+}
+.fd-tier-bar-seg {
+  display: flex; align-items: center; justify-content: center;
+  transition: width 0.3s;
+  position: relative;
+}
+.fd-tier-bar-lbl {
+  font-size: 0.65rem; color: #fff; font-weight: 700;
+}
+.fd-tier-legend {
+  display: flex; gap: 16px; margin-bottom: 20px;
+}
+.fd-tier-leg-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.78rem; color: var(--muted-3);
+}
+.fd-legend-dot {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────── */
+.fd-tabs {
+  display: flex; gap: 4px;
+  border-bottom: 1px solid var(--border-1);
+  margin-bottom: 20px;
+}
+.fd-tab {
+  padding: 8px 16px; font-size: 0.83rem; font-weight: 500;
+  background: none; border: none; border-bottom: 2px solid transparent;
+  color: var(--muted-3); cursor: pointer; transition: all 0.15s;
+  margin-bottom: -1px;
+}
+.fd-tab:hover { color: var(--text-primary); }
+.fd-tab.active {
+  color: var(--gold); border-bottom-color: var(--gold);
+}
+
+/* ── Tier badge ───────────────────────────────────────────────────────────── */
+.fd-tier-badge {
+  display: inline-block; padding: 2px 7px; border-radius: 4px;
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em;
+}
+
+/* ── Toolbar ──────────────────────────────────────────────────────────────── */
+.fd-table-toolbar {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 12px; flex-wrap: wrap;
+}
+.fd-search {
+  padding: 6px 12px; border-radius: 7px;
+  border: 1px solid var(--border-1);
+  background: var(--surface-1); color: var(--text-primary);
+  font-size: 0.82rem; width: 220px;
+  outline: none;
+}
+.fd-search:focus { border-color: var(--gold); }
+.fd-tier-pills { display: flex; gap: 6px; }
+.fd-tier-pill {
+  padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
+  border: 1px solid var(--border-1);
+  background: var(--surface-2); color: var(--muted-3);
+  cursor: pointer; transition: all 0.15s;
+}
+.fd-tier-pill:hover { border-color: var(--gold); color: var(--gold); }
+.fd-count {
+  margin-left: auto; font-size: 0.78rem; color: var(--muted-3);
+}
+
+/* ── Table ────────────────────────────────────────────────────────────────── */
+.fd-table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border-1);
+  border-radius: 10px;
+}
+.fd-table {
+  width: 100%; border-collapse: collapse; font-size: 0.8rem;
+}
+.fd-th {
+  padding: 10px 12px; background: var(--surface-2);
+  color: var(--muted-3); font-weight: 600; text-align: right;
+  white-space: nowrap; border-bottom: 1px solid var(--border-1);
+}
+.fd-th:first-child, .fd-th:nth-child(2), .fd-th:nth-child(3) {
+  text-align: left;
+}
+.fd-th.sortable { cursor: pointer; }
+.fd-th.sortable:hover { color: var(--gold); }
+.fd-th.active { color: var(--gold); }
+
+.fd-row td {
+  padding: 8px 12px; border-bottom: 1px solid var(--border-1);
+  vertical-align: middle;
+}
+.fd-row:last-child td { border-bottom: none; }
+.fd-row:hover td { background: var(--surface-2); }
+.fd-row.critical td { border-left: 2px solid #ef4444; }
+.fd-row.red td      { border-left: 2px solid #f97316; }
+.fd-row.amber td    { border-left: 2px solid #f59e0b; }
+.fd-row.green td    { border-left: 2px solid #22c55e; }
+
+.fd-sku-cell {
+  max-width: 200px; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; font-family: monospace; font-size: 0.78rem;
+  color: var(--text-primary); text-align: left;
+}
+.fd-plat-cell {
+  text-align: left; color: var(--muted-3); font-size: 0.78rem;
+}
+.fd-num {
+  text-align: right; font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.fd-loss { color: #f97316; font-weight: 600; }
+.fd-risk-rev { color: #ef4444; }
+.fd-center { text-align: center; }
+.fd-abuse-flag {
+  color: #a855f7; font-size: 0.72rem; font-weight: 700;
+  background: rgba(168,85,247,0.1); padding: 2px 6px; border-radius: 4px;
+}
+.fd-empty-row {
+  text-align: center; color: var(--muted-3);
+  padding: 32px !important;
+}
+
+/* ── Weekly chart ─────────────────────────────────────────────────────────── */
+.fd-weekly-chart {
+  padding: 16px 0;
+}
+.fd-weekly-bars {
+  display: flex; align-items: flex-end; gap: 6px;
+  height: 180px; padding-bottom: 28px;
+}
+.fd-bar-col {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-end;
+  height: 100%; position: relative; cursor: pointer;
+}
+.fd-bar-fill {
+  width: 100%; border-radius: 3px 3px 0 0;
+  min-height: 3px; transition: opacity 0.15s;
+}
+.fd-bar-col:hover .fd-bar-fill { opacity: 0.75; }
+.fd-bar-lbl {
+  position: absolute; bottom: 0; font-size: 0.65rem; color: var(--muted-3);
+  white-space: nowrap;
+}
+.fd-weekly-legend {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.78rem; color: var(--muted-3);
+  margin-top: 8px;
+}
+.fd-weekly-avg {
+  margin-left: auto; font-weight: 600; color: var(--text-primary);
+}
+
+/* ── Cross-platform ───────────────────────────────────────────────────────── */
+.fd-cross-list { display: flex; flex-direction: column; gap: 12px; }
+.fd-cross-row {
+  background: var(--surface-1); border: 1px solid var(--border-1);
+  border-radius: 8px; padding: 12px 16px;
+}
+.fd-cross-plats { display: flex; flex-direction: column; gap: 6px; }
+.fd-cross-plat-item {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 0.8rem;
+}
+.fd-cross-plat-name {
+  color: var(--muted-3); min-width: 80px; font-size: 0.75rem;
+}
+.fd-cross-plat-sku {
+  font-family: monospace; color: var(--text-primary); flex: 1;
+  font-size: 0.77rem;
+}
+.fd-cross-rate {
+  font-weight: 700; color: #f97316; font-size: 0.8rem;
+}
+
+/* ── Empty ────────────────────────────────────────────────────────────────── */
+.fd-empty {
+  text-align: center; color: var(--muted-3);
+  padding: 40px; font-size: 0.84rem;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .fd-stats-row { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .fd-stats-row { grid-template-columns: 1fr; }
+  .fd-root { padding: 16px; }
+}

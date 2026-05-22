@@ -23,6 +23,7 @@ import Vendors from './pages/Vendors'
 import PnLList from './pages/PnL/PnLList'
 import PnLReport from './pages/PnL/PnLReport'
 import Settings from './pages/Settings'
+import FraudDashboard from './pages/Fraud/FraudDashboard'
 import PnLIntro from './pages/intros/PnLIntro'
 import SKUsIntro from './pages/intros/SKUsIntro'
 import VendorsIntro from './pages/intros/VendorsIntro'
@@ -58,6 +59,7 @@ function AppRoutes() {
         <Route path="pnl/intro" element={<PnLIntro />} />
         <Route path="pnl/:platform" element={<PnLList />} />
         <Route path="pnl/:platform/:reportId" element={<PnLReport />} />
+        <Route path="fraud" element={<FraudDashboard />} />
         <Route path="settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

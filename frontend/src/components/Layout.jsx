@@ -251,6 +251,17 @@ export default function Layout() {
             </>}
           </div>
 
+          {/* Risk Intelligence */}
+          <div className="nav-sec">
+            <NavLink to="/fraud"
+              className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+              style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{width:16,height:16,flexShrink:0}}><path d="M10 2l1.8 5.4H17l-4.6 3.3 1.8 5.4L10 13l-4.2 3.1 1.8-5.4L3 7.4h5.2L10 2z"/></svg>
+              Risk Intelligence
+              <span style={{marginLeft:'auto',background:'#ef4444',color:'#fff',borderRadius:4,padding:'1px 5px',fontSize:'0.68rem',fontWeight:700}}>LIVE</span>
+            </NavLink>
+          </div>
+
           {/* Analytics */}
           <div className="nav-sec">
             <div className="sec-hdr" onClick={() => togSec('analytics')}>
