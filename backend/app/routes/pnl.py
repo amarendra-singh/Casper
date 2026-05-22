@@ -36,6 +36,8 @@ from app.services.pnl import (
     extract_period_from_bytes,
     extract_period_from_bytes_meesho,
     extract_period_from_bytes_snapdeal,
+    extract_period_from_bytes_snapdeal_cpr,
+    _is_snapdeal_cpr,
     get_all_reports,
     get_report_detail,
     delete_report,
@@ -91,7 +93,10 @@ async def upload_pnl(
         if platform_name == "meesho":
             period_start, period_end = extract_period_from_bytes_meesho(file_bytes)
         elif platform_name == "snapdeal":
-            period_start, period_end = extract_period_from_bytes_snapdeal(file_bytes)
+            if _is_snapdeal_cpr(file_bytes):
+                period_start, period_end = extract_period_from_bytes_snapdeal_cpr(file_bytes)
+            else:
+                period_start, period_end = extract_period_from_bytes_snapdeal(file_bytes)
         else:
             period_start, period_end = extract_period_from_bytes(file_bytes)
         pnl_logger.info(f"Period extracted — {period_start} to {period_end}")

@@ -564,6 +564,187 @@ def extract_period_from_bytes_snapdeal(file_bytes: bytes) -> tuple[date, date]:
         raise ValueError(f"Snapdeal period extraction failed: {e}")
 
 
+# ── Snapdeal CPR (ComprehensivePaymentReport) parser ─────────────────────────
+
+_CPR_DELIVERED  = {"Delivered"}
+_CPR_SHIPPED    = {"Shipped", "To be Shipped"}
+_CPR_RTO        = {"Courier Return"}
+_CPR_RETURN     = {"Customer Return"}
+_CPR_CANCELLED  = {"Seller Cancelled", "Courier Cancelled"}
+
+
+def _is_snapdeal_cpr(file_bytes: bytes) -> bool:
+    """Detect Snapdeal CPR format by checking for 'SubOrder Code' column in sheet 1."""
+    from io import BytesIO
+    import pandas as pd
+    import warnings
+    warnings.filterwarnings("ignore", category=UserWarning)
+    try:
+        df = pd.read_excel(BytesIO(file_bytes), sheet_name=0, nrows=0)
+        return "SubOrder Code" in df.columns and "SKU" in df.columns
+    except Exception:
+        return False
+
+
+def _parse_snapdeal_cpr_workbook(file_bytes: bytes) -> tuple[dict, list[dict]]:
+    """
+    Parse Snapdeal ComprehensivePaymentReport (CPR) format.
+    - Single flat sheet, one row per sub-order
+    - Has per-SKU data: SKU, SP, Logistics, Ads, Settled, etc.
+    - Commission = 0; Snapdeal monetises via Logistics + Ads Facilitation fees
+    Returns (summary_dict, sku_rows_list).
+    """
+    from io import BytesIO
+    import pandas as pd
+    import warnings
+    warnings.filterwarnings("ignore", category=UserWarning)
+
+    df = pd.read_excel(BytesIO(file_bytes), sheet_name=0)
+
+    # Normalise key columns
+    def _n(col):
+        return pd.to_numeric(df[col], errors="coerce").fillna(0.0) if col in df.columns else pd.Series(0.0, index=df.index)
+
+    status_col = df["Order Status"].fillna("")
+
+    del_mask   = status_col.isin(_CPR_DELIVERED)
+    ship_mask  = status_col.isin(_CPR_SHIPPED)
+    rto_mask   = status_col.isin(_CPR_RTO)
+    ret_mask   = status_col.isin(_CPR_RETURN)
+    canc_mask  = status_col.isin(_CPR_CANCELLED)
+    net_mask   = del_mask | ship_mask          # "delivered or in transit"
+    return_mask = rto_mask | ret_mask
+    active_mask = ~canc_mask                   # everything except cancelled
+
+    sp           = _n("SP")
+    order_amt    = _n("Order Amount")
+    logistics    = _n("Logistics Fee (a)")
+    ads          = _n("Ads Facilitation Fee (RO) (b)")
+    net_fee      = _n("Net Charged Fee (i) = (g-h)")
+    gst_fees     = _n("GST")
+    tcs_col      = _n("TCS")
+    tds_col      = _n("TDS")
+    settled_col  = _n("Settled")
+
+    gross_sales    = round(float(order_amt[active_mask].sum()), 2)
+    returns_amount = round(-float(order_amt[return_mask].sum()), 2)  # negative
+    net_sales      = round(gross_sales + returns_amount, 2)
+
+    bank_settlement  = round(float(settled_col.sum()), 2)
+    tcs_total        = round(float(tcs_col.sum()), 2)
+    tds_total        = round(float(tds_col.sum()), 2)
+    courier_fee_tot  = round(float(logistics.sum()), 2)
+    marketing_fee_t  = round(float(ads.sum()), 2)
+    total_expenses   = round(float((net_fee + gst_fees).sum()), 2)
+    net_earnings     = bank_settlement
+    net_margin_pct   = round(net_earnings / net_sales * 100, 2) if net_sales else None
+
+    gross_orders  = int(active_mask.sum())
+    return_orders = int(return_mask.sum())
+    net_orders    = int(net_mask.sum())
+
+    # ── Summary ───────────────────────────────────────────────────────────────
+    summary = {
+        "gross_sales":      gross_sales,
+        "returns_amount":   returns_amount,
+        "net_sales":        net_sales,
+        "gross_units":      gross_orders,
+        "returned_units":   return_orders,
+        "net_units":        net_orders,
+        "bank_settlement":  bank_settlement,
+        "net_earnings":     net_earnings,
+        "net_margin_pct":   net_margin_pct,
+        "tcs_amount":       tcs_total or None,
+        "tds_amount":       tds_total or None,
+        "courier_fee":      courier_fee_tot or None,
+        "marketing_fee":    marketing_fee_t or None,
+        "commission_total": 0.0,
+        "total_expenses":   total_expenses or None,
+        "gross_orders":     gross_orders,
+        "return_orders":    return_orders,
+        "net_orders":       net_orders,
+        "amount_settled":   bank_settlement,
+    }
+
+    # ── Per-SKU rows ──────────────────────────────────────────────────────────
+    sku_rows: list[dict] = []
+    for sku, grp in df.groupby("SKU"):
+        if not sku or str(sku).strip() == "":
+            continue
+
+        s_col = grp["Order Status"].fillna("")
+
+        def _cnt(mask_set):
+            return int(s_col.isin(mask_set).sum())
+
+        def _sum(col):
+            return round(float(pd.to_numeric(grp[col], errors="coerce").fillna(0.0).sum()), 2) if col in grp.columns else None
+
+        g_del    = _cnt(_CPR_DELIVERED)
+        g_ship   = _cnt(_CPR_SHIPPED)
+        g_rto    = _cnt(_CPR_RTO)
+        g_ret    = _cnt(_CPR_RETURN)
+        g_canc   = _cnt(_CPR_CANCELLED)
+        g_units  = g_del + g_ship + g_rto + g_ret   # excludes cancelled
+        n_units  = g_del + g_ship
+
+        # Use Order Amount for delivered orders as revenue proxy
+        net_del_mask  = s_col.isin(_CPR_DELIVERED | _CPR_SHIPPED)
+        net_sales_sku = round(float(pd.to_numeric(grp.loc[net_del_mask, "Order Amount"], errors="coerce").fillna(0.0).sum()), 2)
+
+        # Logistics split: forward (delivered/shipped) vs reverse (returns)
+        ret_mask_grp   = s_col.isin(_CPR_RTO | _CPR_RETURN)
+        fwd_logistics  = round(float(pd.to_numeric(grp.loc[net_del_mask, "Logistics Fee (a)"] if "Logistics Fee (a)" in grp.columns else pd.Series(dtype=float), errors="coerce").fillna(0.0).sum()), 2)
+        rev_logistics  = round(float(pd.to_numeric(grp.loc[ret_mask_grp, "Logistics Fee (a)"] if "Logistics Fee (a)" in grp.columns else pd.Series(dtype=float), errors="coerce").fillna(0.0).sum()), 2)
+
+        bs_sku  = _sum("Settled")
+        tcs_sku = _sum("TCS")
+        tds_sku = _sum("TDS")
+        epu     = round(bs_sku / n_units, 2) if (n_units > 0 and bs_sku is not None) else None
+        margin  = round(bs_sku / net_sales_sku * 100, 2) if (net_sales_sku and bs_sku is not None) else None
+
+        sku_rows.append({
+            "platform_sku_name":         str(sku).strip(),
+            "gross_units":               g_units,
+            "rto_units":                 g_rto,
+            "rvp_units":                 g_ret,
+            "cancelled_units":           g_canc,
+            "net_units":                 n_units,
+            "accounted_net_sales":       net_sales_sku,
+            "commission_fee":            0.0,
+            "collection_fee":            fwd_logistics if fwd_logistics else None,
+            "fixed_fee":                 None,
+            "reverse_shipping_fee":      rev_logistics if rev_logistics else None,
+            "taxes_gst":                 None,
+            "taxes_tcs":                 tcs_sku if tcs_sku else None,
+            "taxes_tds":                 tds_sku if tds_sku else None,
+            "rewards_benefits":          None,
+            "bank_settlement_projected": bs_sku,
+            "input_tax_credits":         None,
+            "net_earnings":              bs_sku,
+            "earnings_per_unit":         epu,
+            "net_margin_pct":            margin,
+            "amount_settled":            bs_sku,
+            "amount_pending":            None,
+        })
+
+    return summary, sku_rows
+
+
+def extract_period_from_bytes_snapdeal_cpr(file_bytes: bytes) -> tuple[date, date]:
+    """Extract period from CPR via min/max of order_date column."""
+    from io import BytesIO
+    import pandas as pd
+    import warnings
+    warnings.filterwarnings("ignore", category=UserWarning)
+
+    df = pd.read_excel(BytesIO(file_bytes), sheet_name=0, usecols=["order_date"])
+    dates = pd.to_datetime(df["order_date"], errors="coerce").dropna()
+    if dates.empty:
+        raise ValueError("CPR period extraction failed: no valid order_date values.")
+    return dates.min().date(), dates.max().date()
+
+
 def extract_period_from_bytes_meesho(file_bytes: bytes) -> tuple[date, date]:
     """Extract period from Meesho Excel via min/max of Order Date column."""
     from io import BytesIO
@@ -762,7 +943,10 @@ async def parse_and_store(
     if _pname == "meesho":
         summary, sku_rows_raw = _parse_meesho_workbook(file_bytes)
     elif _pname == "snapdeal":
-        summary, sku_rows_raw = _parse_snapdeal_workbook(file_bytes)
+        if _is_snapdeal_cpr(file_bytes):
+            summary, sku_rows_raw = _parse_snapdeal_cpr_workbook(file_bytes)
+        else:
+            summary, sku_rows_raw = _parse_snapdeal_workbook(file_bytes)
     else:
         summary, sku_rows_raw = _parse_workbook(file_bytes)
 
