@@ -221,6 +221,8 @@
 /* ── Table scroll ── */
 .e-scroll {
   flex: 1; min-height: 0;
+  /* max-height: safety net if flex chain breaks due to parent overflow-y:auto */
+  max-height: calc(100vh - 260px);
   overflow-x: auto; overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   border: 1px solid var(--border); border-radius: var(--radius);

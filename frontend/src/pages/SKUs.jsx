@@ -204,9 +204,9 @@ function compute(row, miscDef, profDef, platforms) {
   }
   const profAmtGst = beGst * profPct / 100
 
-  const bsNoGst = Math.round(be + profAmt)
-  const gstAmt  = Math.round(bsNoGst * gstRate / 100)
-  const finalBS = bsNoGst + gstAmt
+  const bsNoGst = +((be + profAmt).toFixed(2))
+  const gstAmt  = +((bsNoGst * gstRate / 100).toFixed(2))
+  const finalBS = +((bsNoGst + gstAmt).toFixed(2))
 
   return {
     crPct:   +crPct.toFixed(2),  crAmt:   +crAmt.toFixed(2),
@@ -248,10 +248,10 @@ function computePlatform(row, pl, base, miscDef) {
 
   const platBe = price + pkg + log + addons + misc + platCrAmt + base.dmgAmt + adAmt
   const profAmt = platBe * (base.profPct / 100)
-  const bsNoGst = Math.round(platBe + profAmt)
+  const bsNoGst = +((platBe + profAmt).toFixed(2))
 
   const gstRate = resolveGst(row.gstType || '5', row.price)
-  const gstAmt  = Math.round(bsNoGst * gstRate / 100)
+  const gstAmt  = +((bsNoGst * gstRate / 100).toFixed(2))
 
   const tierIdx = row.tiers[pl.id] ?? 0
   const tier    = pl.tiers?.[tierIdx]
