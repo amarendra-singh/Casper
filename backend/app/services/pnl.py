@@ -25,6 +25,7 @@ from app.services.fraud import (
     extract_order_events_snapdeal_cpr,
     store_order_events,
     compute_sku_risk_scores,
+    generate_fraud_alerts,
 )
 
 
@@ -992,12 +993,14 @@ async def parse_and_store(
 
     await session.commit()
 
-    # ── Recompute risk scores for this platform ───────────────────────────────
+    # ── Recompute risk scores + generate fraud alerts ─────────────────────────
     try:
         await compute_sku_risk_scores(session, platform_id)
         await session.commit()
+        await generate_fraud_alerts(session, platform_id, report.id)
+        await session.commit()
     except Exception:
-        pass  # Risk score failure is non-critical
+        pass  # Risk score / alert failure is non-critical
 
     return PnlUploadResult(
         report_id=report.id,

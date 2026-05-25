@@ -19,11 +19,12 @@ from __future__ import annotations
 from datetime import datetime, date
 from typing import Optional
 import math
+import json
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, func, text
 
-from app.models.fraud import OrderEvent, SkuRiskScore
+from app.models.fraud import OrderEvent, SkuRiskScore, FraudAlert
 from app.models.pnl import PnlReport
 from app.models.platform import Platform
 from app.models.sku import SkuPricing, SkuPlatformConfig
@@ -269,6 +270,41 @@ async def store_order_events(
 
 # ── Intelligence Engine ───────────────────────────────────────────────────────
 
+def _classify_alert_severity(alert_type: str, amount: Optional[float]) -> str:
+    """Map alert type + ₹ impact to severity level."""
+    if alert_type == "SETTLEMENT_GAP":
+        if amount and abs(amount) >= 5000:
+            return "CRITICAL"
+        if amount and abs(amount) >= 2000:
+            return "HIGH"
+        return "MEDIUM"
+    if alert_type == "COD_ABUSE":
+        return "HIGH"
+    if alert_type == "RETURN_SPIKE":
+        return "MEDIUM"
+    if alert_type == "FEE_OVERCHARGE":
+        return "HIGH"
+    if alert_type == "CROSS_PLATFORM_RISK":
+        return "MEDIUM"
+    return "LOW"
+
+
+def _settlement_gap_severity(gap: float, pct: float) -> Optional[str]:
+    """
+    gap = actual_bs - expected_bs (negative = platform underpaid/overcharged)
+    Returns severity if gap is meaningful, None if not actionable.
+    """
+    if gap >= 0:
+        return None   # Positive gap = fine, platform paid more than expected
+    if abs(pct) >= 0.10 or abs(gap) >= 5000:
+        return "CRITICAL"
+    if abs(pct) >= 0.05 or abs(gap) >= 2000:
+        return "HIGH"
+    if abs(pct) >= 0.02 or abs(gap) >= 500:
+        return "MEDIUM"
+    return None   # Too small to alert
+
+
 def _risk_tier(z_score: Optional[float], combined_loss_rate: Optional[float]) -> str:
     """
     Classify risk tier using Z-score + absolute loss rate.
@@ -441,6 +477,381 @@ async def compute_sku_risk_scores(session: AsyncSession, platform_id: int) -> in
         ))
 
     return len(stats)
+
+
+# ── Alert generation ──────────────────────────────────────────────────────────
+
+async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_id: int) -> int:
+    """
+    Generate FraudAlert rows after an upload.
+    Runs AFTER store_order_events() + compute_sku_risk_scores().
+    Deletes old unresolved alerts for this platform before inserting fresh ones.
+    Returns count of alerts generated.
+    """
+    from app.models.pnl import PnlSkuRow
+
+    # Delete old unresolved alerts for this platform
+    await session.execute(
+        delete(FraudAlert).where(
+            FraudAlert.platform_id == platform_id,
+            FraudAlert.is_resolved == False,
+        )
+    )
+
+    alerts: list[FraudAlert] = []
+    now = datetime.utcnow()
+
+    # ── 1. Settlement gap alerts (from PnlSkuRow.variance_bs) ──────────────────
+    sku_rows_result = await session.execute(
+        select(PnlSkuRow)
+        .where(
+            PnlSkuRow.report_id == report_id,
+            PnlSkuRow.variance_bs.isnot(None),
+            PnlSkuRow.casper_expected_bs.isnot(None),
+        )
+    )
+    sku_rows = sku_rows_result.scalars().all()
+
+    if sku_rows:
+        total_gap = sum(r.variance_bs for r in sku_rows if r.variance_bs is not None)
+        expected_sum = sum(r.casper_expected_bs for r in sku_rows if r.casper_expected_bs is not None)
+        if total_gap < -500 and expected_sum != 0:
+            pct_gap = total_gap / abs(expected_sum)
+            sev = _settlement_gap_severity(total_gap, pct_gap)
+            if sev:
+                top_gaps = [
+                    {"sku": r.platform_sku_name, "gap": round(r.variance_bs, 2)}
+                    for r in sorted(sku_rows, key=lambda x: x.variance_bs or 0)[:5]
+                    if r.variance_bs and r.variance_bs < -100
+                ]
+                alerts.append(FraudAlert(
+                    platform_id=platform_id,
+                    report_id=report_id,
+                    alert_type="SETTLEMENT_GAP",
+                    severity=sev,
+                    title=f"Settlement shortfall of ₹{abs(int(total_gap)):,} detected",
+                    body=(
+                        f"Platform paid ₹{abs(int(total_gap)):,} less than your Casper target across "
+                        f"{len([r for r in sku_rows if r.variance_bs and r.variance_bs < -100])} SKUs. "
+                        f"Gap is {abs(pct_gap*100):.1f}% of expected settlement. "
+                        "This could indicate fee calculation differences or pricing errors."
+                    ),
+                    evidence_json=json.dumps({
+                        "total_gap": round(total_gap, 2),
+                        "pct_gap": round(pct_gap, 4),
+                        "sku_count": len(sku_rows),
+                        "top_gaps": top_gaps,
+                    }),
+                    amount=total_gap,
+                    created_at=now,
+                ))
+
+    # ── 2. COD abuse alerts (from SkuRiskScore) ────────────────────────────────
+    cod_result = await session.execute(
+        select(SkuRiskScore)
+        .where(
+            SkuRiskScore.platform_id == platform_id,
+            SkuRiskScore.cod_abuse_flag == True,
+        )
+        .order_by(SkuRiskScore.z_score.desc().nullslast())
+    )
+    cod_skus = cod_result.scalars().all()
+
+    for sku in cod_skus:
+        pre  = sku.prepaid_return_rate or 0
+        post = sku.postpaid_return_rate or 0
+        diff = post - pre
+        alerts.append(FraudAlert(
+            platform_id=platform_id,
+            report_id=report_id,
+            alert_type="COD_ABUSE",
+            severity="HIGH",
+            title=f"COD abuse pattern: {sku.sku_platform_name}",
+            body=(
+                f"Postpaid (COD) return rate {post*100:.1f}% vs prepaid {pre*100:.1f}% "
+                f"— a {diff*100:.1f}pp gap. Customers may be ordering COD with intent to return. "
+                "Recommendation: restrict COD for this SKU."
+            ),
+            evidence_json=json.dumps({
+                "prepaid_return_rate": round(pre, 4),
+                "postpaid_return_rate": round(post, 4),
+                "diff_pp": round(diff, 4),
+                "gross_orders": sku.gross_orders,
+                "z_score": sku.z_score,
+            }),
+            sku_platform_name=sku.sku_platform_name,
+            amount=sku.revenue_at_risk,
+            created_at=now,
+        ))
+
+    # ── 3. Return spike alerts (CRITICAL/RED non-COD SKUs) ─────────────────────
+    critical_result = await session.execute(
+        select(SkuRiskScore)
+        .where(
+            SkuRiskScore.platform_id == platform_id,
+            SkuRiskScore.risk_tier.in_(["CRITICAL", "RED"]),
+            SkuRiskScore.cod_abuse_flag == False,
+        )
+        .order_by(SkuRiskScore.z_score.desc().nullslast())
+        .limit(10)
+    )
+    critical_skus = critical_result.scalars().all()
+
+    for sku in critical_skus:
+        if (sku.z_score or 0) >= 1.0:
+            alerts.append(FraudAlert(
+                platform_id=platform_id,
+                report_id=report_id,
+                alert_type="RETURN_SPIKE",
+                severity="CRITICAL" if sku.risk_tier == "CRITICAL" else "MEDIUM",
+                title=f"High return rate: {sku.sku_platform_name}",
+                body=(
+                    f"Combined loss rate {(sku.combined_loss_rate or 0)*100:.1f}% — "
+                    f"{(sku.z_score or 0):.1f}σ above platform average "
+                    f"({(sku.platform_avg_return_rate or 0)*100:.1f}%). "
+                    f"{sku.returned_orders} returns + {sku.rto_orders} RTOs from {sku.gross_orders} orders."
+                ),
+                evidence_json=json.dumps({
+                    "combined_loss_rate": sku.combined_loss_rate,
+                    "z_score": sku.z_score,
+                    "platform_avg": sku.platform_avg_return_rate,
+                    "returned": sku.returned_orders,
+                    "rto": sku.rto_orders,
+                    "gross": sku.gross_orders,
+                }),
+                sku_platform_name=sku.sku_platform_name,
+                amount=sku.revenue_at_risk,
+                created_at=now,
+            ))
+
+    for a in alerts:
+        session.add(a)
+
+    return len(alerts)
+
+
+# ── Overview + per-platform views ─────────────────────────────────────────────
+
+async def get_fraud_overview(session: AsyncSession) -> dict:
+    """Verdict + top alerts + platform health summary."""
+    sev_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
+
+    alerts_result = await session.execute(
+        select(FraudAlert, Platform.name.label("platform_name"))
+        .join(Platform, FraudAlert.platform_id == Platform.id)
+        .where(FraudAlert.is_resolved == False)
+        .order_by(FraudAlert.created_at.desc())
+    )
+    alert_rows = alerts_result.all()
+
+    alerts_sorted = sorted(
+        alert_rows,
+        key=lambda r: (sev_order.get(r[0].severity, 9), r[0].created_at)
+    )
+
+    alerts_out = [
+        {
+            "id":            a.id,
+            "alert_type":    a.alert_type,
+            "severity":      a.severity,
+            "title":         a.title,
+            "body":          a.body,
+            "platform_name": pname,
+            "sku_platform_name": a.sku_platform_name,
+            "amount":        a.amount,
+            "created_at":    a.created_at.isoformat(),
+        }
+        for a, pname in alerts_sorted
+    ]
+
+    critical_count = sum(1 for a, _ in alert_rows if a.severity == "CRITICAL")
+    high_count     = sum(1 for a, _ in alert_rows if a.severity == "HIGH")
+
+    if critical_count > 0:
+        verdict     = "CRITICAL"
+        verdict_msg = f"{critical_count} critical issue{'s' if critical_count > 1 else ''} require immediate attention"
+    elif high_count > 0:
+        verdict     = "HIGH"
+        verdict_msg = f"{high_count} high-priority issue{'s' if high_count > 1 else ''} detected"
+    elif alerts_out:
+        verdict     = "MEDIUM"
+        verdict_msg = f"{len(alerts_out)} risk signals detected — review recommended"
+    else:
+        verdict     = "CLEAN"
+        verdict_msg = "No active risk signals across all platforms"
+
+    plat_result = await session.execute(select(Platform.id, Platform.name))
+    platforms   = plat_result.all()
+
+    platform_health = []
+    for plat_id, plat_name in platforms:
+        tier_result = await session.execute(
+            select(SkuRiskScore.risk_tier, func.count(SkuRiskScore.id))
+            .where(SkuRiskScore.platform_id == plat_id)
+            .group_by(SkuRiskScore.risk_tier)
+        )
+        tiers     = {row[0]: row[1] for row in tier_result}
+        total_skus = sum(tiers.values())
+        if total_skus == 0:
+            continue
+
+        plat_alerts   = [a for a, pname in alert_rows if pname == plat_name]
+        plat_critical = sum(1 for a in plat_alerts if a.severity == "CRITICAL")
+
+        platform_health.append({
+            "platform_id":     plat_id,
+            "platform_name":   plat_name,
+            "total_skus":      total_skus,
+            "tier_summary":    tiers,
+            "alert_count":     len(plat_alerts),
+            "critical_alerts": plat_critical,
+            "health_score":    max(0, 100 - (
+                tiers.get("CRITICAL", 0) * 25
+                + tiers.get("RED", 0) * 10
+                + tiers.get("AMBER", 0) * 3
+            )),
+        })
+
+    return {
+        "verdict":         verdict,
+        "verdict_msg":     verdict_msg,
+        "total_alerts":    len(alerts_out),
+        "critical_count":  critical_count,
+        "high_count":      high_count,
+        "alerts":          alerts_out[:20],
+        "platform_health": platform_health,
+    }
+
+
+async def get_platform_fraud_view(session: AsyncSession, platform_id: int) -> dict:
+    """Per-platform fraud view: risk table + alerts."""
+    plat_result = await session.execute(
+        select(Platform).where(Platform.id == platform_id)
+    )
+    platform = plat_result.scalar_one_or_none()
+    if not platform:
+        return {"error": "Platform not found"}
+
+    scores_result = await session.execute(
+        select(SkuRiskScore)
+        .where(SkuRiskScore.platform_id == platform_id)
+        .order_by(SkuRiskScore.z_score.desc().nullslast())
+    )
+    scores = scores_result.scalars().all()
+
+    sku_table = [
+        {
+            "id":                    s.id,
+            "sku_platform_name":     s.sku_platform_name,
+            "risk_tier":             s.risk_tier,
+            "z_score":               s.z_score,
+            "combined_loss_rate":    s.combined_loss_rate,
+            "return_rate":           s.return_rate,
+            "rto_rate":              s.rto_rate,
+            "cancellation_rate":     s.cancellation_rate,
+            "gross_orders":          s.gross_orders,
+            "returned_orders":       s.returned_orders,
+            "rto_orders":            s.rto_orders,
+            "pending_return_orders": s.pending_return_orders,
+            "cod_abuse_flag":        s.cod_abuse_flag,
+            "prepaid_return_rate":   s.prepaid_return_rate,
+            "postpaid_return_rate":  s.postpaid_return_rate,
+            "revenue_at_risk":       s.revenue_at_risk,
+            "total_revenue":         s.total_revenue,
+            "trend_direction":       s.trend_direction,
+        }
+        for s in scores
+    ]
+
+    alerts_result = await session.execute(
+        select(FraudAlert)
+        .where(FraudAlert.platform_id == platform_id, FraudAlert.is_resolved == False)
+        .order_by(FraudAlert.created_at.desc())
+    )
+    alerts = alerts_result.scalars().all()
+
+    alerts_out = [
+        {
+            "id":                a.id,
+            "alert_type":        a.alert_type,
+            "severity":          a.severity,
+            "title":             a.title,
+            "body":              a.body,
+            "sku_platform_name": a.sku_platform_name,
+            "amount":            a.amount,
+            "created_at":        a.created_at.isoformat(),
+        }
+        for a in alerts
+    ]
+
+    tier_counts: dict = {}
+    for s in scores:
+        tier_counts[s.risk_tier] = tier_counts.get(s.risk_tier, 0) + 1
+
+    return {
+        "platform_id":            platform_id,
+        "platform_name":          platform.name,
+        "tier_summary":           tier_counts,
+        "sku_risk_table":         sku_table,
+        "alerts":                 alerts_out,
+        "total_alerts":           len(alerts_out),
+        "cod_abuse_count":        sum(1 for s in scores if s.cod_abuse_flag),
+        "total_revenue_at_risk":  sum(s.revenue_at_risk or 0 for s in scores),
+    }
+
+
+async def get_settlement_gaps(session: AsyncSession) -> dict:
+    """Settlement reconciliation across all reports using PnlSkuRow.variance_bs."""
+    from app.models.pnl import PnlSkuRow
+
+    result = await session.execute(
+        select(
+            PnlReport.id,
+            PnlReport.period_start,
+            PnlReport.period_end,
+            Platform.name.label("platform_name"),
+            func.count(PnlSkuRow.id).label("sku_count"),
+            func.sum(PnlSkuRow.casper_expected_bs).label("expected_total"),
+            func.sum(PnlSkuRow.bank_settlement_projected).label("actual_total"),
+            func.sum(PnlSkuRow.variance_bs).label("total_gap"),
+        )
+        .join(PnlSkuRow, PnlSkuRow.report_id == PnlReport.id)
+        .join(Platform, PnlReport.platform_id == Platform.id)
+        .where(
+            PnlSkuRow.variance_bs.isnot(None),
+            PnlSkuRow.casper_expected_bs.isnot(None),
+        )
+        .group_by(PnlReport.id, PnlReport.period_start, PnlReport.period_end, Platform.name)
+        .order_by(PnlReport.period_start.desc())
+    )
+    rows = result.all()
+
+    reports = []
+    for row in rows:
+        gap      = float(row.total_gap or 0)
+        expected = float(row.expected_total or 0)
+        pct_gap  = gap / abs(expected) if expected != 0 else 0
+        severity = _settlement_gap_severity(gap, pct_gap) if gap < 0 else None
+
+        reports.append({
+            "report_id":     row[0],
+            "period":        f"{row[1]} → {row[2]}",
+            "platform_name": row[3],
+            "sku_count":     row[4],
+            "expected_bs":   round(expected, 2),
+            "actual_bs":     round(float(row.actual_total or 0), 2),
+            "gap":           round(gap, 2),
+            "pct_gap":       round(pct_gap, 4),
+            "severity":      severity,
+        })
+
+    total_gap = sum(r["gap"] for r in reports)
+    return {
+        "reports":   reports,
+        "total_gap": round(total_gap, 2),
+        "gap_count": sum(1 for r in reports if r["gap"] < -100),
+        "note":      "Gap = actual settlement − Casper target. Negative = platform paid less than expected.",
+    }
 
 
 # ── Dashboard aggregates ──────────────────────────────────────────────────────
