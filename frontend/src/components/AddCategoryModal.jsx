@@ -11,8 +11,16 @@ import { createCategory } from '../api/client'
  */
 export default function AddCategoryModal({ name, onSave, onClose }) {
   const [catName, setCatName] = useState(name)
+  const [crPct,   setCrPct]   = useState('20')   // jewellery default
+  const [dmgPct,  setDmgPct]  = useState('15')
+  const [profPct, setProfPct] = useState('20')
   const [saving, setSaving]   = useState(false)
   const [error, setError]     = useState('')
+
+  const numOrNull = v => {
+    const n = parseFloat(v)
+    return Number.isFinite(n) ? n : null
+  }
 
   const handleSave = async () => {
     if (!catName.trim()) {
@@ -25,6 +33,9 @@ export default function AddCategoryModal({ name, onSave, onClose }) {
       const category = await createCategory({
         name: catName.trim(),
         is_active: true,
+        default_cr_pct:     numOrNull(crPct),
+        default_damage_pct: numOrNull(dmgPct),
+        default_profit_pct: numOrNull(profPct),
       })
       onSave(category)
     } catch (err) {
@@ -36,7 +47,7 @@ export default function AddCategoryModal({ name, onSave, onClose }) {
 
   return (
     <div className="overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal" style={{ maxWidth: 340 }}>
+      <div className="modal" style={{ maxWidth: 380 }}>
 
         <div className="modal-title">Add New Category</div>
 
@@ -49,6 +60,30 @@ export default function AddCategoryModal({ name, onSave, onClose }) {
             autoFocus
             onKeyDown={e => e.key === 'Enter' && handleSave()}
           />
+        </div>
+
+        <div style={{
+          display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+          gap: 8, marginBottom: 6,
+        }}>
+          <div className="input-group">
+            <label>Default CR %</label>
+            <input className="input" type="number" value={crPct}
+              onChange={e => setCrPct(e.target.value)} placeholder="20" />
+          </div>
+          <div className="input-group">
+            <label>Default Dmg %</label>
+            <input className="input" type="number" value={dmgPct}
+              onChange={e => setDmgPct(e.target.value)} placeholder="15" />
+          </div>
+          <div className="input-group">
+            <label>Default Profit %</label>
+            <input className="input" type="number" value={profPct}
+              onChange={e => setProfPct(e.target.value)} placeholder="20" />
+          </div>
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 10 }}>
+          New SKUs in this category auto-fill these values. Override per SKU still works.
         </div>
 
         {error && (

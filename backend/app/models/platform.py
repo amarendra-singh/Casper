@@ -13,6 +13,7 @@ class Platform(Base):
     cr_percentage: Mapped[float] = mapped_column(Float, nullable=False, comment="Customer return % for reporting")
     default_ad_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, comment="Default AD % of selling price for this platform")
     default_profit_pct: Mapped[float] = mapped_column(Float, nullable=False, default=20.0, comment="Default profit % for this platform")
+    target_monthly_units: Mapped[int] = mapped_column(Integer, nullable=False, default=700, comment="Volume goal per month — used for True P&L absorption variance")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -28,7 +29,9 @@ class PlatformTier(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     platform_id: Mapped[int] = mapped_column(Integer, ForeignKey("platforms.id", ondelete="CASCADE"), nullable=False)
     tier_name: Mapped[str] = mapped_column(String(50), nullable=False, comment="e.g. Gold, Silver, Bronze")
-    fee: Mapped[float] = mapped_column(Float, nullable=False, comment="Flat fee in INR for this tier")
+    fee: Mapped[float] = mapped_column(Float, nullable=False, comment="Flat fee in INR (used when fee_pct is null)")
+    # Phase 5: dual-mode tier — either ₹ (fee) OR % (fee_pct). One is master.
+    fee_pct: Mapped[float | None] = mapped_column(Float, nullable=True, comment="If set, tier fee = base × fee_pct/100; takes precedence over `fee`")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

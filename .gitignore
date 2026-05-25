@@ -14,12 +14,16 @@ env/
 *.db
 *.sqlite
 
-# Node
+# Frontend build / deps
 node_modules/
 frontend/dist/
+.vite/
 
 # Claude internal
 .claude/
 
 # Temp scripts
 backend/Script/
+
+# Uploads
+backend/uploads/

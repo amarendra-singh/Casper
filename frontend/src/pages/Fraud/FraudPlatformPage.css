@@ -1,0 +1,119 @@
+.fpp-root {
+  padding: 20px 24px 40px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.fpp-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  text-decoration: none;
+  margin-bottom: 20px;
+  transition: color .15s;
+}
+.fpp-back:hover { color: var(--text); }
+
+.fpp-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.fpp-platform-avatar {
+  width: 48px; height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(99,102,241,0.3), rgba(139,92,246,0.3));
+  border: 1px solid rgba(139,92,246,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 700; color: #a78bfa;
+  flex-shrink: 0;
+}
+
+.fpp-header-info { flex: 1; }
+.fpp-title   { font-size: 18px; font-weight: 700; color: var(--text); margin: 0 0 4px; }
+.fpp-subtitle { font-size: 12px; color: var(--muted); margin: 0; }
+
+.fpp-tier-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  width: 200px;
+  background: rgba(255,255,255,0.05);
+}
+.fpp-tier-seg {
+  height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; color: #000; font-weight: 700;
+  transition: width .3s;
+}
+
+.fpp-body {
+  display: grid;
+  grid-template-columns: 280px 1fr 240px;
+  gap: 20px;
+  align-items: start;
+}
+
+.fpp-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+
+.fpp-sku-scroll { overflow-x: auto; }
+.fpp-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.fpp-table th {
+  text-align: left; padding: 6px 8px;
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.fpp-table td { padding: 7px 8px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.fpp-row:hover td { background: rgba(255,255,255,0.02); }
+.fpp-num  { text-align: right; font-variant-numeric: tabular-nums; }
+.fpp-loss { color: #f97316; font-weight: 600; }
+.fpp-sku  { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fpp-badge {
+  display: inline-block; padding: 2px 6px; border-radius: 4px;
+  font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+}
+.fpp-vel-warn { color: #ef4444; font-weight: 700; }
+.fpp-empty { text-align: center; padding: 32px; color: var(--muted); font-size: 12px; }
+.fpp-loading { display: flex; align-items: center; justify-content: center; min-height: 300px; }
+.fpp-error   { padding: 24px; color: #ef4444; }
+
+/* VelocityPanel styles */
+.vel-root { font-size: 12px; }
+.vel-empty { text-align: center; padding: 20px 12px; }
+.vel-lock-icon  { font-size: 28px; margin-bottom: 8px; }
+.vel-lock-title { font-weight: 600; color: var(--text); margin-bottom: 6px; font-size: 13px; }
+.vel-lock-body  { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.vel-summary {
+  display: flex; flex-direction: column; align-items: center; padding: 12px;
+  background: rgba(239,68,68,0.08); border-radius: 8px; margin-bottom: 12px;
+}
+.vel-stat-val { font-size: 28px; font-weight: 800; color: #ef4444; }
+.vel-stat-lbl { font-size: 10px; color: var(--muted); text-align: center; }
+.vel-clean  { text-align: center; color: #22c55e; font-size: 12px; padding: 16px; }
+.vel-row    { padding: 10px; background: rgba(255,255,255,0.03); border-radius: 6px; margin-bottom: 8px; }
+.vel-sku-name { font-size: 11px; font-weight: 600; color: var(--text); margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vel-bars     { display: flex; flex-direction: column; gap: 4px; }
+.vel-bar-row  { display: flex; justify-content: space-between; align-items: center; }
+.vel-bar-label { font-size: 10px; color: var(--muted); }
+.vel-bar-val   { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.vel-bar-val.warn { color: #ef4444; }
+
+/* CompositeScoreMeter styles */
+.csm-root  { position: relative; width: 88px; text-align: center; }
+.csm-value { font-size: 18px; font-weight: 800; margin-top: -12px; }
+.csm-label { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.csm-compact { font-variant-numeric: tabular-nums; }

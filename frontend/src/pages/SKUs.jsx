@@ -10,6 +10,9 @@ import SmartCell from '../components/SmartCell'
 import AddVendorModal from '../components/AddVendorModal'
 import AddCategoryModal from '../components/AddCategoryModal'
 import ManageCategoriesModal from '../components/ManageCategoriesModal'
+import BidirectionalPctAmount from '../components/BidirectionalPctAmount'
+import AddTierQuickModal from '../components/AddTierQuickModal'
+import UploadAdReportModal from '../components/UploadAdReportModal'
 import './SKUs.css'
 
 // ─── Row status constants ─────────────────────────────────────────────────────
@@ -40,10 +43,28 @@ function resolveGst(gstType, price) {
   return parseFloat(gstType) || 0
 }
 
+// ─── Safe number → string (never scientific notation) ────────────────────────
+function numStr(v) {
+  if (v == null || v === '') return ''
+  const n = parseFloat(v)
+  if (isNaN(n)) return ''
+  // toFixed(6) never produces sci notation; strip trailing zeros
+  return n.toFixed(6).replace(/\.?0+$/, '') || '0'
+}
+
+/** Like numStr but capped at 2 decimals — for percentages and money values
+ *  shown in narrow inputs. Avoids 9.163636-style stale precision. */
+function numStr2(v) {
+  if (v == null || v === '') return ''
+  const n = parseFloat(v)
+  if (isNaN(n)) return ''
+  return n.toFixed(2).replace(/\.?0+$/, '') || '0'
+}
+
 // ─── Column groups ────────────────────────────────────────────────────────────
 // Note: 'ad' removed from costBreakdown — AD is now per-platform
 const COL_GROUPS = {
-  skuDetails:    { label: 'SKU Details',    cols: ['vshort','vsku','category'] },
+  skuDetails:    { label: 'SKU Details',    cols: ['series','vshort','vsku','category'] },
   costBreakdown: { label: 'Cost Breakdown', cols: ['pkg','log','addons','misc'] },
   calculations:  { label: 'Calculations',   cols: ['crpct','cramt','dmgpct','dmgamt','profpct','profamt','bsnogst','gst'] },
 }
@@ -70,6 +91,7 @@ function newRow(data = {}) {
     vendorId:     data.vendorId     || null,
     vshort:       data.vshort       || '',
     vsku:         data.vsku         || '',
+    series:       data.series       || '',
     sku:          data.sku          || '',
     category:     data.category     || '',
     categoryId:   data.categoryId   || null,
@@ -90,19 +112,23 @@ function newRow(data = {}) {
     // Per-platform AD overrides: { [platformId]: { adPct: '', adAmt: '' } }
     // '' = inherit from platform.default_ad_pct
     platOverrides: data.platOverrides || {},
+    // Per-platform SKU name aliases: { [platformId]: string }
+    platAliases: data.platAliases || {},
   }
 }
 
 // Convert backend row → frontend row
 function backendRowToFrontend(r) {
-  // Rebuild platOverrides from platform_configs returned by the API
+  // Rebuild platOverrides and platAliases from platform_configs returned by the API
   const platOverrides = {}
+  const platAliases   = {}
   if (r.platform_configs) {
     r.platform_configs.forEach(cfg => {
       platOverrides[cfg.platform_id] = {
-        adPct: cfg.ad_pct  != null ? String(cfg.ad_pct)  : '',
+        adPct: cfg.ad_pct  != null ? numStr2(cfg.ad_pct) : '',
         adAmt: '',  // always blank on load; computed on render
       }
+      if (cfg.platform_sku_name) platAliases[cfg.platform_id] = cfg.platform_sku_name
     })
   }
 
@@ -113,22 +139,24 @@ function backendRowToFrontend(r) {
     vendorId:   r.vendor_id     || null,
     vshort:     r.vendor_short  || '',
     vsku:       r.vendor_sku    || '',
+    series:     r.series        || '',
     sku:        r.shringar_sku  || '',
     category:   r.category_name || '',
     categoryId: r.category_id   || null,
-    price:      r.price             != null ? String(r.price)             : '',
-    pkg:        r.package           != null ? String(r.package)           : '',
-    log:        r.logistics         != null ? String(r.logistics)         : '',
-    addons:     r.addons            != null ? String(r.addons)            : '',
-    misc:       r.misc_total        != null ? String(r.misc_total)        : '',
-    crPct:      r.cr_percentage     != null ? String(r.cr_percentage)     : '',
-    crAmt:      r.cr_cost           != null ? String(r.cr_cost)           : '',
-    dmgPct:     r.damage_percentage != null ? String(r.damage_percentage) : '',
-    dmgAmt:     r.damage_cost       != null ? String(r.damage_cost)       : '',
-    profPct:    r.profit_percentage != null ? String(r.profit_percentage) : '',
+    price:      numStr(r.price),
+    pkg:        numStr(r.package),
+    log:        numStr(r.logistics),
+    addons:     numStr(r.addons),
+    misc:       numStr(r.misc_total),
+    crPct:      numStr2(r.cr_percentage),
+    crAmt:      numStr2(r.cr_cost),
+    dmgPct:     numStr2(r.damage_percentage),
+    dmgAmt:     numStr2(r.damage_cost),
+    profPct:    numStr2(r.profit_percentage),
     gstType:    '5',
-    gst:        r.gst               != null ? String(r.gst)              : '5',
+    gst:        r.gst != null ? numStr(r.gst) : '5',
     platOverrides,
+    platAliases,
   })
 }
 
@@ -139,7 +167,7 @@ function compute(row, miscDef, profDef, platforms) {
   const log    = parseFloat(row.log)    || 0
   const addons = parseFloat(row.addons) || 0
   const misc   = row.misc !== '' ? parseFloat(row.misc) : miscDef
-  const crCharge = platforms[0]?.cr_charge || 160
+  const crCharge = platforms[0]?.cr_charge ?? 0
 
   let crPct, crAmt
   if (row.crAmt !== '') {
@@ -162,6 +190,10 @@ function compute(row, miscDef, profDef, platforms) {
   // Breakeven excludes AD (AD is per-platform now)
   const be = p + pkg + log + addons + misc + crAmt + dmgAmt
 
+  // GST resolved early so we can derive the with-GST companion values
+  const gstRate = resolveGst(row.gstType || '5', row.price)
+  const beGst   = be * (1 + gstRate / 100)
+
   let profPct, profAmt
   if (row.profAmt !== '') {
     profAmt = parseFloat(row.profAmt) || 0
@@ -170,17 +202,18 @@ function compute(row, miscDef, profDef, platforms) {
     profPct = row.profPct !== '' ? parseFloat(row.profPct) : profDef
     profAmt = be * profPct / 100
   }
+  const profAmtGst = beGst * profPct / 100
 
-  const bsNoGst = Math.round(be + profAmt)
-  const gstRate = resolveGst(row.gstType || '5', row.price)
-  const gstAmt  = Math.round(bsNoGst * gstRate / 100)
-  const finalBS = bsNoGst + gstAmt
+  const bsNoGst = +((be + profAmt).toFixed(2))
+  const gstAmt  = +((bsNoGst * gstRate / 100).toFixed(2))
+  const finalBS = +((bsNoGst + gstAmt).toFixed(2))
 
   return {
     crPct:   +crPct.toFixed(2),  crAmt:   +crAmt.toFixed(2),
     dmgPct:  +dmgPct.toFixed(2), dmgAmt:  +dmgAmt.toFixed(2),
-    be:      +be.toFixed(2),
+    be:      +be.toFixed(2),     beGst:   +beGst.toFixed(2),
     profPct: +profPct.toFixed(2), profAmt: +profAmt.toFixed(2),
+    profAmtGst: +profAmtGst.toFixed(2),
     bsNoGst, gstAmt, finalBS,
   }
 }
@@ -215,14 +248,20 @@ function computePlatform(row, pl, base, miscDef) {
 
   const platBe = price + pkg + log + addons + misc + platCrAmt + base.dmgAmt + adAmt
   const profAmt = platBe * (base.profPct / 100)
-  const bsNoGst = Math.round(platBe + profAmt)
+  const bsNoGst = +((platBe + profAmt).toFixed(2))
 
   const gstRate = resolveGst(row.gstType || '5', row.price)
-  const gstAmt  = Math.round(bsNoGst * gstRate / 100)
+  const gstAmt  = +((bsNoGst * gstRate / 100).toFixed(2))
 
   const tierIdx = row.tiers[pl.id] ?? 0
   const tier    = pl.tiers?.[tierIdx]
-  const bs      = bsNoGst + gstAmt + (tier?.fee || 0)
+  // Phase 5: dual-mode tier fee — % takes precedence over ₹ when set.
+  // Anchor for % mode = baseAfterGst (bsNoGst + gstAmt).
+  const baseAfterGst = bsNoGst + gstAmt
+  const tierAmt = tier?.fee_pct != null
+    ? baseAfterGst * tier.fee_pct / 100
+    : (tier?.fee || 0)
+  const bs      = baseAfterGst + tierAmt
 
   return {
     adPct:   +adPct.toFixed(2),
@@ -265,6 +304,11 @@ export default function SKUs() {
   }, [])
   const [vendorModal,   setVendorModal]   = useState(null)
   const [categoryModal, setCategoryModal] = useState(null)
+  // Phase 5 — quick-add tier modal triggered from per-platform tier dropdown
+  // shape: { platform, rowId } | null
+  const [tierQuickAdd, setTierQuickAdd] = useState(null)
+  // Phase 6 — ad-report upload modal scoped to a platform
+  const [adReportPlat, setAdReportPlat] = useState(null)
   const [pendingRowId,  setPendingRowId]  = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -323,6 +367,16 @@ export default function SKUs() {
     }))
   }, [])
 
+  // ── Platform alias handlers ────────────────────────────────────────────────
+
+  const handleAlias = useCallback((rowId, plId, value) => {
+    setRows(prev => prev.map(r =>
+      r.id === rowId
+        ? { ...r, status: STATUS.DIRTY, platAliases: { ...r.platAliases, [plId]: value } }
+        : r
+    ))
+  }, [])
+
   // ── Save logic ─────────────────────────────────────────────────────────────
   const saveRows = useCallback(async (rowsToSave) => {
     if (!rowsToSave.length) return
@@ -331,25 +385,36 @@ export default function SKUs() {
     ))
 
     const payload = rowsToSave.map(row => {
-      // Build platform_overrides — only send platforms with actual ad_pct overrides
-      const platform_overrides = Object.entries(row.platOverrides)
-        .filter(([, o]) => o.adPct !== '' || o.adAmt !== '')
-        .map(([plId, o]) => {
-          // Resolve the pct to send: if adAmt was entered, convert to pct
-          let ad_pct = null
-          if (o.adAmt !== '' && o.adAmt !== undefined) {
-            const price = parseFloat(row.price) || 0
-            const amt   = parseFloat(o.adAmt)   || 0
-            ad_pct = price > 0 ? +(amt / price * 100).toFixed(4) : null
-          } else if (o.adPct !== '' && o.adPct !== undefined) {
-            ad_pct = parseFloat(o.adPct) ?? null
-          }
-          return { platform_id: parseInt(plId), ad_pct, profit_pct: null }
-        })
+      // Build platform_overrides — include AD overrides + aliases
+      const overrideMap = {}
+      // AD overrides
+      Object.entries(row.platOverrides || {}).forEach(([plId, o]) => {
+        if (o.adPct === '' && o.adAmt === '') return
+        let ad_pct = null
+        if (o.adAmt !== '' && o.adAmt !== undefined) {
+          const price = parseFloat(row.price) || 0
+          const amt   = parseFloat(o.adAmt)   || 0
+          ad_pct = price > 0 ? +(amt / price * 100).toFixed(4) : null
+        } else if (o.adPct !== '' && o.adPct !== undefined) {
+          ad_pct = parseFloat(o.adPct) ?? null
+        }
+        overrideMap[plId] = { platform_id: parseInt(plId), ad_pct, profit_pct: null, platform_sku_name: null }
+      })
+      // Aliases — merge into overrideMap
+      Object.entries(row.platAliases || {}).forEach(([plId, alias]) => {
+        if (!alias) return
+        if (overrideMap[plId]) {
+          overrideMap[plId].platform_sku_name = alias
+        } else {
+          overrideMap[plId] = { platform_id: parseInt(plId), ad_pct: null, profit_pct: null, platform_sku_name: alias }
+        }
+      })
+      const platform_overrides = Object.values(overrideMap)
 
       return {
         sku:               row.sku,
         vendor_sku:        row.vsku       || null,
+        series:            row.series     || null,
         vendor_id:         row.vendorId   || null,
         category_id:       row.categoryId || null,
         price:             parseFloat(row.price),
@@ -404,20 +469,6 @@ export default function SKUs() {
     return () => clearTimeout(timer)
   }, [rows, saveRows])
 
-  // ── Hard fallback: save every 30s ──────────────────────────────────────────
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setRows(current => {
-        const dirty = current.filter(r =>
-          (r.status === STATUS.DIRTY || r.status === STATUS.NEW) && r.sku && r.price
-        )
-        if (dirty.length > 0) saveRows(dirty)
-        return current
-      })
-    }, 30000)
-    return () => clearInterval(interval)
-  }, [saveRows])
-
   // ── Warn on page close if unsaved ──────────────────────────────────────────
   useEffect(() => {
     const handler = (e) => {
@@ -443,8 +494,16 @@ export default function SKUs() {
     return true
   }
 
+  const [collapsedSeries, setCollapsedSeries] = useState(new Set())
+  const toggleSeries = name => setCollapsedSeries(prev => {
+    const next = new Set(prev)
+    next.has(name) ? next.delete(name) : next.add(name)
+    return next
+  })
+
   const vendorOpts = vendors.map(v => ({ label: v.name, sublabel: v.short_code }))
   const catOpts    = categories.map(c => ({ label: c.name }))
+  const seriesOpts = [...new Set(rows.map(r => r.series).filter(Boolean))].map(s => ({ label: s }))
 
   const handleVendorSaved = v => {
     setVendors(p => [...p, v])
@@ -453,8 +512,28 @@ export default function SKUs() {
   }
   const handleCatSaved = c => {
     setCategories(p => [...p, c])
-    if (pendingRowId) upd(pendingRowId, { category:c.name, categoryId:c.id })
+    if (pendingRowId) {
+      const row = rows.find(r => r.id === pendingRowId)
+      const defaults = row ? applyCategoryDefaults(row, c) : {}
+      upd(pendingRowId, { category:c.name, categoryId:c.id, ...defaults })
+    }
     setCategoryModal(null); setPendingRowId(null)
+  }
+
+  /** Cascade category defaults onto a SKU row — only fills empty fields. */
+  const applyCategoryDefaults = (row, cat) => {
+    if (!cat) return {}
+    const patch = {}
+    if (cat.default_cr_pct != null && (row.crPct ?? '') === '' && (row.crAmt ?? '') === '') {
+      patch.crPct = String(cat.default_cr_pct)
+    }
+    if (cat.default_damage_pct != null && (row.dmgPct ?? '') === '' && (row.dmgAmt ?? '') === '') {
+      patch.dmgPct = String(cat.default_damage_pct)
+    }
+    if (cat.default_profit_pct != null && (row.profPct ?? '') === '' && (row.profAmt ?? '') === '') {
+      patch.profPct = String(cat.default_profit_pct)
+    }
+    return patch
   }
 
   const isSaving   = rows.some(r => r.status === STATUS.SAVING)
@@ -471,7 +550,7 @@ export default function SKUs() {
 
   const TMPL_HEADERS = [
     'Vendor','SKU Name','V.Short','Vendor SKU','Category',
-    'Price ₹','Package ₹','Logistics ₹','Addons ₹','Misc ₹',
+    'Price ₹','Package ₹','Inbound Logistics ₹','Addons ₹','Misc ₹',
     'CR %','CR ₹','Damage %','Damage ₹','Profit %','Profit ₹','GST %'
   ]
   const TMPL_SAMPLE = ['Varni','FH','y','N6-WHITE','Jewellery Set',299,0,0,0,0,10,'',5,'',20,'',5]
@@ -515,7 +594,7 @@ export default function SKUs() {
           category:String(r['Category']     || ''),
           price:   String(r['Price ₹']      || ''),
           pkg:     String(r['Package ₹']    || ''),
-          log:     String(r['Logistics ₹']  || ''),
+          log:     String(r['Inbound Logistics ₹'] || r['Logistics ₹'] || ''),
           addons:  String(r['Addons ₹']     || ''),
           misc:    String(r['Misc ₹']       || ''),
           crPct:   String(r['CR %']         || ''),
@@ -547,7 +626,7 @@ export default function SKUs() {
     const platHeaders = activePlats.map(pl => `${pl.name} BS`)
     const headers = [
       'Vendor','SKU','V.Short','Vendor SKU','Category',
-      'Price ₹','Package ₹','Logistics ₹','Addons ₹','Misc ₹',
+      'Price ₹','Package ₹','Inbound Logistics ₹','Addons ₹','Misc ₹',
       'CR %','CR ₹','Dmg %','Dmg ₹','Breakeven',
       'Profit %','Profit ₹','BS w/o GST','GST %','Final BS',
       ...platHeaders
@@ -651,7 +730,7 @@ export default function SKUs() {
           <button className="btn btn-accent" onClick={saveAll} disabled={isSaving || dirtyCount === 0}>
             {isSaving
               ? <><span className="loader" style={{ width:12, height:12, borderWidth:2 }}/> Saving</>
-              : '💾 Save All'
+              : 'Save All'
             }
           </button>
           <button className="btn btn-primary" onClick={addRow}>+ Add Row</button>
@@ -711,7 +790,7 @@ export default function SKUs() {
             <tr>
               {/* SKU group header */}
               <th className="gh gh-sku"
-                colSpan={2 + (vis('vshort')?1:0) + (vis('vsku')?1:0) + (vis('category')?1:0)}>
+                colSpan={2 + (vis('series')?1:0) + (vis('vshort')?1:0) + (vis('vsku')?1:0) + (vis('category')?1:0)}>
                 SKU
               </th>
               {/* Unit Economics group header (no AD column) */}
@@ -719,21 +798,30 @@ export default function SKUs() {
                 colSpan={1+(vis('pkg')?1:0)+(vis('log')?1:0)+(vis('addons')?1:0)+(vis('misc')?1:0)+(vis('crpct')?1:0)+(vis('cramt')?1:0)+(vis('dmgpct')?1:0)+(vis('dmgamt')?1:0)}>
                 Unit Economics
               </th>
-              {/* Profitability group header */}
+              {/* Profitability group header — Breakeven + GST + Breakeven (GST) + Profit % + Profit ₹ */}
               <th className="gh gh-prof"
-                colSpan={1+(vis('profpct')?1:0)+(vis('profamt')?1:0)+(vis('bsnogst')?1:0)}>
+                colSpan={2 + (vis('gst')?1:0) + (vis('profpct')?1:0) + (vis('profamt')?1:0)}>
                 Profitability
               </th>
-              {vis('gst') && <th className="gh gh-tax">Tax</th>}
-              <th className="gh gh-bs">Bank Settlement</th>
-              {/* Platform columns — each shows AD input + tier + BS */}
+              {/* Bank Settlement group — Target Pre-GST + Target Post-GST */}
+              <th className="gh gh-bs"
+                colSpan={(vis('bsnogst')?1:0) + 1}>
+                Bank Settlement
+              </th>
+              {/* Platform columns — AD inputs + tier | AD ₹ | BS (3 cols each) */}
               {activePlats.map(pl => (
-                <th key={pl.id} className="gh gh-plat">
+                <th key={pl.id} className="gh gh-plat" colSpan={3}>
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:4 }}>
                     <span>{pl.name}</span>
                     <span style={{ fontSize:10, color:'var(--text-3)', fontWeight:400 }}>
                       AD {pl.default_ad_pct ?? 0}%
                     </span>
+                    <button
+                      className="gh-upload-btn"
+                      title="Upload ad report (CSV / XLSX)"
+                      onClick={() => setAdReportPlat(pl)}>
+                      ↑ Upload Ad
+                    </button>
                     <button className="gh-x"
                       onClick={() => setActivePlats(p => p.filter(x => x.id !== pl.id))}>✕</button>
                   </div>
@@ -746,13 +834,14 @@ export default function SKUs() {
             {/* Sub-headers row */}
             <tr>
               <th className="sh sh-sku w-vendor sticky-col-hdr">Vendor</th>
-              <th className="sh sh-sku w-sku sticky-col-hdr" style={{left:'var(--vendor-w,110px)'}}>SKU</th>
+              <th className="sh sh-sku w-sku sticky-col-hdr" style={{left:90}}>SKU</th>
+              {vis('series')   && <th className="sh sh-sku w-series">Series</th>}
               {vis('vshort')   && <th className="sh sh-sku w-vshort">V.Short</th>}
               {vis('vsku')     && <th className="sh sh-sku w-vsku">Vendor SKU</th>}
               {vis('category') && <th className="sh sh-sku w-cat">Category</th>}
               <th className="sh sh-ue w-price">Price ₹</th>
               {vis('pkg')    && <th className="sh sh-ue w-pkg">Package</th>}
-              {vis('log')    && <th className="sh sh-ue w-log">Logistics</th>}
+              {vis('log')    && <th className="sh sh-ue w-log">Inbound Logistics</th>}
               {vis('addons') && <th className="sh sh-ue w-addons">Addons</th>}
               {vis('misc')   && <th className="sh sh-ue w-misc">Misc</th>}
               {vis('crpct')  && <th className="sh sh-ue w-crpct">CR %</th>}
@@ -760,25 +849,62 @@ export default function SKUs() {
               {vis('dmgpct') && <th className="sh sh-ue w-dmgpct">Dmg %</th>}
               {vis('dmgamt') && <th className="sh sh-ue w-dmgamt">Dmg ₹</th>}
               <th className="sh sh-prof w-be">Breakeven</th>
+              {vis('gst') && <th className="sh sh-tax w-gst">GST</th>}
+              <th className="sh sh-prof w-be">Breakeven (GST)</th>
               {vis('profpct') && <th className="sh sh-prof w-profpct">Profit %</th>}
               {vis('profamt') && <th className="sh sh-prof w-profamt">Profit ₹</th>}
-              {vis('bsnogst') && <th className="sh sh-prof w-bsnogst">BS w/o GST</th>}
-              {vis('gst') && <th className="sh sh-tax w-gst">GST</th>}
-              <th className="sh sh-bs w-finalbs">Final BS</th>
-              {activePlats.map(pl => (
-                <th key={pl.id} className="sh sh-plat w-plat-ad">
-                  <span style={{ fontSize:10 }}>AD% / ₹ · Tier · BS</span>
-                </th>
-              ))}
+              {vis('bsnogst') && <th className="sh sh-bs w-bsnogst">Target Pre-GST</th>}
+              <th className="sh sh-bs w-finalbs">Target Post-GST</th>
+              {activePlats.map(pl => ([
+                <th key={`${pl.id}-ad`} className="sh sh-plat w-plat-ad">AD% / ₹</th>,
+                <th key={`${pl.id}-tier`} className="sh sh-plat w-plat-tier">Tier</th>,
+                <th key={`${pl.id}-bs`} className="sh sh-bs w-plat-bs">BS</th>
+              ]))}
               <th className="sh" style={{ minWidth:28 }}/>
               <th className="sh" style={{ minWidth:28 }}/>
             </tr>
           </thead>
 
           <tbody>
-            {rows.map(row => {
-              const c = compute(row, miscDef, profDef, platforms)
-              return (
+            {(() => {
+              // Group rows by series — ungrouped rows go under ''
+              const groups = {}
+              rows.forEach(row => {
+                const key = row.series || ''
+                if (!groups[key]) groups[key] = []
+                groups[key].push(row)
+              })
+              // Named series first (sorted), then ungrouped at end
+              const keys = [
+                ...Object.keys(groups).filter(k => k).sort((a,b) => a.toLowerCase().localeCompare(b.toLowerCase())),
+                ...(groups[''] ? [''] : [])
+              ]
+              const totalCols = 2
+                + (vis('series')?1:0) + (vis('vshort')?1:0) + (vis('vsku')?1:0) + (vis('category')?1:0)
+                + 1+(vis('pkg')?1:0)+(vis('log')?1:0)+(vis('addons')?1:0)+(vis('misc')?1:0)
+                + (vis('crpct')?1:0)+(vis('cramt')?1:0)+(vis('dmgpct')?1:0)+(vis('dmgamt')?1:0)
+                + 2 + (vis('gst')?1:0) + (vis('profpct')?1:0) + (vis('profamt')?1:0)  // BE + BE(GST) + GST + Profit % + Profit ₹
+                + (vis('bsnogst')?1:0) + 1                                              // Target Pre-GST + Target Post-GST
+                + activePlats.length * 3 + 2
+
+              return keys.flatMap(seriesKey => {
+                const groupRows = groups[seriesKey]
+                const collapsed = collapsedSeries.has(seriesKey)
+                const headerRow = seriesKey ? (
+                  <tr key={`series-hdr-${seriesKey}`} className="series-hdr-row">
+                    <td colSpan={totalCols}>
+                      <button className="series-hdr-btn" onClick={() => toggleSeries(seriesKey)}>
+                        <span className="series-hdr-arrow">{collapsed ? '▶' : '▼'}</span>
+                        <span className="series-hdr-name">{seriesKey}</span>
+                        <span className="series-hdr-count">{groupRows.length}</span>
+                      </button>
+                    </td>
+                  </tr>
+                ) : null
+
+                const dataRows = collapsed ? [] : groupRows.map(row => {
+                  const c = compute(row, miscDef, profDef, platforms)
+                  return (
                 <tr key={row.id} className={`e-row ${row.status === STATUS.ERROR ? 'row-error' : ''}`}>
 
                   {/* Vendor */}
@@ -796,21 +922,54 @@ export default function SKUs() {
                   </td>
 
                   {/* SKU code */}
-                  <td className="ec w-sku sh-sku sticky-col" style={{left:'var(--vendor-w,110px)'}}>
-                    <input className="ec-input mono" value={row.sku} placeholder="SHJ-JS-VRI-N6"
-                      onChange={e => upd(row.id, { sku:e.target.value.toUpperCase() })} />
+                  <td className="ec w-sku sh-sku sticky-col" style={{left:90}}>
+                    <div className="ec-sizer-wrap">
+                      <span className="ec-sizer mono">{row.sku || 'SHJ-JS-VRI-N6'}</span>
+                      <input className="ec-input mono" size={1} value={row.sku} placeholder="SHJ-JS-VRI-N6"
+                        onChange={e => upd(row.id, { sku:e.target.value.toUpperCase() })} />
+                    </div>
+                    {/* Platform alias chips */}
+                    {activePlats.some(pl => row.platAliases?.[pl.id]) && (
+                      <div className="sku-alias-chips">
+                        {activePlats.map(pl => {
+                          const alias = row.platAliases?.[pl.id]
+                          if (!alias) return null
+                          return (
+                            <span key={pl.id} className="sku-alias-chip" title={`${pl.name}: ${alias}`}>
+                              <span className="sku-alias-chip-plat">{pl.name[0]}</span>
+                              <span className="sku-alias-chip-val">{alias}</span>
+                            </span>
+                          )
+                        })}
+                      </div>
+                    )}
                   </td>
 
+                  {vis('series') && (
+                    <td className="ec ec-smart w-series sh-sku">
+                      <SmartCell
+                        value={row.series} options={seriesOpts} placeholder="Series"
+                        onChange={v => upd(row.id, { series: v })}
+                        onSelect={opt => upd(row.id, { series: opt.label })}
+                      />
+                    </td>
+                  )}
                   {vis('vshort') && (
                     <td className="ec w-vshort sh-sku">
-                      <input className="ec-input mono" value={row.vshort} placeholder="VRI"
-                        onChange={e => upd(row.id, { vshort:e.target.value.toUpperCase() })} />
+                      <div className="ec-sizer-wrap">
+                        <span className="ec-sizer mono">{row.vshort || 'VRI'}</span>
+                        <input className="ec-input mono" size={1} value={row.vshort} placeholder="VRI"
+                          onChange={e => upd(row.id, { vshort:e.target.value.toUpperCase() })} />
+                      </div>
                     </td>
                   )}
                   {vis('vsku') && (
                     <td className="ec w-vsku sh-sku">
-                      <input className="ec-input mono" value={row.vsku} placeholder="N6-WHITE"
-                        onChange={e => upd(row.id, { vsku:e.target.value })} />
+                      <div className="ec-sizer-wrap">
+                        <span className="ec-sizer mono">{row.vsku || 'N6-WHITE'}</span>
+                        <input className="ec-input mono" size={1} value={row.vsku} placeholder="N6-WHITE"
+                          onChange={e => upd(row.id, { vsku:e.target.value })} />
+                      </div>
                     </td>
                   )}
                   {vis('category') && (
@@ -820,7 +979,8 @@ export default function SKUs() {
                         onChange={v => upd(row.id, { category:v, categoryId:null })}
                         onSelect={opt => {
                           const cat = categories.find(c=>c.name===opt.label)
-                          upd(row.id, { category:opt.label, categoryId:cat?.id||null })
+                          const defaults = applyCategoryDefaults(row, cat)
+                          upd(row.id, { category:opt.label, categoryId:cat?.id||null, ...defaults })
                         }}
                         onAddNew={name => { setPendingRowId(row.id); setCategoryModal(name) }}
                         addNewLabel="Add as new category"
@@ -831,93 +991,81 @@ export default function SKUs() {
 
                   {/* Price */}
                   <td className="ec w-price sh-ue">
-                    <input className="ec-input right mono" type="number" value={row.price}
-                      placeholder="0"
-                      onChange={e => {
-                        const newPrice = e.target.value
-                        const newGst = resolveGst(row.gstType || '5', newPrice)
-                        upd(row.id, { price: newPrice, gst: String(newGst) })
-                      }} />
+                    <div className="ec-sizer-wrap">
+                      <span className="ec-sizer mono">{row.price || '0'}</span>
+                      <input className="ec-input right mono" type="number" size={1} value={row.price}
+                        placeholder="0"
+                        onChange={e => {
+                          const newPrice = e.target.value
+                          const newGst = resolveGst(row.gstType || '5', newPrice)
+                          upd(row.id, { price: newPrice, gst: String(newGst) })
+                        }} />
+                    </div>
                   </td>
 
                   {vis('pkg') && (
                     <td className="ec w-pkg sh-ue">
-                      <input className="ec-input right mono" type="number" value={row.pkg}
-                        placeholder="0" onChange={e => upd(row.id, { pkg:e.target.value })} />
+                      <div className="ec-sizer-wrap">
+                        <span className="ec-sizer mono">{row.pkg || '0'}</span>
+                        <input className="ec-input right mono" type="number" size={1} value={row.pkg}
+                          placeholder="0" onChange={e => upd(row.id, { pkg:e.target.value })} />
+                      </div>
                     </td>
                   )}
                   {vis('log') && (
                     <td className="ec w-log sh-ue">
-                      <input className="ec-input right mono" type="number" value={row.log}
-                        placeholder="0" onChange={e => upd(row.id, { log:e.target.value })} />
+                      <div className="ec-sizer-wrap">
+                        <span className="ec-sizer mono">{row.log || '0'}</span>
+                        <input className="ec-input right mono" type="number" size={1} value={row.log}
+                          placeholder="0" onChange={e => upd(row.id, { log:e.target.value })} />
+                      </div>
                     </td>
                   )}
                   {vis('addons') && (
                     <td className="ec w-addons sh-ue">
-                      <input className="ec-input right mono" type="number" value={row.addons}
-                        placeholder="0" onChange={e => upd(row.id, { addons:e.target.value })} />
+                      <div className="ec-sizer-wrap">
+                        <span className="ec-sizer mono">{row.addons || '0'}</span>
+                        <input className="ec-input right mono" type="number" size={1} value={row.addons}
+                          placeholder="0" onChange={e => upd(row.id, { addons:e.target.value })} />
+                      </div>
                     </td>
                   )}
                   {vis('misc') && (
                     <td className="ec w-misc sh-ue">
-                      <input className="ec-input right mono" type="number" value={row.misc}
-                        placeholder={miscDef} onChange={e => upd(row.id, { misc:e.target.value })} />
+                      <div className="ec-sizer-wrap">
+                        <span className="ec-sizer mono">{row.misc || String(miscDef)}</span>
+                        <input className="ec-input right mono" type="number" size={1} value={row.misc}
+                          placeholder={miscDef} onChange={e => upd(row.id, { misc:e.target.value })} />
+                      </div>
                     </td>
                   )}
-                  {vis('crpct') && (
-                    <td className="ec w-crpct sh-ue">
-                      <input className="ec-input right mono" type="number" value={row.crPct}
-                        placeholder={c.crPct}
-                        onChange={e => upd(row.id, { crPct:e.target.value, crAmt:'' })} />
-                    </td>
-                  )}
-                  {vis('cramt') && (
-                    <td className="ec w-cramt sh-ue">
-                      <input className="ec-input right mono" type="number" value={row.crAmt}
-                        placeholder={c.crAmt}
-                        onChange={e => upd(row.id, { crAmt:e.target.value, crPct:'' })} />
-                    </td>
-                  )}
-                  {vis('dmgpct') && (
-                    <td className="ec w-dmgpct sh-ue">
-                      <input className="ec-input right mono" type="number" value={row.dmgPct}
-                        placeholder={c.dmgPct}
-                        onChange={e => upd(row.id, { dmgPct:e.target.value, dmgAmt:'' })} />
-                    </td>
-                  )}
-                  {vis('dmgamt') && (
-                    <td className="ec w-dmgamt sh-ue">
-                      <input className="ec-input right mono" type="number" value={row.dmgAmt}
-                        placeholder={c.dmgAmt}
-                        onChange={e => upd(row.id, { dmgAmt:e.target.value, dmgPct:'' })} />
-                    </td>
-                  )}
+                  {/* CR — bidirectional % ↔ ₹ pair (anchor: Platform.cr_charge) */}
+                  <BidirectionalPctAmount
+                    pctKey="crPct" amtKey="crAmt"
+                    pctValue={row.crPct} amtValue={row.crAmt}
+                    pctComputed={numStr(c.crPct)} amtComputed={numStr(c.crAmt)}
+                    onUpd={changes => upd(row.id, changes)}
+                    pctVisible={vis('crpct')} amtVisible={vis('cramt')}
+                    pctClassName="w-crpct" amtClassName="w-cramt"
+                    shadeClassName="sh-ue"
+                  />
+                  {/* Damage — bidirectional % ↔ ₹ pair (anchor: Price) */}
+                  <BidirectionalPctAmount
+                    pctKey="dmgPct" amtKey="dmgAmt"
+                    pctValue={row.dmgPct} amtValue={row.dmgAmt}
+                    pctComputed={numStr(c.dmgPct)} amtComputed={numStr(c.dmgAmt)}
+                    onUpd={changes => upd(row.id, changes)}
+                    pctVisible={vis('dmgpct')} amtVisible={vis('dmgamt')}
+                    pctClassName="w-dmgpct" amtClassName="w-dmgamt"
+                    shadeClassName="sh-ue"
+                  />
 
-                  {/* Breakeven (base, without AD) */}
+                  {/* Breakeven (no GST, base — without AD) */}
                   <td className="ec ec-auto w-be sh-prof">
                     {row.price ? `₹${c.be}` : '—'}
                   </td>
-                  {vis('profpct') && (
-                    <td className="ec w-profpct sh-prof">
-                      <input className="ec-input right mono" type="number" value={row.profPct}
-                        placeholder={c.profPct}
-                        onChange={e => upd(row.id, { profPct:e.target.value, profAmt:'' })} />
-                    </td>
-                  )}
-                  {vis('profamt') && (
-                    <td className="ec w-profamt sh-prof">
-                      <input className="ec-input right mono" type="number" value={row.profAmt}
-                        placeholder={c.profAmt}
-                        onChange={e => upd(row.id, { profAmt:e.target.value, profPct:'' })} />
-                    </td>
-                  )}
-                  {vis('bsnogst') && (
-                    <td className="ec ec-auto w-bsnogst sh-prof">
-                      {row.price ? `₹${c.bsNoGst}` : '—'}
-                    </td>
-                  )}
-
-                  {/* GST dropdown */}
+                  {/* GST dropdown — placed between Breakeven and Breakeven (GST)
+                      so user can change rate and see immediate impact on with-GST values. */}
                   {vis('gst') && (
                     <td className="ec w-gst sh-tax">
                       <select
@@ -934,31 +1082,51 @@ export default function SKUs() {
                       </select>
                     </td>
                   )}
+                  {/* Breakeven (with GST) — derived */}
+                  <td className="ec ec-auto w-be sh-prof">
+                    {row.price ? `₹${c.beGst}` : '—'}
+                  </td>
+                  {/* Profit — bidirectional % ↔ ₹ pair (anchor: Breakeven no-GST) */}
+                  <BidirectionalPctAmount
+                    pctKey="profPct" amtKey="profAmt"
+                    pctValue={row.profPct} amtValue={row.profAmt}
+                    pctComputed={numStr(c.profPct)} amtComputed={numStr(c.profAmt)}
+                    onUpd={changes => upd(row.id, changes)}
+                    pctVisible={vis('profpct')} amtVisible={vis('profamt')}
+                    pctClassName="w-profpct" amtClassName="w-profamt"
+                    shadeClassName="sh-prof"
+                  />
+                  {vis('bsnogst') && (
+                    <td className="ec ec-auto w-bsnogst sh-bs">
+                      {row.price ? `₹${c.bsNoGst}` : '—'}
+                    </td>
+                  )}
 
-                  {/* Final BS (base, using first platform's default AD as reference) */}
+                  {/* Target Post-GST (= Final BS) — derived */}
                   <td className="ec ec-auto ec-gold w-finalbs sh-bs">
                     {row.price ? `₹${c.finalBS}` : '—'}
                   </td>
 
-                  {/* Platform columns — AD ↔ ₹ inputs + tier + BS ── */}
+                  {/* Platform columns — AD ↔ ₹ inputs + tier | BS (separate col) ── */}
                   {activePlats.map(pl => {
-                    const plc     = computePlatform(row, pl, c, miscDef)
+                    const plc      = computePlatform(row, pl, c, miscDef)
                     const override = row.platOverrides?.[pl.id] || {}
-                    return (
-                      <td key={pl.id} className="ec ec-plat w-plat-ad">
+                    const alias    = row.platAliases?.[pl.id] || ''
+                    return ([
+                      <td key={`${pl.id}-ad`} className="ec ec-plat w-plat-ad">
                         <div className="plat-cell-a">
-                          {/* % input with inline label */}
+                          {/* % input — placeholder shows back-computed % when ₹ is set */}
                           <div className="plat-field">
                             <span className="plat-field-lbl">%</span>
                             <input
                               type="number"
                               className="plat-field-inp"
                               value={override.adPct ?? ''}
-                              placeholder={pl.default_ad_pct ?? 0}
+                              placeholder={plc.adPct ?? (pl.default_ad_pct ?? 0)}
                               onChange={e => handlePlatOverride(row.id, pl.id, 'adPct', e.target.value)}
                             />
                           </div>
-                          {/* ₹ input with inline label */}
+                          {/* ₹ input — placeholder shows derived ₹ when % is set */}
                           <div className="plat-field">
                             <span className="plat-field-lbl">₹</span>
                             <input
@@ -969,22 +1137,41 @@ export default function SKUs() {
                               onChange={e => handlePlatOverride(row.id, pl.id, 'adAmt', e.target.value)}
                             />
                           </div>
-                          {/* Tier */}
-                          <select className="plat-tier-s" value={plc.tierIdx}
-                            onChange={e => handleTier(row.id, pl.id, parseInt(e.target.value))}>
-                            {pl.tiers?.map((t, i) => (
-                              <option key={i} value={i}>
-                                {t.tier_name === 'None' ? '0' : t.tier_name}
-                              </option>
-                            ))}
-                          </select>
-                          {/* BS */}
-                          <span className={`plat-bs-s ${plc.bs ? 'has-val' : ''}`}>
-                            {plc.bs ? `₹${plc.bs}` : '—'}
-                          </span>
+                          {/* Alias — always visible; dim placeholder when empty, gold border when set */}
+                          <div className="plat-alias-row">
+                            <input
+                              className={`plat-alias-inp${alias ? ' has-value' : ''}`}
+                              placeholder={`${pl.name} SKU name…`}
+                              value={alias}
+                              onChange={e => handleAlias(row.id, pl.id, e.target.value)}
+                              title={alias ? `${pl.name} alias: ${alias}` : `Map this SKU's name on ${pl.name}`}
+                            />
+                          </div>
                         </div>
+                      </td>,
+                      <td key={`${pl.id}-tier`} className="ec ec-plat w-plat-tier">
+                        <select className="plat-tier-s" value={plc.tierIdx}
+                          onChange={e => {
+                            const v = e.target.value
+                            if (v === '__add__') {
+                              setTierQuickAdd({ platform: pl, rowId: row.id })
+                            } else {
+                              handleTier(row.id, pl.id, parseInt(v))
+                            }
+                          }}>
+                          {pl.tiers?.map((t, i) => (
+                            <option key={i} value={i}>
+                              {t.tier_name === 'None' ? '0' : t.tier_name}
+                              {t.fee_pct != null ? ` (${t.fee_pct}%)` : (t.fee ? ` (₹${t.fee})` : '')}
+                            </option>
+                          ))}
+                          <option value="__add__">+ Add tier…</option>
+                        </select>
+                      </td>,
+                      <td key={`${pl.id}-bs`} className="ec ec-auto ec-gold w-plat-bs">
+                        {plc.bs ? `₹${plc.bs}` : '—'}
                       </td>
-                    )
+                    ])
                   })}
 
                   {/* Row status */}
@@ -1005,8 +1192,11 @@ export default function SKUs() {
                     <button onClick={() => delRow(row.id)} className="del-btn">×</button>
                   </td>
                 </tr>
-              )
-            })}
+                  )
+                })
+                return [headerRow, ...dataRows].filter(Boolean)
+              })
+            })()}
           </tbody>
         </table>
       </div>
@@ -1104,13 +1294,67 @@ export default function SKUs() {
           categories={categories}
           rows={rows}
           onClose={() => setManageCatOpen(false)}
-          onUpdate={async (id, name) => {
-            await updateCategory(id, { name })
-            setCategories(p => p.map(c => c.id === id ? { ...c, name } : c))
+          onUpdate={async (id, patch) => {
+            // patch may include: name, default_cr_pct, default_damage_pct, default_profit_pct
+            await updateCategory(id, patch)
+            setCategories(p => p.map(c => c.id === id ? { ...c, ...patch } : c))
           }}
           onDelete={async id => {
             await deleteCategory(id)
             setCategories(p => p.filter(c => c.id !== id))
+          }}
+        />
+      )}
+
+      {/* Phase 6 — Ad report upload modal (per platform) */}
+      {adReportPlat && (
+        <UploadAdReportModal
+          platform={adReportPlat}
+          rows={rows}
+          onClose={() => setAdReportPlat(null)}
+          onApply={(updates) => {
+            // updates: [{ rowId, adAmt }]
+            const platId = adReportPlat.id
+            setRows(prev => prev.map(r => {
+              const u = updates.find(x => x.rowId === r.id)
+              if (!u) return r
+              const prevOverride = r.platOverrides?.[platId] || {}
+              return {
+                ...r,
+                status: STATUS.DIRTY,
+                platOverrides: {
+                  ...r.platOverrides,
+                  [platId]: { ...prevOverride, adAmt: String(u.adAmt), adPct: '' },
+                },
+              }
+            }))
+            setAdReportPlat(null)
+          }}
+        />
+      )}
+
+      {/* Quick-add tier modal — invoked from per-platform tier dropdown */}
+      {tierQuickAdd && (
+        <AddTierQuickModal
+          platform={tierQuickAdd.platform}
+          onClose={() => setTierQuickAdd(null)}
+          onSaved={(newTier) => {
+            // 1. Append the new tier to the platform's tier list (in state)
+            setPlatforms(prev => prev.map(p =>
+              p.id === tierQuickAdd.platform.id
+                ? { ...p, tiers: [...(p.tiers || []), newTier] }
+                : p
+            ))
+            setActivePlats(prev => prev.map(p =>
+              p.id === tierQuickAdd.platform.id
+                ? { ...p, tiers: [...(p.tiers || []), newTier] }
+                : p
+            ))
+            // 2. Auto-select the new tier on the row that triggered it
+            //    (its index = old length, since we just appended).
+            const newIdx = (tierQuickAdd.platform.tiers?.length || 0)
+            handleTier(tierQuickAdd.rowId, tierQuickAdd.platform.id, newIdx)
+            setTierQuickAdd(null)
           }}
         />
       )}
@@ -1171,7 +1415,7 @@ function MobileCard({ row, calc:c, vendorOpts, catOpts, miscDef, profDef,
           </div>
           <div className="m-section">Unit Economics</div>
           <div className="m-grid">
-            {[['Price','price'],['Package','pkg'],['Logistics','log'],
+            {[['Price','price'],['Package','pkg'],['Inbound Logistics','log'],
               ['Addons','addons']].map(([l,f])=>(
               <div key={f} className="m-field"><label>{l}</label>
                 <input className="m-input mono right" type="number" value={row[f]}
@@ -1204,6 +1448,9 @@ function MobileCard({ row, calc:c, vendorOpts, catOpts, miscDef, profDef,
             <div className="m-field"><label>Breakeven</label>
               <input className="m-input mono right" readOnly value={row.price?`₹${c.be}`:''} placeholder="—"/>
             </div>
+            <div className="m-field"><label>Breakeven (GST)</label>
+              <input className="m-input mono right" readOnly value={row.price?`₹${c.beGst}`:''} placeholder="—"/>
+            </div>
             <div className="m-field"><label>Profit %</label>
               <input className="m-input mono right" type="number" value={row.profPct}
                 placeholder={c.profPct} onChange={e=>onUpd(row.id,{profPct:e.target.value,profAmt:''})}/>
@@ -1212,7 +1459,7 @@ function MobileCard({ row, calc:c, vendorOpts, catOpts, miscDef, profDef,
               <input className="m-input mono right" type="number" value={row.profAmt}
                 placeholder={c.profAmt} onChange={e=>onUpd(row.id,{profAmt:e.target.value,profPct:''})}/>
             </div>
-            <div className="m-field"><label>BS w/o GST</label>
+            <div className="m-field"><label>Target Pre-GST</label>
               <input className="m-input mono right" readOnly value={row.price?`₹${c.bsNoGst}`:''} placeholder="—"/>
             </div>
             <div className="m-field"><label>GST Type</label>
@@ -1228,7 +1475,7 @@ function MobileCard({ row, calc:c, vendorOpts, catOpts, miscDef, profDef,
               </select>
             </div>
             <div className="m-field">
-              <label style={{color:'var(--accent)'}}>Final BS</label>
+              <label style={{color:'var(--accent)'}}>Target Post-GST</label>
               <input className="m-input mono right" readOnly
                 value={row.price?`₹${c.finalBS}`:''} placeholder="—"
                 style={{color:'var(--accent)',fontWeight:600}}/>

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { login as apiLogin, getMe } from '../api/client'
+import { login as apiLogin, getMe, apiLogout } from '../api/client'
 
 const AuthContext = createContext(null)
 
@@ -13,7 +13,13 @@ export function AuthProvider({ children }) {
     if (!token) { setLoading(false); return }
     getMe()
       .then(setUser)
-      .catch(() => localStorage.clear())
+      .catch(err => {
+        // Only clear tokens on explicit auth failure — not on network errors
+        if (err.response?.status === 401) {
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('refresh_token')
+        }
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -25,8 +31,10 @@ export function AuthProvider({ children }) {
     return data
   }, [])
 
-  const logout = useCallback(() => {
-    localStorage.clear()
+  const logout = useCallback(async () => {
+    try { await apiLogout() } catch {}
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
     setUser(null)
   }, [])
 

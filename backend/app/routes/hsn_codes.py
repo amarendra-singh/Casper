@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from app.core.database import get_db
-from app.core.dependencies import require_any
+from app.core.dependencies import require_any, require_admin_or_above
 from app.models.hsn_code import HsnCode
 from app.schemas.hsn_code import HsnCodeCreate, HsnCodeResponse
 from typing import List
@@ -34,11 +34,11 @@ async def search_hsn(
     )
     return result.scalars().all()
 
-@router.post("/", response_model=HsnCodeResponse)
+@router.post("/", response_model=HsnCodeResponse, status_code=status.HTTP_201_CREATED)
 async def create_hsn(
     data: HsnCodeCreate,
     db: AsyncSession = Depends(get_db),
-    _=Depends(require_any)
+    _=Depends(require_admin_or_above)
 ):
     existing = await db.execute(
         select(HsnCode).where(HsnCode.code == data.code)

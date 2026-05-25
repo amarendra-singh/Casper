@@ -3,17 +3,19 @@ from typing import Optional, List
 
 
 class PlatformOverride(BaseModel):
-    """Per-platform AD and profit overrides sent from the frontend."""
-    platform_id: int
-    ad_pct:      Optional[float] = None   # None = inherit platform.default_ad_pct
-    profit_pct:  Optional[float] = None   # None = inherit platform.default_profit_pct
+    """Per-platform AD, profit overrides and SKU name alias sent from the frontend."""
+    platform_id:       int
+    ad_pct:            Optional[float] = None   # None = inherit platform.default_ad_pct
+    profit_pct:        Optional[float] = None   # None = inherit platform.default_profit_pct
+    platform_sku_name: Optional[str]   = None   # None = use global shringar_sku
 
 
 class PlatformConfigResponse(BaseModel):
     """Per-platform config returned to the frontend."""
-    platform_id: int
-    ad_pct:      Optional[float] = None
-    profit_pct:  Optional[float] = None
+    platform_id:       int
+    ad_pct:            Optional[float] = None
+    profit_pct:        Optional[float] = None
+    platform_sku_name: Optional[str]   = None
 
     class Config:
         from_attributes = True

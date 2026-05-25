@@ -52,6 +52,7 @@ async def create_platform(
             platform_id=platform.id,
             tier_name=tier.tier_name,
             fee=tier.fee,
+            fee_pct=tier.fee_pct,
         ))
 
     await db.commit()
@@ -132,7 +133,12 @@ async def add_tier(
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Platform not found")
 
-    tier = PlatformTier(platform_id=platform_id, tier_name=payload.tier_name, fee=payload.fee)
+    tier = PlatformTier(
+        platform_id=platform_id,
+        tier_name=payload.tier_name,
+        fee=payload.fee,
+        fee_pct=payload.fee_pct,
+    )
     db.add(tier)
     await db.commit()
     await db.refresh(tier)
@@ -159,6 +165,7 @@ async def update_tier(
 
     tier.tier_name = payload.tier_name
     tier.fee = payload.fee
+    tier.fee_pct = payload.fee_pct
     await db.commit()
     await db.refresh(tier)
     return tier

@@ -18,7 +18,8 @@ export default function Login() {
       await login(email, password)
       navigate('/')
     } catch (err) {
-      setError(err.response?.data?.detail || 'Invalid credentials')
+      const detail = err.response?.data?.detail
+      setError(Array.isArray(detail) ? 'Invalid credentials' : (detail || 'Invalid credentials'))
     } finally {
       setLoading(false)
     }

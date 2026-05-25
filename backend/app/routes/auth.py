@@ -2,9 +2,11 @@
 CasperV2 — Auth routes: login, refresh, me, change password
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 
 from app.core.database import get_db
 from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token, hash_password
@@ -15,9 +17,27 @@ from app.schemas.user import UserResponse
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
+# ── Simple in-memory rate limiter (5 attempts/min per IP) ─────────────────────
+_login_attempts: dict[str, list] = defaultdict(list)
+_RATE_WINDOW = timedelta(minutes=1)
+_RATE_LIMIT   = 5
+
+
+def _check_rate_limit(ip: str) -> None:
+    now = datetime.now(tz=timezone.utc)
+    cutoff = now - _RATE_WINDOW
+    _login_attempts[ip] = [t for t in _login_attempts[ip] if t > cutoff]
+    if len(_login_attempts[ip]) >= _RATE_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many login attempts. Wait 1 minute and try again.",
+        )
+    _login_attempts[ip].append(now)
+
 
 @router.post("/login", response_model=TokenResponse)
-async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(payload: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    _check_rate_limit(request.client.host or "unknown")
     result = await db.execute(select(User).where(User.email == payload.email))
     user = result.scalar_one_or_none()
 
@@ -88,3 +108,13 @@ async def change_password(
     await db.commit()
 
     return {"message": "Password changed successfully"}
+
+
+@router.post("/logout")
+async def logout(current_user: User = Depends(get_current_user)):
+    """
+    Server-side logout acknowledgement.
+    Token revocation is client-side (remove from localStorage).
+    Future: invalidate via jti blacklist.
+    """
+    return {"message": "Logged out successfully"}

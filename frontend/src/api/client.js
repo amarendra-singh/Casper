@@ -28,7 +28,8 @@ api.interceptors.response.use(
           original.headers.Authorization = `Bearer ${data.access_token}`
           return api(original)
         } catch {
-          localStorage.clear()
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('refresh_token')
           window.location.href = '/login'
         }
       }
@@ -41,6 +42,7 @@ api.interceptors.response.use(
 export const login         = (email, password) => api.post('/auth/login', { email, password }).then(r => r.data)
 export const getMe         = ()                => api.get('/auth/me').then(r => r.data)
 export const changePassword= (data)            => api.post('/auth/change-password', data).then(r => r.data)
+export const apiLogout     = ()                => api.post('/auth/logout').then(r => r.data)
 
 // Platforms
 export const getPlatforms  = ()        => api.get('/platforms/').then(r => r.data)
@@ -94,9 +96,17 @@ export const deleteUser    = (id)      => api.delete(`/users/${id}`).then(r => r
 export const getEntries    = ()     => api.get('/entries/').then(r => r.data)
 export const upsertBatch   = (rows) => api.post('/entries/upsert-batch', { rows }).then(r => r.data)
 
-// HSN Codes — fixed from /hsn/ to /hsn-codes/
-export const searchHsn     = (q)    => api.get(`/hsn-codes/search?q=${q}`).then(r => r.data)
-export const getHsnList    = ()     => api.get('/hsn-codes/').then(r => r.data)
-export const createHsnCode = (data) => api.post('/hsn-codes/', data).then(r => r.data)
+// HSN Codes
+export const searchHsn     = (q)    => api.get(`/hsn/search?q=${q}`).then(r => r.data)
+export const getHsnList    = ()     => api.get('/hsn/').then(r => r.data)
+export const createHsnCode = (data) => api.post('/hsn/', data).then(r => r.data)
+
+// P&L
+export const getPnlReports              = (platformId) => api.get('/pnl/reports', { params: platformId ? { platform_id: platformId } : {} }).then(r => r.data)
+export const getPnlReport               = (id)         => api.get(`/pnl/reports/${id}`).then(r => r.data)
+export const deletePnlReport            = (id)         => api.delete(`/pnl/reports/${id}`)
+export const getPnlPlatformsWithReports = ()           => api.get('/pnl/platforms-with-reports').then(r => r.data)
+export const getPnlDashboard            = ()           => api.get('/pnl/dashboard').then(r => r.data)
+export const uploadPnlReport            = (formData)   => api.post('/pnl/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
 
 export default api

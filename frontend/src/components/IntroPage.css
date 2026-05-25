@@ -1,0 +1,200 @@
+/* ── Reusable in-app intro / help page ───────────────────────────── */
+.intro-page {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 32px 28px 80px;
+  font-family: var(--font-ui);
+  color: var(--text-1);
+  line-height: 1.6;
+}
+
+/* ── Header ──────────────────────────────────────────────────────── */
+.intro-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-bottom: 28px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--border);
+}
+.intro-emoji {
+  font-size: 48px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.intro-title {
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+.intro-tagline {
+  margin: 6px 0 0 0;
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+/* ── Body ────────────────────────────────────────────────────────── */
+.intro-body { display: flex; flex-direction: column; gap: 28px; }
+
+.intro-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 24px;
+}
+.intro-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-3);
+  margin: 0 0 14px 0;
+}
+.intro-section-body {
+  font-size: 14px;
+  color: var(--text-1);
+}
+.intro-section-body p { margin: 0 0 12px 0; }
+.intro-section-body p:last-child { margin-bottom: 0; }
+.intro-section-body ul { margin: 8px 0 12px 18px; padding: 0; }
+.intro-section-body li { margin-bottom: 6px; }
+.intro-section-body strong { color: var(--text); }
+.intro-section-body code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--surface-2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: var(--text);
+}
+
+/* ── Math section ────────────────────────────────────────────────── */
+.intro-math-section { border-left: 3px solid #7c5cfc; }
+.intro-formula {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  background: var(--surface-2);
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin: 0 0 12px 0;
+  white-space: pre-wrap;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.intro-explanation { font-size: 14px; color: var(--text-2); margin-bottom: 14px; }
+.intro-variant {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--border);
+}
+.intro-variant-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 10px 0;
+}
+
+/* ── Worked example ──────────────────────────────────────────────── */
+.intro-example {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-top: 8px;
+}
+.intro-example-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-3);
+  margin-bottom: 10px;
+}
+.intro-example-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.intro-example-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 13px;
+}
+.intro-example-label { color: var(--text-2); }
+.intro-example-value {
+  font-family: var(--font-mono);
+  color: var(--text);
+}
+.intro-example-value.strong { font-weight: 700; font-size: 15px; }
+.intro-example-value.red    { color: #ef4444; }
+.intro-example-value.green  { color: #16a34a; }
+.intro-example-breakdown {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-3);
+  padding: 6px 0;
+  border-top: 1px dashed var(--border);
+}
+.intro-example-output {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  margin-top: 4px;
+}
+
+/* ── Technical section (collapsible) ─────────────────────────────── */
+.intro-tech-section { background: rgba(0, 0, 0, 0.015); }
+.intro-tech-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+}
+.intro-tech-toggle:hover { color: var(--text-2); }
+.intro-tech-chev { font-size: 10px; width: 12px; }
+.intro-tech-body {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.intro-tech-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 12px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.intro-tech-row:last-child { border-bottom: none; }
+.intro-tech-label { color: var(--text-3); font-weight: 500; flex-shrink: 0; margin-right: 16px; }
+.intro-tech-value { color: var(--text-1); text-align: right; }
+.intro-tech-value.mono { font-family: var(--font-mono); font-size: 11px; color: var(--text-2); }
+
+/* ── Callout ────────────────────────────────────────────────────── */
+.intro-callout {
+  display: flex;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin: 12px 0;
+  align-items: flex-start;
+}
+.intro-callout-info    { background: rgba(70, 140, 220, 0.08);  border-left: 3px solid #468cdc; color: var(--text-1); }
+.intro-callout-warn    { background: rgba(255, 180, 70, 0.10);  border-left: 3px solid #ffa844; color: var(--text-1); }
+.intro-callout-success { background: rgba(80, 200, 120, 0.10);  border-left: 3px solid #16a34a; color: var(--text-1); }
+.intro-callout-icon { font-size: 16px; flex-shrink: 0; }

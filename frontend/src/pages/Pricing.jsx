@@ -28,7 +28,7 @@ function PricingCard({ row, platform, onEdit, onDelete }) {
         {[
           ['Price',     `₹${row.price}`],
           ['Package',   `₹${row.package}`],
-          ['Logistics', `₹${row.logistics}`],
+          ['Inbound Logistics', `₹${row.logistics}`],
           ['Addons',    `₹${row.addons}`],
           ['Misc',      `₹${row.misc_total}`],
           ['CR Cost',   `₹${row.cr_cost}`, `${row.cr_percentage}%`],
@@ -226,9 +226,9 @@ export default function Pricing() {
             ['CR Cost',         'platform.cr_charge × (cr_percentage / 100)'],
             ['Damage Cost',     'price × (damage_percentage / 100)'],
             ['Breakeven',       'price + package + logistics + addons + misc + cr_cost + damage_cost'],
-            ['Net Profit 20%',  'breakeven × 0.20'],
-            ['BS w/o GST',      'round(breakeven + net_profit_20)'],
-            ['Bank Settlement', 'bs_wo_gst + gst'],
+            ['Net Profit',      'breakeven × (profit_percentage / 100)'],
+            ['BS w/o GST',      'round(breakeven + net_profit)'],
+            ['Bank Settlement', 'bs_wo_gst + round(bs_wo_gst × gst_rate / 100)'],
           ].map(([name, formula]) => (
             <div key={name} className="formula-row">
               <span className="formula-name">{name}</span>
@@ -280,7 +280,7 @@ export default function Pricing() {
                   value={form.package} onChange={e => setForm(f => ({ ...f, package: e.target.value }))} />
               </div>
               <div className="input-group">
-                <label>Logistics (₹) *</label>
+                <label>Inbound Logistics (₹) *</label>
                 <input className="input mono" type="number" placeholder="5"
                   value={form.logistics} onChange={e => setForm(f => ({ ...f, logistics: e.target.value }))} />
               </div>

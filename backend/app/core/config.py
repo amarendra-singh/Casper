@@ -1,5 +1,11 @@
+from pathlib import Path
 from decouple import config, Csv
 from functools import lru_cache
+
+# Resolve DB path relative to this file so it's stable regardless of uvicorn launch dir.
+# backend/app/core/config.py → .parent×3 = backend/
+_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+_DB_PATH = (_BACKEND_DIR / "casper.db").as_posix()
 
 
 class Settings:
@@ -9,8 +15,8 @@ class Settings:
     APP_HOST: str = config("APP_HOST", default="0.0.0.0")
     APP_PORT: int = config("APP_PORT", default=8000, cast=int)
 
-    DATABASE_URL: str = config("DATABASE_URL", default="sqlite+aiosqlite:///./casperv2.db")
-    DATABASE_URL_SYNC: str = config("DATABASE_URL_SYNC", default="sqlite:///./casperv2.db")
+    DATABASE_URL: str = f"sqlite+aiosqlite:///{_DB_PATH}"
+    DATABASE_URL_SYNC: str = f"sqlite:///{_DB_PATH}"
 
     SECRET_KEY: str = config("SECRET_KEY")
     ALGORITHM: str = config("ALGORITHM", default="HS256")
