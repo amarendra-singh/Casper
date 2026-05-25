@@ -174,7 +174,7 @@ export default function FraudDashboard() {
     Promise.all([
       api.get('/fraud/overview'),
       api.get('/fraud/dashboard'),
-      api.get('/pnl/platforms'),
+      api.get('/pnl/platforms-with-reports'),
     ])
       .then(([ov, db, pl]) => {
         setOverview(ov.data)
