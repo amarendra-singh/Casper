@@ -1,6 +1,7 @@
 """Tests for velocity + composite fraud score logic."""
 import pytest
 from app.models.fraud import OrderEvent, SkuRiskScore
+from app.services.fraud import _compute_velocity_days, _parse_date_col
 from datetime import date
 
 
@@ -32,3 +33,39 @@ def test_sku_risk_score_has_composite_fields():
     )
     assert s.composite_fraud_score == 72.5
     assert s.velocity_fraud_count == 3
+
+
+def test_compute_velocity_days_normal():
+    """Delivery 2026-04-30, return pickup 2026-05-01 = 1 day."""
+    assert _compute_velocity_days(date(2026, 4, 30), date(2026, 5, 1)) == 1
+
+
+def test_compute_velocity_days_same_day():
+    """Same-day return = 0 days."""
+    assert _compute_velocity_days(date(2026, 5, 1), date(2026, 5, 1)) == 0
+
+
+def test_compute_velocity_days_none_delivery():
+    """If delivery_date is None, return None."""
+    assert _compute_velocity_days(None, date(2026, 5, 1)) is None
+
+
+def test_compute_velocity_days_none_pickup():
+    """If return_pickup_date is None, return None."""
+    assert _compute_velocity_days(date(2026, 5, 1), None) is None
+
+
+def test_compute_velocity_days_return_before_delivery():
+    """Return date before delivery is impossible — return None."""
+    assert _compute_velocity_days(date(2026, 5, 5), date(2026, 5, 1)) is None
+
+
+def test_parse_date_col_none():
+    """None input → None output."""
+    assert _parse_date_col(None) is None
+
+
+def test_parse_date_col_with_date():
+    """A real date object passes through."""
+    d = date(2026, 5, 1)
+    assert _parse_date_col(d) == d

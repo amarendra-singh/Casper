@@ -65,6 +65,39 @@ _FK_PAYMENT_MAP = {
 }
 
 
+# ── Date / velocity helpers ───────────────────────────────────────────────────
+
+def _compute_velocity_days(
+    delivery_date,
+    return_pickup_date,
+) -> Optional[int]:
+    """
+    Days from delivery to return pickup.
+    Returns None if delivery_date is None or return happened before delivery.
+    """
+    if delivery_date is None or return_pickup_date is None:
+        return None
+    try:
+        delta = (return_pickup_date - delivery_date).days
+        return delta if delta >= 0 else None
+    except Exception:
+        return None
+
+
+def _parse_date_col(value) -> Optional[date]:
+    """Safely parse a date value from Excel (timestamp or string)."""
+    if value is None:
+        return None
+    if hasattr(value, "date"):
+        return value.date()
+    try:
+        import pandas as pd
+        d = pd.to_datetime(value, errors="coerce")
+        return d.date() if not pd.isna(d) else None
+    except Exception:
+        return None
+
+
 # ── FK order extraction ───────────────────────────────────────────────────────
 
 def extract_order_events_fk(file_bytes: bytes) -> list[dict]:
@@ -133,41 +166,43 @@ def extract_order_events_fk(file_bytes: bytes) -> list[dict]:
 # ── Meesho order extraction ───────────────────────────────────────────────────
 
 def extract_order_events_meesho(file_bytes: bytes) -> list[dict]:
-    """Extract per-order rows from Meesho 'Order Payments' sheet."""
+    """
+    Extract per-order rows from Meesho 'Order Payments' sheet.
+    Extracts 'Dispatch Date' → dispatch_date, 'Payment Date' → delivery_date (proxy).
+    """
     from io import BytesIO
     import pandas as pd
     import warnings
     warnings.filterwarnings("ignore", category=UserWarning)
 
-    df = pd.read_excel(
-        BytesIO(file_bytes), sheet_name="Order Payments",
-        skiprows=[0, 2], header=0,
-    )
+    df = pd.read_excel(BytesIO(file_bytes), sheet_name="Order Payments", skiprows=[0, 2], header=0)
     df = df[df["Sub Order No"].notna()]
 
     events: list[dict] = []
     for _, row in df.iterrows():
-        raw_status = str(row.get("Live Order Status", "")).strip()
-        order_date = row.get("Order Date")
-        if hasattr(order_date, 'date'):
-            order_date = order_date.date()
-        elif isinstance(order_date, str):
-            try:
-                order_date = pd.to_datetime(order_date, errors="coerce").date()
-            except Exception:
-                order_date = None
+        raw_status    = str(row.get("Live Order Status", "")).strip()
+        order_date    = _parse_date_col(row.get("Order Date"))
+        dispatch_date = _parse_date_col(row.get("Dispatch Date"))
+        payment_date  = _parse_date_col(row.get("Payment Date"))
+
+        norm_status   = _MEESHO_STATUS_MAP.get(raw_status, raw_status or "UNKNOWN")
 
         sale_v = pd.to_numeric(row.get("Total Sale Amount (Incl. Shipping & GST)"), errors="coerce")
         sett_v = pd.to_numeric(row.get("Final Settlement Amount"), errors="coerce")
 
         events.append({
-            "external_order_id": str(row.get("Sub Order No", "")).strip(),
-            "sku_platform_name":  str(row.get("Supplier SKU", "")).strip(),
-            "order_date":         order_date,
-            "order_status":       _MEESHO_STATUS_MAP.get(raw_status, raw_status or "UNKNOWN"),
-            "payment_mode":       "prepaid",   # Meesho is all-prepaid
-            "sale_amount":        float(sale_v) if not (sale_v is None or (isinstance(sale_v, float) and math.isnan(sale_v))) else None,
-            "settled_amount":     float(sett_v) if not (sett_v is None or (isinstance(sett_v, float) and math.isnan(sett_v))) else None,
+            "external_order_id":    str(row.get("Sub Order No", "")).strip(),
+            "sku_platform_name":    str(row.get("Supplier SKU", "")).strip(),
+            "order_date":           order_date,
+            "dispatch_date":        dispatch_date,
+            "delivery_date":        payment_date,
+            "return_pickup_date":   None,
+            "return_velocity_days": None,
+            "order_status":         norm_status,
+            "payment_mode":         "prepaid",
+            "sale_amount":          float(sale_v) if pd.notna(sale_v) else None,
+            "settled_amount":       float(sett_v) if pd.notna(sett_v) else None,
+            "commission_charged":   None,
         })
 
     return [e for e in events if e["sku_platform_name"]]
@@ -176,7 +211,11 @@ def extract_order_events_meesho(file_bytes: bytes) -> list[dict]:
 # ── Snapdeal CPR order extraction ─────────────────────────────────────────────
 
 def extract_order_events_snapdeal_cpr(file_bytes: bytes) -> list[dict]:
-    """Extract per-suborder rows from Snapdeal CPR flat sheet."""
+    """
+    Extract per-suborder rows from Snapdeal CPR flat sheet.
+    Extracts del_date → delivery_date, RPU_date → return_pickup_date,
+    computes return_velocity_days, extracts 'Net Charged Fee' → commission_charged.
+    """
     from io import BytesIO
     import pandas as pd
     import warnings
@@ -184,34 +223,42 @@ def extract_order_events_snapdeal_cpr(file_bytes: bytes) -> list[dict]:
 
     df = pd.read_excel(BytesIO(file_bytes), sheet_name=0)
     df = df[df["SubOrder Code"].notna()]
+    df.columns = [str(c).strip() for c in df.columns]
 
     events: list[dict] = []
     for _, row in df.iterrows():
-        raw_status = str(row.get("Order Status", "")).strip()
-        order_date = row.get("order_date")
-        if hasattr(order_date, 'date'):
-            order_date = order_date.date()
-        elif isinstance(order_date, str):
-            try:
-                order_date = pd.to_datetime(order_date, errors="coerce").date()
-            except Exception:
-                order_date = None
+        raw_status  = str(row.get("Order Status", "")).strip()
+        order_date  = _parse_date_col(row.get("order_date"))
+        del_date    = _parse_date_col(row.get("del_date"))
+        rpu_date    = _parse_date_col(row.get("RPU_date"))
+        rto_date    = _parse_date_col(row.get("rto_date"))
+
+        norm_status = _CPR_STATUS_MAP.get(raw_status, raw_status or "UNKNOWN")
+
+        # Use RPU date for customer returns, RTO date for logistics returns
+        return_pickup = rpu_date if norm_status == "RETURNED" else (rto_date if norm_status == "RTO" else None)
+        velocity_days = _compute_velocity_days(del_date, return_pickup)
 
         sale_v = pd.to_numeric(row.get("Order Amount"), errors="coerce")
         sett_v = pd.to_numeric(row.get("Settled"), errors="coerce")
+        fee_v  = pd.to_numeric(row.get("Net Charged Fee"), errors="coerce")
 
-        # Snapdeal payment mode: COD vs prepaid from Payment Status
-        pay_status = str(row.get("Payment Status", "")).lower()
+        pay_status   = str(row.get("Payment Status", "")).lower()
         payment_mode = "postpaid" if "cod" in pay_status else "prepaid"
 
         events.append({
-            "external_order_id": str(row.get("SubOrder Code", "")).strip(),
-            "sku_platform_name":  str(row.get("SKU", "")).strip(),
-            "order_date":         order_date,
-            "order_status":       _CPR_STATUS_MAP.get(raw_status, raw_status or "UNKNOWN"),
-            "payment_mode":       payment_mode,
-            "sale_amount":        float(sale_v) if not (sale_v is None or (isinstance(sale_v, float) and math.isnan(sale_v))) else None,
-            "settled_amount":     float(sett_v) if not (sett_v is None or (isinstance(sett_v, float) and math.isnan(sett_v))) else None,
+            "external_order_id":    str(row.get("SubOrder Code", "")).strip(),
+            "sku_platform_name":    str(row.get("SKU", "")).strip(),
+            "order_date":           order_date,
+            "dispatch_date":        None,
+            "delivery_date":        del_date,
+            "return_pickup_date":   return_pickup,
+            "return_velocity_days": velocity_days,
+            "order_status":         norm_status,
+            "payment_mode":         payment_mode,
+            "sale_amount":          float(sale_v) if pd.notna(sale_v) else None,
+            "settled_amount":       float(sett_v) if pd.notna(sett_v) else None,
+            "commission_charged":   float(fee_v)  if pd.notna(fee_v)  else None,
         })
 
     return [e for e in events if e["sku_platform_name"]]
@@ -258,6 +305,11 @@ async def store_order_events(
             external_order_id=ev.get("external_order_id"),
             sku_platform_name=ev["sku_platform_name"],
             order_date=ev.get("order_date"),
+            dispatch_date=ev.get("dispatch_date"),
+            delivery_date=ev.get("delivery_date"),
+            return_pickup_date=ev.get("return_pickup_date"),
+            return_velocity_days=ev.get("return_velocity_days"),
+            commission_charged=ev.get("commission_charged"),
             order_status=ev["order_status"],
             payment_mode=ev.get("payment_mode"),
             sale_amount=ev.get("sale_amount"),
