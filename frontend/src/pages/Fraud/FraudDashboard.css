@@ -390,3 +390,16 @@
 
 /* ── Table wrap (used in new tabs) ──────────────────────────────────────── */
 .fd-table-wrap { display: flex; flex-direction: column; gap: 0; }
+
+/* ── Platform detail link ────────────────────────────────────────────────── */
+.fd-plat-detail-link {
+  display: block;
+  text-align: right;
+  font-size: 10px;
+  color: #6366f1;
+  text-decoration: none;
+  margin-top: 6px;
+  opacity: .7;
+  transition: opacity .15s;
+}
+.fd-plat-detail-link:hover { opacity: 1; }

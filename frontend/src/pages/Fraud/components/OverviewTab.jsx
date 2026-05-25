@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import AlertsPanel from './AlertsPanel'
 
 const VERDICT = {
@@ -58,6 +59,9 @@ export default function OverviewTab({ overview, onResolve }) {
                   <div className="fd-health-bar-fill"
                     style={{ width: `${score}%`, background: scoreColor }} />
                 </div>
+                <Link to={`/fraud/platform/${p.platform_id}`} className="fd-plat-detail-link">
+                  View Details →
+                </Link>
               </div>
             )
           })}

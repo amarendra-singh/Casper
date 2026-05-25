@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../../api/client'
 import OverviewTab   from './components/OverviewTab'
-import PlatformTab   from './components/PlatformTab'
 import SettlementTab from './components/SettlementTab'
 import './FraudDashboard.css'
 
@@ -76,6 +75,7 @@ function SkuRiskTable({ rows }) {
           <thead>
             <tr>
               <th className="fd-th">Risk</th>
+              <SortTh k="composite_fraud_score" label="Score" />
               <th className="fd-th">SKU</th>
               <th className="fd-th">Platform</th>
               <SortTh k="z_score"            label="Z-Score" />
@@ -99,6 +99,20 @@ function SkuRiskTable({ rows }) {
                       {t.label}
                     </span>
                   </td>
+                  <td className="fd-num">
+                    {r.composite_fraud_score != null
+                      ? <span style={{
+                          color: r.composite_fraud_score >= 70 ? '#ef4444'
+                               : r.composite_fraud_score >= 40 ? '#f97316'
+                               : r.composite_fraud_score >= 20 ? '#f59e0b'
+                               : '#22c55e',
+                          fontWeight: 700,
+                          fontSize: 12
+                        }}>
+                          {r.composite_fraud_score.toFixed(1)}
+                        </span>
+                      : '—'}
+                  </td>
                   <td className="fd-sku-cell">{r.sku_platform_name}</td>
                   <td className="fd-plat-cell">{r.platform_name}</td>
                   <td className="fd-num">{r.z_score?.toFixed(2) ?? '—'}</td>
@@ -116,7 +130,7 @@ function SkuRiskTable({ rows }) {
               )
             })}
             {!visible.length && (
-              <tr><td colSpan={12} className="fd-empty-row">No SKUs match filter</td></tr>
+              <tr><td colSpan={13} className="fd-empty-row">No SKUs match filter</td></tr>
             )}
           </tbody>
         </table>
@@ -163,9 +177,6 @@ export default function FraudDashboard() {
   const [overview,   setOverview]   = useState(null)
   const [dashboard,  setDashboard]  = useState(null)
   const [settlement, setSettlement] = useState(null)
-  const [platforms,  setPlatforms]  = useState([])
-  const [platSel,    setPlatSel]    = useState(null)
-  const [platData,   setPlatData]   = useState(null)
   const [loading,    setLoading]    = useState(true)
   const [error,      setError]      = useState(null)
 
@@ -174,14 +185,10 @@ export default function FraudDashboard() {
     Promise.all([
       api.get('/fraud/overview'),
       api.get('/fraud/dashboard'),
-      api.get('/pnl/platforms-with-reports'),
     ])
-      .then(([ov, db, pl]) => {
+      .then(([ov, db]) => {
         setOverview(ov.data)
         setDashboard(db.data)
-        const plats = (pl.data || []).filter(p => p.id)
-        setPlatforms(plats)
-        if (plats.length) setPlatSel(plats[0].id)
       })
       .catch(e => setError(e.message || 'Failed to load'))
       .finally(() => setLoading(false))
@@ -196,16 +203,6 @@ export default function FraudDashboard() {
     }
   }, [tab, settlement])
 
-  // Load per-platform data when selection changes
-  useEffect(() => {
-    if (tab === 'platform' && platSel) {
-      setPlatData(null)
-      api.get(`/fraud/platform/${platSel}`)
-        .then(r => setPlatData(r.data))
-        .catch(() => setPlatData({ error: 'Failed to load platform data' }))
-    }
-  }, [tab, platSel])
-
   const handleResolve = useCallback(async alertId => {
     await api.patch(`/fraud/resolve/${alertId}`)
     api.get('/fraud/overview').then(r => setOverview(r.data))
@@ -219,7 +216,6 @@ export default function FraudDashboard() {
 
   const TABS = [
     { key: 'overview',   label: 'Overview' },
-    { key: 'platform',   label: 'By Platform' },
     { key: 'sku',        label: 'SKU Risk Table' },
     { key: 'settlement', label: 'Settlement' },
     { key: 'cross',      label: 'Cross-Platform' },
@@ -265,28 +261,6 @@ export default function FraudDashboard() {
 
         {tab === 'overview' && (
           <OverviewTab overview={overview} onResolve={handleResolve} />
-        )}
-
-        {tab === 'platform' && (
-          <div className="fd-platform-layout">
-            <div className="fd-plat-selector">
-              {platforms.map(p => (
-                <button
-                  key={p.id}
-                  className={`fd-plat-pill ${platSel === p.id ? 'active' : ''}`}
-                  onClick={() => setPlatSel(p.id)}
-                >
-                  {p.name}
-                </button>
-              ))}
-              {!platforms.length && (
-                <span className="fd-empty" style={{ fontSize: 13 }}>
-                  No platforms with reports yet
-                </span>
-              )}
-            </div>
-            <PlatformTab data={platData} onResolve={handleResolve} />
-          </div>
         )}
 
         {tab === 'sku' && dashboard && (
