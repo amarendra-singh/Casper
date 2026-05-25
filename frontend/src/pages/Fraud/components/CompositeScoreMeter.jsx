@@ -32,8 +32,8 @@ export default function CompositeScoreMeter({ score, compact = false }) {
   }
 
   // SVG semi-arc meter
-  const radius        = 36
-  const circumference = Math.PI * radius
+  const radius        = 38  // Matches SVG path "A 38 38"
+  const circumference = Math.PI * radius   // semi-arc circumference
   const filled        = score != null ? (score / 100) * circumference : 0
 
   return (
