@@ -1,14 +1,14 @@
 """add velocity fields to order_events
 
 Revision ID: g5h6i7j8k9l0
-Revises: 4d0665a3fa38
+Revises: e1f2a3b4c5d6
 Create Date: 2026-05-25 10:00:00.000000
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = 'g5h6i7j8k9l0'
-down_revision = '4d0665a3fa38'
+down_revision = 'e1f2a3b4c5d6'
 branch_labels = None
 depends_on = None
 
