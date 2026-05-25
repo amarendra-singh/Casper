@@ -322,20 +322,28 @@ async def store_order_events(
 
 # ── Intelligence Engine ───────────────────────────────────────────────────────
 
-def _classify_alert_severity(alert_type: str, amount: Optional[float]) -> str:
-    """Map alert type + ₹ impact to severity level."""
+def _classify_alert_severity(
+    alert_type: str,
+    amount: Optional[float] = None,
+    velocity_days: Optional[int] = None,
+) -> str:
+    """Map alert type + evidence to severity level."""
     if alert_type == "SETTLEMENT_GAP":
-        if amount and abs(amount) >= 5000:
-            return "CRITICAL"
-        if amount and abs(amount) >= 2000:
-            return "HIGH"
+        if amount and abs(amount) >= 5000: return "CRITICAL"
+        if amount and abs(amount) >= 2000: return "HIGH"
         return "MEDIUM"
     if alert_type == "COD_ABUSE":
         return "HIGH"
-    if alert_type == "RETURN_SPIKE":
-        return "MEDIUM"
-    if alert_type == "FEE_OVERCHARGE":
+    if alert_type == "VELOCITY_FRAUD":
+        if velocity_days is not None and velocity_days == 0: return "CRITICAL"
         return "HIGH"
+    if alert_type == "FEE_OVERCHARGE":
+        if amount and abs(amount) >= 5000: return "CRITICAL"
+        return "HIGH"
+    if alert_type == "ESCALATING_RISK":
+        return "MEDIUM"
+    if alert_type == "RETURN_SPIKE":
+        return "LOW"
     if alert_type == "CROSS_PLATFORM_RISK":
         return "MEDIUM"
     return "LOW"
@@ -709,6 +717,86 @@ async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_
             sku_platform_name=sku.sku_platform_name,
             amount=sku.revenue_at_risk,
             created_at=now,
+        ))
+
+    # ── VELOCITY_FRAUD alerts ─────────────────────────────────────────────
+    vf_result = await session.execute(
+        select(SkuRiskScore).where(
+            SkuRiskScore.platform_id == platform_id,
+            SkuRiskScore.velocity_fraud_count > 0,
+        ).order_by(SkuRiskScore.velocity_fraud_count.desc())
+    )
+    vf_skus = vf_result.scalars().all()
+
+    for s in vf_skus[:5]:
+        fraud_pct = round(
+            s.velocity_fraud_count / max(1, (s.returned_orders or 0) + (s.rto_orders or 0)) * 100, 1
+        )
+        avg_vel = f"{s.avg_return_velocity_days:.1f}" if s.avg_return_velocity_days is not None else "?"
+
+        fastest_result = await session.execute(
+            select(OrderEvent).where(
+                OrderEvent.platform_id == platform_id,
+                OrderEvent.report_id == report_id,
+                OrderEvent.sku_platform_name == s.sku_platform_name,
+                OrderEvent.return_velocity_days.isnot(None),
+                OrderEvent.return_velocity_days <= 3,
+            ).order_by(OrderEvent.return_velocity_days.asc()).limit(1)
+        )
+        fastest = fastest_result.scalars().first()
+        min_days = fastest.return_velocity_days if fastest else None
+
+        sev = _classify_alert_severity("VELOCITY_FRAUD", velocity_days=min_days)
+        session.add(FraudAlert(
+            platform_id=platform_id,
+            report_id=report_id,
+            alert_type="VELOCITY_FRAUD",
+            severity=sev,
+            title=f"Rapid-return pattern: {s.sku_platform_name}",
+            body=(
+                f"{s.velocity_fraud_count} orders returned within 3 days of delivery "
+                f"({fraud_pct}% of returns). Average return velocity: {avg_vel} days. "
+                f"Fastest return: {min_days} day(s). "
+                f"Indicates possible item-not-delivered fraud or logistics misclassification."
+            ),
+            evidence_json=json.dumps({
+                "velocity_fraud_count": s.velocity_fraud_count,
+                "avg_velocity_days": s.avg_return_velocity_days,
+                "fastest_return_days": min_days,
+                "fraud_pct_of_returns": fraud_pct,
+            }),
+            sku_platform_name=s.sku_platform_name,
+            amount=s.revenue_at_risk,
+        ))
+
+    # ── FEE_OVERCHARGE alerts ─────────────────────────────────────────────
+    fo_result = await session.execute(
+        select(SkuRiskScore).where(
+            SkuRiskScore.platform_id == platform_id,
+            SkuRiskScore.fee_overcharge_amount > 100,
+        ).order_by(SkuRiskScore.fee_overcharge_amount.desc())
+    )
+    fo_skus = fo_result.scalars().all()
+
+    for s in fo_skus[:3]:
+        sev = _classify_alert_severity("FEE_OVERCHARGE", amount=s.fee_overcharge_amount)
+        session.add(FraudAlert(
+            platform_id=platform_id,
+            report_id=report_id,
+            alert_type="FEE_OVERCHARGE",
+            severity=sev,
+            title=f"Fee overcharge detected: {s.sku_platform_name}",
+            body=(
+                f"Platform commission exceeded contracted rate for {s.sku_platform_name}. "
+                f"Estimated overcharge: ₹{round(s.fee_overcharge_amount):,}. "
+                f"Review actual fee breakdown vs your Seller Agreement."
+            ),
+            evidence_json=json.dumps({
+                "fee_overcharge_amount": s.fee_overcharge_amount,
+                "sku": s.sku_platform_name,
+            }),
+            sku_platform_name=s.sku_platform_name,
+            amount=s.fee_overcharge_amount,
         ))
 
     # ── 3. Return spike alerts (CRITICAL/RED non-COD SKUs) ─────────────────────

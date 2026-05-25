@@ -71,7 +71,7 @@ def test_parse_date_col_with_date():
     assert _parse_date_col(d) == d
 
 
-from app.services.fraud import _composite_fraud_score, _velocity_stats
+from app.services.fraud import _composite_fraud_score, _velocity_stats, _classify_alert_severity
 
 
 def test_composite_score_all_clean():
@@ -119,3 +119,33 @@ def test_velocity_stats_all_rapid():
     """All returns in <=3 days -> all count as fraud."""
     stats = _velocity_stats([1, 2, 3])
     assert stats["velocity_fraud_count"] == 3
+
+
+def test_velocity_fraud_alert_severity_high():
+    """VELOCITY_FRAUD default = HIGH."""
+    assert _classify_alert_severity("VELOCITY_FRAUD", velocity_days=1) == "HIGH"
+
+
+def test_velocity_fraud_same_day_critical():
+    """Same-day return (0 days) = CRITICAL."""
+    assert _classify_alert_severity("VELOCITY_FRAUD", velocity_days=0) == "CRITICAL"
+
+
+def test_fee_overcharge_severity_high():
+    """FEE_OVERCHARGE with ₹3000 = HIGH."""
+    assert _classify_alert_severity("FEE_OVERCHARGE", amount=3000) == "HIGH"
+
+
+def test_fee_overcharge_severity_critical():
+    """FEE_OVERCHARGE with ₹6000 = CRITICAL."""
+    assert _classify_alert_severity("FEE_OVERCHARGE", amount=6000) == "CRITICAL"
+
+
+def test_return_spike_is_low():
+    """RETURN_SPIKE is not fraud — LOW severity."""
+    assert _classify_alert_severity("RETURN_SPIKE") == "LOW"
+
+
+def test_settlement_gap_critical():
+    """SETTLEMENT_GAP >= ₹5000 = CRITICAL."""
+    assert _classify_alert_severity("SETTLEMENT_GAP", amount=-5500) == "CRITICAL"

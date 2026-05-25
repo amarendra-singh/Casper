@@ -54,7 +54,8 @@ def test_classify_alert_severity_high():
 
 
 def test_classify_alert_severity_medium():
-    assert _classify_alert_severity("RETURN_SPIKE", amount=None) == "MEDIUM"
+    # RETURN_SPIKE is informational, not fraud — severity is LOW
+    assert _classify_alert_severity("RETURN_SPIKE", amount=None) == "LOW"
 
 
 def test_settlement_gap_severity_large():
