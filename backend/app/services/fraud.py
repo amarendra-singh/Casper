@@ -386,6 +386,42 @@ def _trend(current_rate: float, prev_rate: Optional[float]) -> str:
     return "STABLE"
 
 
+def _velocity_stats(velocity_days_list: list) -> dict:
+    """
+    Compute velocity intelligence from a list of return-velocity-days values.
+    velocity_fraud_count = orders returned in <= 3 days from delivery (suspicious).
+    """
+    if not velocity_days_list:
+        return {"avg_velocity": None, "velocity_fraud_count": 0}
+    avg = round(sum(velocity_days_list) / len(velocity_days_list), 1)
+    fraud_count = sum(1 for v in velocity_days_list if v <= 3)
+    return {"avg_velocity": avg, "velocity_fraud_count": fraud_count}
+
+
+def _composite_fraud_score(
+    z_score: float,
+    velocity_fraud_pct: float,
+    cod_abuse: bool,
+    settlement_gap_pct: float,
+    fee_overcharge_pct: float,
+) -> float:
+    """
+    Composite 0-100 fraud intelligence score.
+    Weights:
+      Z-score component    (0-30): statistical anomaly vs platform peers
+      Velocity component   (0-25): % returns in <= 3 days of delivery
+      COD abuse component  (0-20): COD return rate significantly > prepaid rate
+      Settlement gap       (0-15): platform underpaying vs Casper expected BS
+      Fee overcharge       (0-10): platform charging more than contracted rate
+    """
+    z_component   = min(30.0, max(0.0, z_score * 10.0))
+    v_component   = min(25.0, velocity_fraud_pct * 50.0)
+    cod_component = 20.0 if cod_abuse else 0.0
+    s_component   = min(15.0, abs(settlement_gap_pct) * 100.0)
+    f_component   = min(10.0, abs(fee_overcharge_pct) * 50.0)
+    return round(min(100.0, z_component + v_component + cod_component + s_component + f_component), 1)
+
+
 async def compute_sku_risk_scores(session: AsyncSession, platform_id: int) -> int:
     """
     Recompute all SkuRiskScore rows for a platform after an upload.
@@ -456,26 +492,55 @@ async def compute_sku_risk_scores(session: AsyncSession, platform_id: int) -> in
         # Pricing ID (use first matched event's)
         pricing_id   = next((e.sku_pricing_id for e in evs if e.sku_pricing_id), None)
 
+        # ── Velocity intelligence ──────────────────────────────────────────
+        returned_with_velocity = [
+            e.return_velocity_days
+            for e in evs
+            if e.order_status in ("RETURNED", "RTO") and e.return_velocity_days is not None
+        ]
+        vel_stats = _velocity_stats(returned_with_velocity)
+        vel_pct   = vel_stats["velocity_fraud_count"] / max(1, returned + rto)
+
+        # ── Fee overcharge intelligence ────────────────────────────────────
+        fees    = [e.commission_charged for e in evs if e.commission_charged is not None]
+        sales_  = [e.sale_amount        for e in evs if e.sale_amount is not None and e.sale_amount > 0]
+        fee_overcharge_amt  = None
+        fee_overcharge_pct_ = 0.0
+        if fees and sales_:
+            avg_fee   = sum(fees) / len(fees)
+            avg_sale_ = sum(sales_) / len(sales_)
+            if avg_sale_ > 0:
+                actual_fee_pct   = avg_fee / avg_sale_
+                expected_fee_pct = 0.22    # Snapdeal max contracted ~22%
+                if actual_fee_pct > expected_fee_pct:
+                    fee_overcharge_pct_ = actual_fee_pct - expected_fee_pct
+                    fee_overcharge_amt  = round(fee_overcharge_pct_ * sum(sales_), 2)
+
         stats.append({
-            "sku_platform_name": sku_name,
-            "sku_pricing_id":    pricing_id,
-            "gross_orders":      gross,
-            "delivered_orders":  delivered,
-            "returned_orders":   returned,
-            "rto_orders":        rto,
-            "cancelled_orders":  cancelled,
-            "pending_return_orders": pending_ret,
-            "in_transit_orders": in_transit,
-            "return_rate":       return_rate,
-            "rto_rate":          rto_rate,
-            "cancellation_rate": canc_rate,
-            "combined_loss_rate": combined,
-            "prepaid_return_rate": prepaid_rr,
-            "postpaid_return_rate": postpaid_rr,
-            "cod_abuse_flag":    cod_abuse,
-            "avg_sale_amount":   avg_sale,
-            "total_revenue":     total_rev,
-            "revenue_at_risk":   rev_at_risk,
+            "sku_platform_name":      sku_name,
+            "sku_pricing_id":         pricing_id,
+            "gross_orders":           gross,
+            "delivered_orders":       delivered,
+            "returned_orders":        returned,
+            "rto_orders":             rto,
+            "cancelled_orders":       cancelled,
+            "pending_return_orders":  pending_ret,
+            "in_transit_orders":      in_transit,
+            "return_rate":            return_rate,
+            "rto_rate":               rto_rate,
+            "cancellation_rate":      canc_rate,
+            "combined_loss_rate":     combined,
+            "prepaid_return_rate":    prepaid_rr,
+            "postpaid_return_rate":   postpaid_rr,
+            "cod_abuse_flag":         cod_abuse,
+            "avg_sale_amount":        avg_sale,
+            "total_revenue":          total_rev,
+            "revenue_at_risk":        rev_at_risk,
+            "avg_return_velocity_days": vel_stats["avg_velocity"],
+            "velocity_fraud_count":   vel_stats["velocity_fraud_count"],
+            "fee_overcharge_amount":  fee_overcharge_amt,
+            "_velocity_fraud_pct":    vel_pct,
+            "_fee_overcharge_pct":    fee_overcharge_pct_,
         })
 
     # Platform-level statistics for Z-score
@@ -519,13 +584,23 @@ async def compute_sku_risk_scores(session: AsyncSession, platform_id: int) -> in
             platform_std_return_rate=round(std, 4),
             z_score=z,
             risk_tier=tier,
+            trend_direction=_trend(clr, None),
             prepaid_return_rate=s["prepaid_return_rate"],
             postpaid_return_rate=s["postpaid_return_rate"],
             cod_abuse_flag=s["cod_abuse_flag"],
             avg_sale_amount=s["avg_sale_amount"],
             total_revenue=s["total_revenue"],
             revenue_at_risk=s["revenue_at_risk"],
-            trend_direction="STABLE",  # TODO: compute from historical when 2+ months exist
+            avg_return_velocity_days=s["avg_return_velocity_days"],
+            velocity_fraud_count=s["velocity_fraud_count"],
+            fee_overcharge_amount=s["fee_overcharge_amount"],
+            composite_fraud_score=_composite_fraud_score(
+                z_score=z,
+                velocity_fraud_pct=s["_velocity_fraud_pct"],
+                cod_abuse=s["cod_abuse_flag"],
+                settlement_gap_pct=0.0,
+                fee_overcharge_pct=s["_fee_overcharge_pct"],
+            ),
         ))
 
     return len(stats)

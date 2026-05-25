@@ -69,3 +69,53 @@ def test_parse_date_col_with_date():
     """A real date object passes through."""
     d = date(2026, 5, 1)
     assert _parse_date_col(d) == d
+
+
+from app.services.fraud import _composite_fraud_score, _velocity_stats
+
+
+def test_composite_score_all_clean():
+    """Clean SKU: z=0, no velocity fraud, no cod abuse."""
+    score = _composite_fraud_score(
+        z_score=0.0, velocity_fraud_pct=0.0, cod_abuse=False,
+        settlement_gap_pct=0.0, fee_overcharge_pct=0.0,
+    )
+    assert score == 0.0
+
+
+def test_composite_score_critical_velocity():
+    """50% of returns in <=3 days = velocity component of 25."""
+    score = _composite_fraud_score(
+        z_score=0.0, velocity_fraud_pct=0.5, cod_abuse=False,
+        settlement_gap_pct=0.0, fee_overcharge_pct=0.0,
+    )
+    assert score == 25.0
+
+
+def test_composite_score_max_capped_at_100():
+    """All signals maxed out = capped at 100."""
+    score = _composite_fraud_score(
+        z_score=5.0, velocity_fraud_pct=1.0, cod_abuse=True,
+        settlement_gap_pct=0.5, fee_overcharge_pct=0.5,
+    )
+    assert score == 100.0
+
+
+def test_velocity_stats_normal():
+    """2-day and 4-day returns: avg=3.0, fraud_count=1 (only 2-day qualifies <=3)."""
+    stats = _velocity_stats([2, 4])
+    assert stats["avg_velocity"] == 3.0
+    assert stats["velocity_fraud_count"] == 1
+
+
+def test_velocity_stats_empty():
+    """No velocity data -> avg=None, count=0."""
+    stats = _velocity_stats([])
+    assert stats["avg_velocity"] is None
+    assert stats["velocity_fraud_count"] == 0
+
+
+def test_velocity_stats_all_rapid():
+    """All returns in <=3 days -> all count as fraud."""
+    stats = _velocity_stats([1, 2, 3])
+    assert stats["velocity_fraud_count"] == 3
