@@ -974,6 +974,10 @@ async def get_platform_fraud_view(session: AsyncSession, platform_id: int) -> di
             "revenue_at_risk":       s.revenue_at_risk,
             "total_revenue":         s.total_revenue,
             "trend_direction":       s.trend_direction,
+            "composite_fraud_score":    round(s.composite_fraud_score, 1) if s.composite_fraud_score is not None else None,
+            "avg_return_velocity_days": s.avg_return_velocity_days,
+            "velocity_fraud_count":     s.velocity_fraud_count,
+            "fee_overcharge_amount":    s.fee_overcharge_amount,
         }
         for s in scores
     ]
@@ -1013,6 +1017,68 @@ async def get_platform_fraud_view(session: AsyncSession, platform_id: int) -> di
         "cod_abuse_count":        sum(1 for s in scores if s.cod_abuse_flag),
         "total_revenue_at_risk":  sum(s.revenue_at_risk or 0 for s in scores),
     }
+
+
+async def reprocess_report_for_fraud(session: AsyncSession, report_id: int) -> dict:
+    """
+    Reprocess an existing report for fraud intelligence.
+    Deletes old order events for this report, re-extracts from file,
+    recomputes risk scores and alerts.
+    Used by the /fraud/backfill/{report_id} endpoint.
+    """
+    from app.models.pnl import PnlReport
+
+    report_result = await session.execute(
+        select(PnlReport).where(PnlReport.id == report_id)
+    )
+    report = report_result.scalars().first()
+    if not report:
+        return {"error": f"Report {report_id} not found"}
+
+    # Try multiple file path patterns
+    import os
+    file_path = None
+    for p in [f"uploads/pnl/{report_id}.xlsx", f"uploads/pnl/{report_id}.xls"]:
+        if os.path.exists(p):
+            file_path = p
+            break
+    if not file_path:
+        return {"error": f"File not found for report {report_id}"}
+
+    with open(file_path, "rb") as f:
+        file_bytes = f.read()
+
+    # Detect platform type from platform name
+    plat_result = await session.execute(
+        select(Platform).where(Platform.id == report.platform_id)
+    )
+    plat = plat_result.scalars().first()
+    plat_name = (plat.name or "").lower() if plat else ""
+
+    if "flipkart" in plat_name or "fk" in plat_name:
+        events = extract_order_events_fk(file_bytes)
+    elif "meesho" in plat_name:
+        events = extract_order_events_meesho(file_bytes)
+    elif "snapdeal" in plat_name:
+        events = extract_order_events_snapdeal_cpr(file_bytes)
+    else:
+        return {"error": f"Cannot detect platform type from name: {plat_name!r}. Expected flipkart/meesho/snapdeal."}
+
+    # Delete existing events for this report and reinsert
+    await session.execute(
+        delete(OrderEvent).where(OrderEvent.report_id == report_id)
+    )
+    await session.flush()
+
+    count = await store_order_events(session, events, report_id, report.platform_id)
+    await session.flush()
+
+    await compute_sku_risk_scores(session, report.platform_id)
+    await session.flush()
+    await generate_fraud_alerts(session, report.platform_id, report_id)
+    await session.commit()
+
+    return {"reprocessed": True, "report_id": report_id, "events_extracted": count}
 
 
 async def get_settlement_gaps(session: AsyncSession) -> dict:
@@ -1129,6 +1195,10 @@ async def get_fraud_dashboard(session: AsyncSession) -> dict:
             "avg_sale_amount":     s.avg_sale_amount,
             "trend_direction":     s.trend_direction,
             "platform_avg_return_rate": s.platform_avg_return_rate,
+            "composite_fraud_score":    round(s.composite_fraud_score, 1) if s.composite_fraud_score is not None else None,
+            "avg_return_velocity_days": s.avg_return_velocity_days,
+            "velocity_fraud_count":     s.velocity_fraud_count,
+            "fee_overcharge_amount":    s.fee_overcharge_amount,
         }
         for s, pname in scores_rows
     ]

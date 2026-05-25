@@ -24,6 +24,7 @@ from app.services.fraud import (
     get_fraud_overview,
     get_platform_fraud_view,
     get_settlement_gaps,
+    reprocess_report_for_fraud,
 )
 
 
@@ -162,3 +163,19 @@ async def temporal_trend(
     """Weekly loss rate trend."""
     data = await get_fraud_dashboard(db)
     return {"weekly_loss_trend": data["weekly_loss_trend"]}
+
+
+@router.post("/backfill/{report_id}")
+async def backfill_fraud_for_report(
+    report_id: int,
+    _current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Reprocess an existing uploaded report for advanced fraud intelligence.
+    Use when new fraud signals (velocity, fee overcharge) have been added.
+    """
+    result = await reprocess_report_for_fraud(db, report_id)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
