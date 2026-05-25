@@ -168,7 +168,8 @@ def extract_order_events_fk(file_bytes: bytes) -> list[dict]:
 def extract_order_events_meesho(file_bytes: bytes) -> list[dict]:
     """
     Extract per-order rows from Meesho 'Order Payments' sheet.
-    Extracts 'Dispatch Date' → dispatch_date, 'Payment Date' → delivery_date (proxy).
+    Extracts 'Dispatch Date' → dispatch_date, 'Payment Date' → delivery_date field
+    (Meesho Payment Date = settlement date from Meesho to seller, NOT actual delivery date).
     """
     from io import BytesIO
     import pandas as pd
@@ -183,7 +184,7 @@ def extract_order_events_meesho(file_bytes: bytes) -> list[dict]:
         raw_status    = str(row.get("Live Order Status", "")).strip()
         order_date    = _parse_date_col(row.get("Order Date"))
         dispatch_date = _parse_date_col(row.get("Dispatch Date"))
-        payment_date  = _parse_date_col(row.get("Payment Date"))
+        payment_date  = _parse_date_col(row.get("Payment Date"))   # settlement/payment date from Meesho
 
         norm_status   = _MEESHO_STATUS_MAP.get(raw_status, raw_status or "UNKNOWN")
 
@@ -195,7 +196,7 @@ def extract_order_events_meesho(file_bytes: bytes) -> list[dict]:
             "sku_platform_name":    str(row.get("Supplier SKU", "")).strip(),
             "order_date":           order_date,
             "dispatch_date":        dispatch_date,
-            "delivery_date":        payment_date,
+            "delivery_date":        payment_date,   # Meesho Payment Date = settlement date (NOT delivery); no real delivery date available
             "return_pickup_date":   None,
             "return_velocity_days": None,
             "order_status":         norm_status,
@@ -606,7 +607,7 @@ async def compute_sku_risk_scores(session: AsyncSession, platform_id: int) -> in
                 z_score=z,
                 velocity_fraud_pct=s["_velocity_fraud_pct"],
                 cod_abuse=s["cod_abuse_flag"],
-                settlement_gap_pct=0.0,
+                settlement_gap_pct=0.0,    # TODO: wire in from PnlSkuRow.variance_bs (15/100 points currently unused)
                 fee_overcharge_pct=s["_fee_overcharge_pct"],
             ),
         ))
@@ -747,7 +748,7 @@ async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_
         min_days = fastest.return_velocity_days if fastest else None
 
         sev = _classify_alert_severity("VELOCITY_FRAUD", velocity_days=min_days)
-        session.add(FraudAlert(
+        alert = FraudAlert(
             platform_id=platform_id,
             report_id=report_id,
             alert_type="VELOCITY_FRAUD",
@@ -767,7 +768,9 @@ async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_
             }),
             sku_platform_name=s.sku_platform_name,
             amount=s.revenue_at_risk,
-        ))
+        )
+        alerts.append(alert)
+        session.add(alert)
 
     # ── FEE_OVERCHARGE alerts ─────────────────────────────────────────────
     fo_result = await session.execute(
@@ -780,7 +783,7 @@ async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_
 
     for s in fo_skus[:3]:
         sev = _classify_alert_severity("FEE_OVERCHARGE", amount=s.fee_overcharge_amount)
-        session.add(FraudAlert(
+        alert = FraudAlert(
             platform_id=platform_id,
             report_id=report_id,
             alert_type="FEE_OVERCHARGE",
@@ -797,7 +800,9 @@ async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_
             }),
             sku_platform_name=s.sku_platform_name,
             amount=s.fee_overcharge_amount,
-        ))
+        )
+        alerts.append(alert)
+        session.add(alert)
 
     # ── 3. Return spike alerts (CRITICAL/RED non-COD SKUs) ─────────────────────
     critical_result = await session.execute(
