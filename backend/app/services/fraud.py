@@ -1608,6 +1608,121 @@ async def get_settlement_gaps(session: AsyncSession) -> dict:
     }
 
 
+# ── Actor intelligence service functions ──────────────────────────────────────
+
+async def get_actor_overview(db: AsyncSession) -> dict:
+    """Summary stats for the Actor Intelligence tab."""
+    from app.models.fraud import ActorRiskProfile, StateRiskProfile, ReturnReasonCluster
+
+    total     = (await db.execute(select(func.count(ActorRiskProfile.id)))).scalar() or 0
+    high_risk = (await db.execute(
+        select(func.count(ActorRiskProfile.id))
+        .where(ActorRiskProfile.risk_tier.in_(["RED", "CRITICAL"]))
+    )).scalar() or 0
+
+    top_state = (await db.execute(
+        select(StateRiskProfile)
+        .order_by(StateRiskProfile.fraud_rate.desc())
+        .limit(1)
+    )).scalars().first()
+
+    top_reason = (await db.execute(
+        select(ReturnReasonCluster)
+        .where(ReturnReasonCluster.fraud_signal_type == "FRAUD_SIGNAL")
+        .order_by(ReturnReasonCluster.order_count.desc())
+        .limit(1)
+    )).scalars().first()
+
+    return {
+        "total_actor_patterns":  total,
+        "high_risk_actor_count": high_risk,
+        "top_fraud_state":       top_state.state_name if top_state else None,
+        "top_fraud_state_rate":  top_state.fraud_rate if top_state else None,
+        "dominant_fraud_reason": top_reason.return_reason if top_reason else None,
+        "dominant_fraud_count":  top_reason.order_count if top_reason else None,
+    }
+
+
+async def get_actor_risk_table(db: AsyncSession) -> list[dict]:
+    """Actor risk profiles sorted by fraud score descending."""
+    from app.models.fraud import ActorRiskProfile
+
+    result = await db.execute(
+        select(ActorRiskProfile).order_by(ActorRiskProfile.actor_fraud_score.desc())
+    )
+    return [
+        {
+            "actor_key":          a.actor_key,
+            "state_name":         a.state_name,
+            "dominant_reason":    a.dominant_reason,
+            "fraud_signal_type":  a.fraud_signal_type,
+            "total_orders":       a.total_orders,
+            "return_count":       a.return_count,
+            "fraud_reason_count": a.fraud_reason_count,
+            "avg_velocity_days":  a.avg_velocity_days,
+            "actor_fraud_score":  a.actor_fraud_score,
+            "risk_tier":          a.risk_tier,
+        }
+        for a in result.scalars().all()
+    ]
+
+
+async def get_return_reason_intelligence(db: AsyncSession) -> dict:
+    """Return reason breakdown — categories + top reasons."""
+    from app.models.fraud import ReturnReasonCluster
+
+    result = await db.execute(
+        select(ReturnReasonCluster).order_by(ReturnReasonCluster.order_count.desc())
+    )
+    clusters = result.scalars().all()
+
+    category_totals: dict[str, int] = {}
+    for c in clusters:
+        cat = c.fraud_signal_type
+        category_totals[cat] = category_totals.get(cat, 0) + c.order_count
+
+    return {
+        "by_category": [
+            {"category": k, "count": v}
+            for k, v in sorted(category_totals.items(), key=lambda x: -x[1])
+        ],
+        "top_reasons": [
+            {
+                "return_reason":     c.return_reason,
+                "return_sub_reason": c.return_sub_reason,
+                "fraud_signal_type": c.fraud_signal_type,
+                "order_count":       c.order_count,
+                "platform_id":       c.platform_id,
+            }
+            for c in clusters[:20]
+        ],
+        "fraud_signal_total":  category_totals.get("FRAUD_SIGNAL", 0),
+        "total_with_reasons":  sum(category_totals.values()),
+    }
+
+
+async def get_state_risk_intelligence(db: AsyncSession) -> list[dict]:
+    """State risk profiles for India heatmap, sorted by fraud_rate desc."""
+    from app.models.fraud import StateRiskProfile
+
+    result = await db.execute(
+        select(StateRiskProfile).order_by(StateRiskProfile.fraud_rate.desc())
+    )
+    return [
+        {
+            "state_code":   s.state_code,
+            "state_name":   s.state_name,
+            "total_orders": s.total_orders,
+            "fraud_orders": s.fraud_orders,
+            "fraud_rate":   s.fraud_rate,
+            "avg_velocity": s.avg_velocity,
+            "risk_tier":    s.risk_tier,
+            "z_score":      s.z_score,
+        }
+        for s in result.scalars().all()
+    ]
+
+
 # ── Dashboard aggregates ──────────────────────────────────────────────────────
 
 async def get_fraud_dashboard(session: AsyncSession) -> dict:
