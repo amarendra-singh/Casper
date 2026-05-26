@@ -65,6 +65,125 @@ _FK_PAYMENT_MAP = {
 }
 
 
+# ── Return reason intelligence ────────────────────────────────────────────────
+
+# FK return_reason → fraud signal classification
+_RETURN_REASON_CLASSIFIER: dict[str, str] = {
+    # Fraud signals — customer exploiting policy
+    "ORC_validated_with_customer":  "FRAUD_SIGNAL",
+    "MISSHIPMENT":                  "FRAUD_SIGNAL",
+    "MISSING_ITEM":                 "FRAUD_SIGNAL",
+    "DIFFERENT_PRODUCT_RECEIVED":   "FRAUD_SIGNAL",
+    "USED_PRODUCT":                 "FRAUD_SIGNAL",
+    "ITEM_NOT_RECEIVED":            "FRAUD_SIGNAL",
+    "DAMAGED_IN_TRANSIT":           "LOGISTICS",
+    "QUALITY_ISSUE":                "QUALITY",
+    "CUSTOMER_REMORSE":             "PREFERENCE",
+    "SIZE_FIT_ISSUES":              "PREFERENCE",
+    "SIZE_FIT_ISSUE":               "PREFERENCE",
+    "COLOR_VARIANT_ISSUE":          "PREFERENCE",
+    "PRODUCT_NOT_AS_DESCRIBED":     "QUALITY",
+    "delivery_time_long":           "LOGISTICS",
+    "NOT_AS_DESCRIBED":             "QUALITY",
+    "WRONG_ADDRESS":                "LOGISTICS",
+}
+
+_RETURN_SUB_REASON_OVERRIDES: dict[str, str] = {
+    "STOLEN":       "FRAUD_SIGNAL",
+    "EMPTY_BOX":    "FRAUD_SIGNAL",
+    "FAKE_PRODUCT": "FRAUD_SIGNAL",
+    "SECOND_HAND":  "FRAUD_SIGNAL",
+    "TAMPERED":     "FRAUD_SIGNAL",
+    "NOT_RECEIVED": "FRAUD_SIGNAL",
+}
+
+
+def classify_fraud_signal(return_reason: Optional[str], return_sub_reason: Optional[str]) -> Optional[str]:
+    """
+    Classify a return reason into fraud signal category.
+    Sub-reason overrides take priority over reason.
+    Returns: FRAUD_SIGNAL | QUALITY | PREFERENCE | LOGISTICS | None
+    """
+    if return_sub_reason:
+        key = str(return_sub_reason).strip().upper().replace(" ", "_")
+        if key in _RETURN_SUB_REASON_OVERRIDES:
+            return _RETURN_SUB_REASON_OVERRIDES[key]
+    if return_reason:
+        key = str(return_reason).strip()
+        if key in _RETURN_REASON_CLASSIFIER:
+            return _RETURN_REASON_CLASSIFIER[key]
+        key_lower = key.lower()
+        if any(w in key_lower for w in ["fraud", "stolen", "empty", "fake", "tamper"]):
+            return "FRAUD_SIGNAL"
+        if any(w in key_lower for w in ["quality", "defect", "broken", "damage"]):
+            return "QUALITY"
+        if any(w in key_lower for w in ["size", "fit", "colour", "color", "remorse", "change"]):
+            return "PREFERENCE"
+        if any(w in key_lower for w in ["logistic", "transit", "delivery", "address", "courier"]):
+            return "LOGISTICS"
+    return None
+
+
+# ── Snapdeal geographic intelligence ─────────────────────────────────────────
+
+SNAPDEAL_STATE_MAP: dict[str, str] = {
+    "01": "Jammu & Kashmir",
+    "02": "Himachal Pradesh",
+    "03": "Punjab",
+    "04": "Chandigarh",
+    "05": "Uttarakhand",
+    "06": "Haryana",
+    "07": "Delhi",
+    "08": "Rajasthan",
+    "09": "Uttar Pradesh",
+    "10": "Bihar",
+    "11": "Sikkim",
+    "12": "Arunachal Pradesh",
+    "13": "Nagaland",
+    "14": "Manipur",
+    "15": "Mizoram",
+    "16": "Tripura",
+    "17": "Meghalaya",
+    "18": "Assam",
+    "19": "West Bengal",
+    "20": "Jharkhand",
+    "21": "Odisha",
+    "22": "Chhattisgarh",
+    "23": "Madhya Pradesh",
+    "24": "Gujarat",
+    "25": "Daman & Diu",
+    "26": "Dadra & Nagar Haveli",
+    "27": "Maharashtra",
+    "28": "Andhra Pradesh (old)",
+    "29": "Karnataka",
+    "30": "Goa",
+    "31": "Lakshadweep",
+    "32": "Kerala",
+    "33": "Tamil Nadu",
+    "34": "Puducherry",
+    "35": "Andaman & Nicobar",
+    "36": "Telangana",
+    "37": "Andhra Pradesh",
+    "38": "Ladakh",
+}
+
+
+def resolve_state(raw_code) -> tuple[Optional[str], Optional[str]]:
+    """
+    Resolve Snapdeal Customer State value (numeric GST code) to (code_str, state_name).
+    Input may be int (23), float (23.0), or str ("23" / "23.0").
+    Returns (None, None) if unresolvable.
+    """
+    if raw_code is None:
+        return None, None
+    try:
+        code_str = str(int(float(str(raw_code)))).zfill(2)
+        name = SNAPDEAL_STATE_MAP.get(code_str)
+        return (code_str, name) if name else (code_str, None)
+    except (ValueError, TypeError):
+        return None, None
+
+
 # ── Date / velocity helpers ───────────────────────────────────────────────────
 
 def _compute_velocity_days(
