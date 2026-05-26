@@ -4,6 +4,7 @@ Dashboard Routes
 GET /dashboard/insights  — real AI insight cards from fraud actors + P&L + return reasons
 """
 
+import asyncio
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -414,7 +415,7 @@ async def get_dashboard_insights(
     - pnl_reports (platform health / margin)
     Returns ordered list: hero first, then supporting insights.
     """
-    results = await __import__("asyncio").gather(
+    results = await asyncio.gather(
         _insight_fraud_spike(db),
         _insight_return_breakdown(db),
         _insight_platform_health(db),
