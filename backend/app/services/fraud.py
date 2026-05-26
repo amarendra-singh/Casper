@@ -481,6 +481,55 @@ def extract_order_events_snapdeal_cpr(file_bytes: bytes) -> list[dict]:
     return [e for e in events if e["sku_platform_name"]]
 
 
+# ── Snapdeal Total_Suboders extraction (snapdeal.xlsx) ────────────────────────
+
+def extract_order_events_snapdeal_total(file_bytes: bytes) -> dict[str, dict]:
+    """
+    Extract customer state + COD flag from Snapdeal 'Total_Suboders' sheet.
+    Returns a dict keyed by Sub Order No for merging with CPR events.
+    Customer State = numeric GST code → resolve to state name.
+    Transaction Type: 'COD Vendor Invoice' = COD order, 'NCOD Vendor Invoice' = prepaid.
+    """
+    from io import BytesIO
+    import pandas as pd
+    import warnings
+    warnings.filterwarnings("ignore", category=UserWarning)
+
+    try:
+        df = pd.read_excel(BytesIO(file_bytes), sheet_name="Total_Suboders", header=0)
+    except Exception:
+        return {}
+
+    df.columns = [str(c).strip() for c in df.columns]
+
+    # Find the Sub Order No column
+    sub_col = next((c for c in df.columns if "Sub Order" in c or "Sub_Order" in c), None)
+    if sub_col is None:
+        return {}
+
+    df = df[df[sub_col].notna()]
+
+    result: dict[str, dict] = {}
+    for _, row in df.iterrows():
+        sub_order = str(row.get(sub_col, "")).strip()
+        if not sub_order or sub_order == "nan":
+            continue
+
+        raw_state = row.get("Customer State")
+        state_code, state_name = resolve_state(raw_state)
+
+        tx_type = str(row.get("Transaction Type", "")).strip().upper()
+        is_cod = "COD" in tx_type and "NCOD" not in tx_type
+
+        result[sub_order] = {
+            "customer_state_code": state_code,
+            "customer_state_name": state_name,
+            "is_cod": is_cod,
+        }
+
+    return result
+
+
 # ── Build pricing lookup for order events ─────────────────────────────────────
 
 async def _build_sku_lookup(session: AsyncSession, platform_id: int) -> dict[str, int]:
@@ -531,6 +580,13 @@ async def store_order_events(
             payment_mode=ev.get("payment_mode"),
             sale_amount=ev.get("sale_amount"),
             settled_amount=ev.get("settled_amount"),
+            return_reason       = ev.get("return_reason"),
+            return_sub_reason   = ev.get("return_sub_reason"),
+            cancellation_reason = ev.get("cancellation_reason"),
+            fraud_signal_type   = ev.get("fraud_signal_type"),
+            customer_state_code = ev.get("customer_state_code"),
+            customer_state_name = ev.get("customer_state_name"),
+            is_cod              = ev.get("is_cod"),
         )
         session.add(obj)
 
