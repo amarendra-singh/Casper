@@ -22,7 +22,7 @@ import math
 import json
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, func, text, Integer
+from sqlalchemy import select, delete, func, text, Integer, case
 
 from app.models.fraud import OrderEvent, SkuRiskScore, FraudAlert
 from app.models.pnl import PnlReport
@@ -553,7 +553,7 @@ async def _build_sku_lookup(session: AsyncSession, platform_id: int) -> dict[str
 async def store_order_events(
     session: AsyncSession,
     events: list[dict],
-    report_id: int,
+    report_id: Optional[int],
     platform_id: int,
 ) -> int:
     """Persist order events. Returns count stored."""
@@ -652,7 +652,7 @@ async def compute_state_risk_profiles(db: AsyncSession) -> None:
         OrderEvent.customer_state_name,
         func.count(OrderEvent.id).label("total_orders"),
         func.sum(
-            func.cast(OrderEvent.fraud_signal_type == "FRAUD_SIGNAL", Integer)
+            case((OrderEvent.fraud_signal_type == "FRAUD_SIGNAL", 1), else_=0)
         ).label("fraud_orders"),
         func.avg(OrderEvent.return_velocity_days).label("avg_velocity"),
     ).where(
@@ -720,10 +720,10 @@ async def compute_actor_risk_profiles(db: AsyncSession) -> None:
         OrderEvent.fraud_signal_type,
         func.count(OrderEvent.id).label("total_orders"),
         func.sum(
-            func.cast(OrderEvent.order_status == "RETURNED", Integer)
+            case((OrderEvent.order_status == "RETURNED", 1), else_=0)
         ).label("return_count"),
         func.sum(
-            func.cast(OrderEvent.fraud_signal_type == "FRAUD_SIGNAL", Integer)
+            case((OrderEvent.fraud_signal_type == "FRAUD_SIGNAL", 1), else_=0)
         ).label("fraud_reason_count"),
         func.avg(OrderEvent.return_velocity_days).label("avg_velocity"),
     ).where(
