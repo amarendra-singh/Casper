@@ -13,7 +13,7 @@ from sqlalchemy import select, func
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.fraud import ActorRiskProfile, ReturnReasonCluster
-from app.models.pnl import PnlReport
+from app.models.pnl import PnlReport, PnlSkuRow
 from app.models.platform import Platform
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
@@ -111,7 +111,7 @@ def _build_metrics_cells(
             "label": "Avg net margin",
             "val": _v(margin),
             "unit": "%" if margin else "",
-            "delta": "▲ across active platforms" if margin else "Upload P&L",
+            "delta": "▲ matched SKUs · breakeven basis" if margin else "Upload P&L",
             "trend_cls": "up" if margin and margin > 30 else "flat",
             "meter": int(margin) if margin else 0,
             "meter_cls": "cyan",
@@ -158,16 +158,38 @@ async def _compute_metrics(db: AsyncSession) -> list[dict]:
             func.coalesce(func.sum(PnlReport.gross_units),    0),
             func.coalesce(func.sum(PnlReport.net_units),      0),
             func.coalesce(func.sum(PnlReport.returned_units), 0),
-            func.coalesce(func.sum(PnlReport.bank_settlement), 0.0),
+            func.coalesce(func.sum(PnlReport.bank_settlement),0.0),
             func.coalesce(func.sum(PnlReport.gross_sales),    0.0),
-            func.coalesce(func.avg(PnlReport.net_margin_pct), 0.0),
         )
     )
     pnl = pnl_res.one()
-    gross_u, net_u, ret_u, settle, gross_s, avg_margin = (
+    gross_u, net_u, ret_u, settle, gross_s = (
         int(pnl[0]), int(pnl[1]), int(pnl[2]),
-        float(pnl[3]), float(pnl[4]), float(pnl[5]),
+        float(pnl[3]), float(pnl[4]),
     )
+
+    # Real breakeven-based margin from matched SKU rows
+    # Formula: (total_payout - total_cost) / total_cost × 100
+    # total_cost = Σ casper_expected_bs / (1 + profit_pct/100)  — back-derives breakeven
+    margin_res = await db.execute(
+        select(
+            func.sum(PnlSkuRow.bank_settlement_projected),
+            func.sum(
+                PnlSkuRow.casper_expected_bs /
+                (1.0 + PnlSkuRow.casper_expected_profit_pct / 100.0)
+            ),
+        ).where(
+            PnlSkuRow.sku_pricing_id.isnot(None),
+            PnlSkuRow.casper_expected_bs.isnot(None),
+            PnlSkuRow.casper_expected_profit_pct.isnot(None),
+            PnlSkuRow.casper_expected_profit_pct != 0,
+            PnlSkuRow.bank_settlement_projected.isnot(None),
+        )
+    )
+    margin_row = margin_res.one()
+    total_payout = float(margin_row[0] or 0)
+    total_cost   = float(margin_row[1] or 0)
+    avg_margin   = round((total_payout - total_cost) / total_cost * 100, 1) if total_cost else 0.0
 
     # Actor aggregates
     actor_res = await db.execute(
