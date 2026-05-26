@@ -25,6 +25,10 @@ from app.services.fraud import (
     get_platform_fraud_view,
     get_settlement_gaps,
     reprocess_report_for_fraud,
+    get_actor_overview,
+    get_actor_risk_table,
+    get_return_reason_intelligence,
+    get_state_risk_intelligence,
 )
 
 
@@ -179,3 +183,41 @@ async def backfill_fraud_for_report(
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     return result
+
+
+# ── Actor Intelligence endpoints ──────────────────────────────────────────────
+
+@router.get("/actor-overview")
+async def actor_overview(
+    _current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Summary stats for the Actor Intelligence tab."""
+    return await get_actor_overview(db)
+
+
+@router.get("/actors")
+async def actor_risk_table(
+    _current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Actor risk profiles sorted by fraud score."""
+    return {"actors": await get_actor_risk_table(db)}
+
+
+@router.get("/return-reasons")
+async def return_reason_intelligence(
+    _current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return reason breakdown and fraud signal intelligence."""
+    return await get_return_reason_intelligence(db)
+
+
+@router.get("/states")
+async def state_risk_intelligence(
+    _current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """State-level fraud heatmap data."""
+    return {"states": await get_state_risk_intelligence(db)}

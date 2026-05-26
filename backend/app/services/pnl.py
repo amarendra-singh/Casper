@@ -25,6 +25,9 @@ from app.services.fraud import (
     extract_order_events_snapdeal_cpr,
     store_order_events,
     compute_sku_risk_scores,
+    compute_return_reason_clusters,
+    compute_state_risk_profiles,
+    compute_actor_risk_profiles,
     generate_fraud_alerts,
 )
 
@@ -997,6 +1000,9 @@ async def parse_and_store(
     try:
         await compute_sku_risk_scores(session, platform_id)
         await session.commit()
+        await compute_return_reason_clusters(session)
+        await compute_state_risk_profiles(session)
+        await compute_actor_risk_profiles(session)
         await generate_fraud_alerts(session, platform_id, report.id)
         await session.commit()
     except Exception:

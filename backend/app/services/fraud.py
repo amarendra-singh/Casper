@@ -22,7 +22,7 @@ import math
 import json
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, func, text
+from sqlalchemy import select, delete, func, text, Integer, case
 
 from app.models.fraud import OrderEvent, SkuRiskScore, FraudAlert
 from app.models.pnl import PnlReport
@@ -63,6 +63,125 @@ _FK_PAYMENT_MAP = {
     "postpaid":    "postpaid",    # COD-equivalent on FK
     "part_payment": "postpaid",
 }
+
+
+# ── Return reason intelligence ────────────────────────────────────────────────
+
+# FK return_reason → fraud signal classification
+_RETURN_REASON_CLASSIFIER: dict[str, str] = {
+    # Fraud signals — customer exploiting policy
+    "ORC_validated_with_customer":  "FRAUD_SIGNAL",
+    "MISSHIPMENT":                  "FRAUD_SIGNAL",
+    "MISSING_ITEM":                 "FRAUD_SIGNAL",
+    "DIFFERENT_PRODUCT_RECEIVED":   "FRAUD_SIGNAL",
+    "USED_PRODUCT":                 "FRAUD_SIGNAL",
+    "ITEM_NOT_RECEIVED":            "FRAUD_SIGNAL",
+    "DAMAGED_IN_TRANSIT":           "LOGISTICS",
+    "QUALITY_ISSUE":                "QUALITY",
+    "CUSTOMER_REMORSE":             "PREFERENCE",
+    "SIZE_FIT_ISSUES":              "PREFERENCE",
+    "SIZE_FIT_ISSUE":               "PREFERENCE",
+    "COLOR_VARIANT_ISSUE":          "PREFERENCE",
+    "PRODUCT_NOT_AS_DESCRIBED":     "QUALITY",
+    "delivery_time_long":           "LOGISTICS",
+    "NOT_AS_DESCRIBED":             "QUALITY",
+    "WRONG_ADDRESS":                "LOGISTICS",
+}
+
+_RETURN_SUB_REASON_OVERRIDES: dict[str, str] = {
+    "STOLEN":       "FRAUD_SIGNAL",
+    "EMPTY_BOX":    "FRAUD_SIGNAL",
+    "FAKE_PRODUCT": "FRAUD_SIGNAL",
+    "SECOND_HAND":  "FRAUD_SIGNAL",
+    "TAMPERED":     "FRAUD_SIGNAL",
+    "NOT_RECEIVED": "FRAUD_SIGNAL",
+}
+
+
+def classify_fraud_signal(return_reason: Optional[str], return_sub_reason: Optional[str]) -> Optional[str]:
+    """
+    Classify a return reason into fraud signal category.
+    Sub-reason overrides take priority over reason.
+    Returns: FRAUD_SIGNAL | QUALITY | PREFERENCE | LOGISTICS | None
+    """
+    if return_sub_reason:
+        key = str(return_sub_reason).strip().upper().replace(" ", "_")
+        if key in _RETURN_SUB_REASON_OVERRIDES:
+            return _RETURN_SUB_REASON_OVERRIDES[key]
+    if return_reason:
+        key = str(return_reason).strip()
+        if key in _RETURN_REASON_CLASSIFIER:
+            return _RETURN_REASON_CLASSIFIER[key]
+        key_lower = key.lower()
+        if any(w in key_lower for w in ["fraud", "stolen", "empty", "fake", "tamper"]):
+            return "FRAUD_SIGNAL"
+        if any(w in key_lower for w in ["quality", "defect", "broken", "damage"]):
+            return "QUALITY"
+        if any(w in key_lower for w in ["size", "fit", "colour", "color", "remorse", "change"]):
+            return "PREFERENCE"
+        if any(w in key_lower for w in ["logistic", "transit", "delivery", "address", "courier"]):
+            return "LOGISTICS"
+    return None
+
+
+# ── Snapdeal geographic intelligence ─────────────────────────────────────────
+
+SNAPDEAL_STATE_MAP: dict[str, str] = {
+    "01": "Jammu & Kashmir",
+    "02": "Himachal Pradesh",
+    "03": "Punjab",
+    "04": "Chandigarh",
+    "05": "Uttarakhand",
+    "06": "Haryana",
+    "07": "Delhi",
+    "08": "Rajasthan",
+    "09": "Uttar Pradesh",
+    "10": "Bihar",
+    "11": "Sikkim",
+    "12": "Arunachal Pradesh",
+    "13": "Nagaland",
+    "14": "Manipur",
+    "15": "Mizoram",
+    "16": "Tripura",
+    "17": "Meghalaya",
+    "18": "Assam",
+    "19": "West Bengal",
+    "20": "Jharkhand",
+    "21": "Odisha",
+    "22": "Chhattisgarh",
+    "23": "Madhya Pradesh",
+    "24": "Gujarat",
+    "25": "Daman & Diu",
+    "26": "Dadra & Nagar Haveli",
+    "27": "Maharashtra",
+    "28": "Andhra Pradesh (old)",
+    "29": "Karnataka",
+    "30": "Goa",
+    "31": "Lakshadweep",
+    "32": "Kerala",
+    "33": "Tamil Nadu",
+    "34": "Puducherry",
+    "35": "Andaman & Nicobar",
+    "36": "Telangana",
+    "37": "Andhra Pradesh",
+    "38": "Ladakh",
+}
+
+
+def resolve_state(raw_code) -> tuple[Optional[str], Optional[str]]:
+    """
+    Resolve Snapdeal Customer State value (numeric GST code) to (code_str, state_name).
+    Input may be int (23), float (23.0), or str ("23" / "23.0").
+    Returns (None, None) if unresolvable.
+    """
+    if raw_code is None:
+        return None, None
+    try:
+        code_str = str(int(float(str(raw_code)))).zfill(2)
+        name = SNAPDEAL_STATE_MAP.get(code_str)
+        return (code_str, name) if name else (code_str, None)
+    except (ValueError, TypeError):
+        return None, None
 
 
 # ── Date / velocity helpers ───────────────────────────────────────────────────
@@ -161,6 +280,103 @@ def extract_order_events_fk(file_bytes: bytes) -> list[dict]:
         })
 
     return [e for e in events if e["sku_platform_name"]]
+
+
+# ── FK Orders file extraction (flipkarrttt.xlsx "Orders" sheet) ──────────────
+
+def extract_order_events_fk_orders(file_bytes: bytes) -> list[dict]:
+    """
+    Extract per-order rows from Flipkart Orders file (NOT the P&L file).
+    File: flipkarrttt.xlsx — sheet: "Orders"
+
+    Columns: order_item_id, order_id, order_item_status, sku,
+             order_date, order_delivery_date, order_return_approval_date,
+             return_reason, return_sub_reason, cancellation_reason, dispatched_date
+
+    Velocity: (order_return_approval_date - order_delivery_date).days
+    Fraud signal: classify_fraud_signal() on returned orders only
+    """
+    from io import BytesIO
+    import pandas as pd
+    import warnings
+    warnings.filterwarnings("ignore", category=UserWarning)
+
+    try:
+        df = pd.read_excel(BytesIO(file_bytes), sheet_name="Orders", header=0)
+    except Exception:
+        df = pd.read_excel(BytesIO(file_bytes), sheet_name=0, header=0)
+
+    df.columns = [str(c).strip().lower().replace(" ", "_") for c in df.columns]
+
+    # Drop rows with no order identity
+    id_col = next((c for c in df.columns if "order_item_id" in c or "order_id" in c), None)
+    if id_col:
+        df = df[df[id_col].notna()]
+
+    _STATUS_FK_ORDERS = {
+        "DELIVERED":        "DELIVERED",
+        "CANCELLED":        "CANCELLED",
+        "RETURNED":         "RETURNED",
+        "RETURN_REQUESTED": "PENDING_RETURN",
+        "RETURN_CANCELLED": "DELIVERED",
+        "SHIPPED":          "IN_TRANSIT",
+    }
+
+    events: list[dict] = []
+    for _, row in df.iterrows():
+        sku = str(row.get("sku", "")).strip()
+        if not sku or sku == "nan":
+            continue
+
+        order_item_id = str(row.get("order_item_id", "")).strip()
+        order_id      = str(row.get("order_id", "")).strip()
+
+        raw_status  = str(row.get("order_item_status", "")).strip().upper()
+        norm_status = _STATUS_FK_ORDERS.get(raw_status, raw_status or "UNKNOWN")
+
+        order_date    = _parse_date_col(row.get("order_date"))
+        delivery_date = _parse_date_col(row.get("order_delivery_date"))
+        return_date   = _parse_date_col(row.get("order_return_approval_date"))
+        dispatch_date = _parse_date_col(row.get("dispatched_date"))
+
+        velocity_days = _compute_velocity_days(delivery_date, return_date)
+
+        return_reason       = str(row.get("return_reason", "")).strip() or None
+        return_sub_reason   = str(row.get("return_sub_reason", "")).strip() or None
+        cancellation_reason = str(row.get("cancellation_reason", "")).strip() or None
+
+        # Clean "nan" strings
+        if return_reason == "nan":       return_reason = None
+        if return_sub_reason == "nan":   return_sub_reason = None
+        if cancellation_reason == "nan": cancellation_reason = None
+
+        fraud_signal = None
+        if norm_status == "RETURNED":
+            fraud_signal = classify_fraud_signal(return_reason, return_sub_reason)
+
+        events.append({
+            "external_order_id":    order_item_id or order_id,
+            "sku_platform_name":    sku,
+            "order_date":           order_date,
+            "dispatch_date":        dispatch_date,
+            "delivery_date":        delivery_date,
+            "return_pickup_date":   return_date,
+            "return_velocity_days": velocity_days,
+            "order_status":         norm_status,
+            "payment_mode":         "unknown",
+            "sale_amount":          None,
+            "settled_amount":       None,
+            "commission_charged":   None,
+            "return_reason":        return_reason,
+            "return_sub_reason":    return_sub_reason,
+            "cancellation_reason":  cancellation_reason,
+            "fraud_signal_type":    fraud_signal,
+            "customer_state_code":  None,
+            "customer_state_name":  None,
+            "is_cod":               None,
+        })
+
+    return events
 
 
 # ── Meesho order extraction ───────────────────────────────────────────────────
@@ -265,6 +481,55 @@ def extract_order_events_snapdeal_cpr(file_bytes: bytes) -> list[dict]:
     return [e for e in events if e["sku_platform_name"]]
 
 
+# ── Snapdeal Total_Suboders extraction (snapdeal.xlsx) ────────────────────────
+
+def extract_order_events_snapdeal_total(file_bytes: bytes) -> dict[str, dict]:
+    """
+    Extract customer state + COD flag from Snapdeal 'Total_Suboders' sheet.
+    Returns a dict keyed by Sub Order No for merging with CPR events.
+    Customer State = numeric GST code → resolve to state name.
+    Transaction Type: 'COD Vendor Invoice' = COD order, 'NCOD Vendor Invoice' = prepaid.
+    """
+    from io import BytesIO
+    import pandas as pd
+    import warnings
+    warnings.filterwarnings("ignore", category=UserWarning)
+
+    try:
+        df = pd.read_excel(BytesIO(file_bytes), sheet_name="Total_Suboders", header=0)
+    except Exception:
+        return {}
+
+    df.columns = [str(c).strip() for c in df.columns]
+
+    # Find the Sub Order No column
+    sub_col = next((c for c in df.columns if "Sub Order" in c or "Sub_Order" in c), None)
+    if sub_col is None:
+        return {}
+
+    df = df[df[sub_col].notna()]
+
+    result: dict[str, dict] = {}
+    for _, row in df.iterrows():
+        sub_order = str(row.get(sub_col, "")).strip()
+        if not sub_order or sub_order == "nan":
+            continue
+
+        raw_state = row.get("Customer State")
+        state_code, state_name = resolve_state(raw_state)
+
+        tx_type = str(row.get("Transaction Type", "")).strip().upper()
+        is_cod = "COD" in tx_type and "NCOD" not in tx_type
+
+        result[sub_order] = {
+            "customer_state_code": state_code,
+            "customer_state_name": state_name,
+            "is_cod": is_cod,
+        }
+
+    return result
+
+
 # ── Build pricing lookup for order events ─────────────────────────────────────
 
 async def _build_sku_lookup(session: AsyncSession, platform_id: int) -> dict[str, int]:
@@ -288,7 +553,7 @@ async def _build_sku_lookup(session: AsyncSession, platform_id: int) -> dict[str
 async def store_order_events(
     session: AsyncSession,
     events: list[dict],
-    report_id: int,
+    report_id: Optional[int],
     platform_id: int,
 ) -> int:
     """Persist order events. Returns count stored."""
@@ -315,10 +580,210 @@ async def store_order_events(
             payment_mode=ev.get("payment_mode"),
             sale_amount=ev.get("sale_amount"),
             settled_amount=ev.get("settled_amount"),
+            return_reason       = ev.get("return_reason"),
+            return_sub_reason   = ev.get("return_sub_reason"),
+            cancellation_reason = ev.get("cancellation_reason"),
+            fraud_signal_type   = ev.get("fraud_signal_type"),
+            customer_state_code = ev.get("customer_state_code"),
+            customer_state_name = ev.get("customer_state_name"),
+            is_cod              = ev.get("is_cod"),
         )
         session.add(obj)
 
     return len(events)
+
+
+# ── Actor intelligence computation ────────────────────────────────────────────
+
+async def compute_return_reason_clusters(db: AsyncSession) -> None:
+    """
+    Aggregate return reasons across all order_events into ReturnReasonCluster.
+    Fully replaces table on each call.
+    """
+    from app.models.fraud import ReturnReasonCluster
+
+    await db.execute(delete(ReturnReasonCluster))
+
+    q = select(
+        OrderEvent.platform_id,
+        OrderEvent.return_reason,
+        OrderEvent.return_sub_reason,
+        OrderEvent.fraud_signal_type,
+        func.count(OrderEvent.id).label("order_count"),
+    ).where(
+        OrderEvent.return_reason.isnot(None)
+    ).group_by(
+        OrderEvent.platform_id,
+        OrderEvent.return_reason,
+        OrderEvent.return_sub_reason,
+        OrderEvent.fraud_signal_type,
+    )
+    result = await db.execute(q)
+    rows = result.all()
+
+    now = datetime.utcnow()
+    for row in rows:
+        cluster = ReturnReasonCluster(
+            platform_id       = row.platform_id,
+            return_reason     = row.return_reason,
+            return_sub_reason = row.return_sub_reason,
+            fraud_signal_type = row.fraud_signal_type or "UNKNOWN",
+            order_count       = row.order_count,
+            computed_at       = now,
+        )
+        db.add(cluster)
+
+    await db.commit()
+
+
+async def compute_state_risk_profiles(db: AsyncSession) -> None:
+    """
+    Build state-level fraud heatmap from Snapdeal Customer State data.
+    fraud_rate = fraud_orders / total_orders.
+    Z-score = (state_fraud_rate - national_mean) / national_std.
+    risk_tier: z<=0 GREEN, z<=1 AMBER, z<=2 RED, z>2 CRITICAL.
+    """
+    from app.models.fraud import StateRiskProfile
+
+    await db.execute(delete(StateRiskProfile))
+
+    q = select(
+        OrderEvent.customer_state_code,
+        OrderEvent.customer_state_name,
+        func.count(OrderEvent.id).label("total_orders"),
+        func.sum(
+            case((OrderEvent.fraud_signal_type == "FRAUD_SIGNAL", 1), else_=0)
+        ).label("fraud_orders"),
+        func.avg(OrderEvent.return_velocity_days).label("avg_velocity"),
+    ).where(
+        OrderEvent.customer_state_code.isnot(None)
+    ).group_by(
+        OrderEvent.customer_state_code,
+        OrderEvent.customer_state_name,
+    )
+    result = await db.execute(q)
+    rows = result.all()
+
+    if not rows:
+        await db.commit()
+        return
+
+    rates = [((row.fraud_orders or 0) / (row.total_orders or 1)) for row in rows]
+    mean  = sum(rates) / len(rates)
+    variance = sum((r - mean) ** 2 for r in rates) / len(rates)
+    std   = math.sqrt(variance) if variance > 0 else 1.0
+
+    now = datetime.utcnow()
+    for row, rate in zip(rows, rates):
+        z = (rate - mean) / std if std > 0 else 0.0
+        if z <= 0:
+            tier = "GREEN"
+        elif z <= 1:
+            tier = "AMBER"
+        elif z <= 2:
+            tier = "RED"
+        else:
+            tier = "CRITICAL"
+
+        db.add(StateRiskProfile(
+            state_code   = row.customer_state_code,
+            state_name   = row.customer_state_name or row.customer_state_code,
+            total_orders = row.total_orders,
+            fraud_orders = row.fraud_orders or 0,
+            fraud_rate   = rate,
+            avg_velocity = float(row.avg_velocity) if row.avg_velocity else None,
+            risk_tier    = tier,
+            z_score      = round(z, 3),
+            computed_at  = now,
+        ))
+
+    await db.commit()
+
+
+async def compute_actor_risk_profiles(db: AsyncSession) -> None:
+    """
+    Build actor risk profiles keyed by (state_name + dominant_return_reason).
+    actor_fraud_score 0-100:
+      return_rate_component    (0-25): return_count/total_orders × 25
+      fraud_reason_rate        (0-30): fraud_reason_count/max(return_count,1) × 30
+      velocity_component       (0-25): max(0, 25 - avg_velocity_days × 0.5) — fast return = high score
+      repeat_pattern           (0-20): 20 if fraud_cnt>3 and rate>0.5 | 12 if >1 and >0.3 | else 0
+    """
+    import hashlib
+    from app.models.fraud import ActorRiskProfile
+
+    await db.execute(delete(ActorRiskProfile))
+
+    q = select(
+        OrderEvent.customer_state_name,
+        OrderEvent.return_reason,
+        OrderEvent.fraud_signal_type,
+        func.count(OrderEvent.id).label("total_orders"),
+        func.sum(
+            case((OrderEvent.order_status == "RETURNED", 1), else_=0)
+        ).label("return_count"),
+        func.sum(
+            case((OrderEvent.fraud_signal_type == "FRAUD_SIGNAL", 1), else_=0)
+        ).label("fraud_reason_count"),
+        func.avg(OrderEvent.return_velocity_days).label("avg_velocity"),
+    ).where(
+        OrderEvent.return_reason.isnot(None)
+    ).group_by(
+        OrderEvent.customer_state_name,
+        OrderEvent.return_reason,
+        OrderEvent.fraud_signal_type,
+    )
+    result = await db.execute(q)
+    rows = result.all()
+
+    now = datetime.utcnow()
+    for row in rows:
+        total     = row.total_orders or 1
+        returns   = row.return_count or 0
+        fraud_cnt = row.fraud_reason_count or 0
+        avg_vel   = float(row.avg_velocity) if row.avg_velocity else None
+
+        return_rate_score = min(returns / total, 1.0) * 25
+        fraud_score_comp  = (fraud_cnt / max(returns, 1)) * 30
+        velocity_score    = max(0, 25 - avg_vel * 0.5) if avg_vel is not None else 0.0
+
+        return_rate_raw = returns / total
+        if fraud_cnt > 3 and return_rate_raw > 0.5:
+            repeat_score = 20
+        elif fraud_cnt > 1 and return_rate_raw > 0.3:
+            repeat_score = 12
+        else:
+            repeat_score = 0
+
+        total_score = min(100, return_rate_score + fraud_score_comp + velocity_score + repeat_score)
+
+        if total_score >= 70:
+            tier = "CRITICAL"
+        elif total_score >= 50:
+            tier = "RED"
+        elif total_score >= 30:
+            tier = "AMBER"
+        else:
+            tier = "GREEN"
+
+        key_raw   = f"{row.customer_state_name or ''}|{row.return_reason or ''}"
+        actor_key = hashlib.sha256(key_raw.encode()).hexdigest()[:16]
+
+        db.add(ActorRiskProfile(
+            actor_key          = actor_key,
+            state_name         = row.customer_state_name,
+            dominant_reason    = row.return_reason,
+            fraud_signal_type  = row.fraud_signal_type,
+            total_orders       = total,
+            return_count       = returns,
+            fraud_reason_count = fraud_cnt,
+            avg_velocity_days  = avg_vel,
+            actor_fraud_score  = round(total_score, 1),
+            risk_tier          = tier,
+            computed_at        = now,
+        ))
+
+    await db.commit()
 
 
 # ── Intelligence Engine ───────────────────────────────────────────────────────
@@ -1080,6 +1545,9 @@ async def reprocess_report_for_fraud(session: AsyncSession, report_id: int) -> d
 
     await compute_sku_risk_scores(session, report.platform_id)
     await session.flush()
+    await compute_return_reason_clusters(session)
+    await compute_state_risk_profiles(session)
+    await compute_actor_risk_profiles(session)
     await generate_fraud_alerts(session, report.platform_id, report_id)
     await session.commit()
 
@@ -1138,6 +1606,121 @@ async def get_settlement_gaps(session: AsyncSession) -> dict:
         "gap_count": sum(1 for r in reports if r["gap"] < -100),
         "note":      "Gap = actual settlement − Casper target. Negative = platform paid less than expected.",
     }
+
+
+# ── Actor intelligence service functions ──────────────────────────────────────
+
+async def get_actor_overview(db: AsyncSession) -> dict:
+    """Summary stats for the Actor Intelligence tab."""
+    from app.models.fraud import ActorRiskProfile, StateRiskProfile, ReturnReasonCluster
+
+    total     = (await db.execute(select(func.count(ActorRiskProfile.id)))).scalar() or 0
+    high_risk = (await db.execute(
+        select(func.count(ActorRiskProfile.id))
+        .where(ActorRiskProfile.risk_tier.in_(["RED", "CRITICAL"]))
+    )).scalar() or 0
+
+    top_state = (await db.execute(
+        select(StateRiskProfile)
+        .order_by(StateRiskProfile.fraud_rate.desc())
+        .limit(1)
+    )).scalars().first()
+
+    top_reason = (await db.execute(
+        select(ReturnReasonCluster)
+        .where(ReturnReasonCluster.fraud_signal_type == "FRAUD_SIGNAL")
+        .order_by(ReturnReasonCluster.order_count.desc())
+        .limit(1)
+    )).scalars().first()
+
+    return {
+        "total_actor_patterns":  total,
+        "high_risk_actor_count": high_risk,
+        "top_fraud_state":       top_state.state_name if top_state else None,
+        "top_fraud_state_rate":  top_state.fraud_rate if top_state else None,
+        "dominant_fraud_reason": top_reason.return_reason if top_reason else None,
+        "dominant_fraud_count":  top_reason.order_count if top_reason else None,
+    }
+
+
+async def get_actor_risk_table(db: AsyncSession) -> list[dict]:
+    """Actor risk profiles sorted by fraud score descending."""
+    from app.models.fraud import ActorRiskProfile
+
+    result = await db.execute(
+        select(ActorRiskProfile).order_by(ActorRiskProfile.actor_fraud_score.desc())
+    )
+    return [
+        {
+            "actor_key":          a.actor_key,
+            "state_name":         a.state_name,
+            "dominant_reason":    a.dominant_reason,
+            "fraud_signal_type":  a.fraud_signal_type,
+            "total_orders":       a.total_orders,
+            "return_count":       a.return_count,
+            "fraud_reason_count": a.fraud_reason_count,
+            "avg_velocity_days":  a.avg_velocity_days,
+            "actor_fraud_score":  a.actor_fraud_score,
+            "risk_tier":          a.risk_tier,
+        }
+        for a in result.scalars().all()
+    ]
+
+
+async def get_return_reason_intelligence(db: AsyncSession) -> dict:
+    """Return reason breakdown — categories + top reasons."""
+    from app.models.fraud import ReturnReasonCluster
+
+    result = await db.execute(
+        select(ReturnReasonCluster).order_by(ReturnReasonCluster.order_count.desc())
+    )
+    clusters = result.scalars().all()
+
+    category_totals: dict[str, int] = {}
+    for c in clusters:
+        cat = c.fraud_signal_type
+        category_totals[cat] = category_totals.get(cat, 0) + c.order_count
+
+    return {
+        "by_category": [
+            {"category": k, "count": v}
+            for k, v in sorted(category_totals.items(), key=lambda x: -x[1])
+        ],
+        "top_reasons": [
+            {
+                "return_reason":     c.return_reason,
+                "return_sub_reason": c.return_sub_reason,
+                "fraud_signal_type": c.fraud_signal_type,
+                "order_count":       c.order_count,
+                "platform_id":       c.platform_id,
+            }
+            for c in clusters[:20]
+        ],
+        "fraud_signal_total":  category_totals.get("FRAUD_SIGNAL", 0),
+        "total_with_reasons":  sum(category_totals.values()),
+    }
+
+
+async def get_state_risk_intelligence(db: AsyncSession) -> list[dict]:
+    """State risk profiles for India heatmap, sorted by fraud_rate desc."""
+    from app.models.fraud import StateRiskProfile
+
+    result = await db.execute(
+        select(StateRiskProfile).order_by(StateRiskProfile.fraud_rate.desc())
+    )
+    return [
+        {
+            "state_code":   s.state_code,
+            "state_name":   s.state_name,
+            "total_orders": s.total_orders,
+            "fraud_orders": s.fraud_orders,
+            "fraud_rate":   s.fraud_rate,
+            "avg_velocity": s.avg_velocity,
+            "risk_tier":    s.risk_tier,
+            "z_score":      s.z_score,
+        }
+        for s in result.scalars().all()
+    ]
 
 
 # ── Dashboard aggregates ──────────────────────────────────────────────────────
