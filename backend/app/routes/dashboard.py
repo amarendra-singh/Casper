@@ -148,6 +148,57 @@ def _build_metrics_cells(
     ]
 
 
+async def _compute_metrics(db: AsyncSession) -> list[dict]:
+    """Query P&L and actor aggregates, then delegate math to _build_metrics_cells."""
+
+    # P&L aggregates across ALL reports
+    pnl_res = await db.execute(
+        select(
+            func.coalesce(func.sum(PnlReport.gross_units),    0),
+            func.coalesce(func.sum(PnlReport.net_units),      0),
+            func.coalesce(func.sum(PnlReport.returned_units), 0),
+            func.coalesce(func.sum(PnlReport.bank_settlement), 0.0),
+            func.coalesce(func.sum(PnlReport.gross_sales),    0.0),
+            func.coalesce(func.avg(PnlReport.net_margin_pct), 0.0),
+        )
+    )
+    pnl = pnl_res.one()
+    gross_u, net_u, ret_u, settle, gross_s, avg_margin = (
+        int(pnl[0]), int(pnl[1]), int(pnl[2]),
+        float(pnl[3]), float(pnl[4]), float(pnl[5]),
+    )
+
+    # Actor aggregates
+    actor_res = await db.execute(
+        select(
+            func.coalesce(func.sum(ActorRiskProfile.fraud_reason_count), 0),
+            func.coalesce(func.sum(ActorRiskProfile.total_orders),        0),
+        )
+    )
+    actor = actor_res.one()
+    fraud_cnt, total_ord = int(actor[0]), int(actor[1])
+
+    # CRITICAL actor stats
+    crit_res = await db.execute(
+        select(
+            func.count(),
+            func.avg(ActorRiskProfile.avg_velocity_days),
+            func.max(ActorRiskProfile.actor_fraud_score),
+        ).where(ActorRiskProfile.risk_tier == "CRITICAL")
+    )
+    crit = crit_res.one()
+    crit_count = int(crit[0])
+    crit_vel   = float(round(crit[1], 1)) if crit[1] is not None else None
+    top_score  = float(round(crit[2], 0)) if crit[2] is not None else None
+
+    return _build_metrics_cells(
+        gross_u=gross_u, net_u=net_u, ret_u=ret_u,
+        settle=settle, gross_s=gross_s, avg_margin=avg_margin,
+        fraud_cnt=fraud_cnt, total_ord=total_ord,
+        crit_count=crit_count, crit_vel=crit_vel, top_score=top_score,
+    )
+
+
 # ── Insight generators ─────────────────────────────────────────────────────────
 
 async def _insight_fraud_spike(db: AsyncSession) -> dict | None:
@@ -376,3 +427,18 @@ async def get_dashboard_insights(
     insights.sort(key=lambda x: 0 if x.get("hero") else 1)
 
     return {"insights": insights, "generated_at": datetime.now(timezone.utc).isoformat()}
+
+
+@router.get("/metrics")
+async def get_dashboard_metrics(
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_any),
+):
+    """
+    Compute 8 real operational metrics for the dashboard ribbon from:
+    - pnl_reports  (sell-through, return rate, settlement rate, avg margin)
+    - actor_risk_profiles  (fraud rate, critical count, velocity, top score)
+    Returns '—' for metrics where source data is absent.
+    """
+    cells = await _compute_metrics(db)
+    return {"metrics": cells, "generated_at": datetime.now(timezone.utc).isoformat()}
