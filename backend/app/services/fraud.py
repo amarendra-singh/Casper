@@ -22,7 +22,7 @@ import math
 import json
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, func, text
+from sqlalchemy import select, delete, func, text, Integer
 
 from app.models.fraud import OrderEvent, SkuRiskScore, FraudAlert
 from app.models.pnl import PnlReport
@@ -591,6 +591,199 @@ async def store_order_events(
         session.add(obj)
 
     return len(events)
+
+
+# ── Actor intelligence computation ────────────────────────────────────────────
+
+async def compute_return_reason_clusters(db: AsyncSession) -> None:
+    """
+    Aggregate return reasons across all order_events into ReturnReasonCluster.
+    Fully replaces table on each call.
+    """
+    from app.models.fraud import ReturnReasonCluster
+
+    await db.execute(delete(ReturnReasonCluster))
+
+    q = select(
+        OrderEvent.platform_id,
+        OrderEvent.return_reason,
+        OrderEvent.return_sub_reason,
+        OrderEvent.fraud_signal_type,
+        func.count(OrderEvent.id).label("order_count"),
+    ).where(
+        OrderEvent.return_reason.isnot(None)
+    ).group_by(
+        OrderEvent.platform_id,
+        OrderEvent.return_reason,
+        OrderEvent.return_sub_reason,
+        OrderEvent.fraud_signal_type,
+    )
+    result = await db.execute(q)
+    rows = result.all()
+
+    now = datetime.utcnow()
+    for row in rows:
+        cluster = ReturnReasonCluster(
+            platform_id       = row.platform_id,
+            return_reason     = row.return_reason,
+            return_sub_reason = row.return_sub_reason,
+            fraud_signal_type = row.fraud_signal_type or "UNKNOWN",
+            order_count       = row.order_count,
+            computed_at       = now,
+        )
+        db.add(cluster)
+
+    await db.commit()
+
+
+async def compute_state_risk_profiles(db: AsyncSession) -> None:
+    """
+    Build state-level fraud heatmap from Snapdeal Customer State data.
+    fraud_rate = fraud_orders / total_orders.
+    Z-score = (state_fraud_rate - national_mean) / national_std.
+    risk_tier: z<=0 GREEN, z<=1 AMBER, z<=2 RED, z>2 CRITICAL.
+    """
+    from app.models.fraud import StateRiskProfile
+
+    await db.execute(delete(StateRiskProfile))
+
+    q = select(
+        OrderEvent.customer_state_code,
+        OrderEvent.customer_state_name,
+        func.count(OrderEvent.id).label("total_orders"),
+        func.sum(
+            func.cast(OrderEvent.fraud_signal_type == "FRAUD_SIGNAL", Integer)
+        ).label("fraud_orders"),
+        func.avg(OrderEvent.return_velocity_days).label("avg_velocity"),
+    ).where(
+        OrderEvent.customer_state_code.isnot(None)
+    ).group_by(
+        OrderEvent.customer_state_code,
+        OrderEvent.customer_state_name,
+    )
+    result = await db.execute(q)
+    rows = result.all()
+
+    if not rows:
+        await db.commit()
+        return
+
+    rates = [((row.fraud_orders or 0) / (row.total_orders or 1)) for row in rows]
+    mean  = sum(rates) / len(rates)
+    variance = sum((r - mean) ** 2 for r in rates) / len(rates)
+    std   = math.sqrt(variance) if variance > 0 else 1.0
+
+    now = datetime.utcnow()
+    for row, rate in zip(rows, rates):
+        z = (rate - mean) / std if std > 0 else 0.0
+        if z <= 0:
+            tier = "GREEN"
+        elif z <= 1:
+            tier = "AMBER"
+        elif z <= 2:
+            tier = "RED"
+        else:
+            tier = "CRITICAL"
+
+        db.add(StateRiskProfile(
+            state_code   = row.customer_state_code,
+            state_name   = row.customer_state_name or row.customer_state_code,
+            total_orders = row.total_orders,
+            fraud_orders = row.fraud_orders or 0,
+            fraud_rate   = rate,
+            avg_velocity = float(row.avg_velocity) if row.avg_velocity else None,
+            risk_tier    = tier,
+            z_score      = round(z, 3),
+            computed_at  = now,
+        ))
+
+    await db.commit()
+
+
+async def compute_actor_risk_profiles(db: AsyncSession) -> None:
+    """
+    Build actor risk profiles keyed by (state_name + dominant_return_reason).
+    actor_fraud_score 0-100:
+      return_rate_component    (0-25): return_count/total_orders × 25
+      fraud_reason_rate        (0-30): fraud_reason_count/max(return_count,1) × 30
+      velocity_component       (0-25): max(0, 25 - avg_velocity_days × 0.5) — fast return = high score
+      repeat_pattern           (0-20): 20 if fraud_cnt>3 and rate>0.5 | 12 if >1 and >0.3 | else 0
+    """
+    import hashlib
+    from app.models.fraud import ActorRiskProfile
+
+    await db.execute(delete(ActorRiskProfile))
+
+    q = select(
+        OrderEvent.customer_state_name,
+        OrderEvent.return_reason,
+        OrderEvent.fraud_signal_type,
+        func.count(OrderEvent.id).label("total_orders"),
+        func.sum(
+            func.cast(OrderEvent.order_status == "RETURNED", Integer)
+        ).label("return_count"),
+        func.sum(
+            func.cast(OrderEvent.fraud_signal_type == "FRAUD_SIGNAL", Integer)
+        ).label("fraud_reason_count"),
+        func.avg(OrderEvent.return_velocity_days).label("avg_velocity"),
+    ).where(
+        OrderEvent.return_reason.isnot(None)
+    ).group_by(
+        OrderEvent.customer_state_name,
+        OrderEvent.return_reason,
+        OrderEvent.fraud_signal_type,
+    )
+    result = await db.execute(q)
+    rows = result.all()
+
+    now = datetime.utcnow()
+    for row in rows:
+        total     = row.total_orders or 1
+        returns   = row.return_count or 0
+        fraud_cnt = row.fraud_reason_count or 0
+        avg_vel   = float(row.avg_velocity) if row.avg_velocity else None
+
+        return_rate_score = min(returns / total, 1.0) * 25
+        fraud_score_comp  = (fraud_cnt / max(returns, 1)) * 30
+        velocity_score    = max(0, 25 - avg_vel * 0.5) if avg_vel is not None else 0.0
+
+        return_rate_raw = returns / total
+        if fraud_cnt > 3 and return_rate_raw > 0.5:
+            repeat_score = 20
+        elif fraud_cnt > 1 and return_rate_raw > 0.3:
+            repeat_score = 12
+        else:
+            repeat_score = 0
+
+        total_score = min(100, return_rate_score + fraud_score_comp + velocity_score + repeat_score)
+
+        if total_score >= 70:
+            tier = "CRITICAL"
+        elif total_score >= 50:
+            tier = "RED"
+        elif total_score >= 30:
+            tier = "AMBER"
+        else:
+            tier = "GREEN"
+
+        key_raw   = f"{row.customer_state_name or ''}|{row.return_reason or ''}"
+        actor_key = hashlib.sha256(key_raw.encode()).hexdigest()[:16]
+
+        db.add(ActorRiskProfile(
+            actor_key          = actor_key,
+            state_name         = row.customer_state_name,
+            dominant_reason    = row.return_reason,
+            fraud_signal_type  = row.fraud_signal_type,
+            total_orders       = total,
+            return_count       = returns,
+            fraud_reason_count = fraud_cnt,
+            avg_velocity_days  = avg_vel,
+            actor_fraud_score  = round(total_score, 1),
+            risk_tier          = tier,
+            computed_at        = now,
+        ))
+
+    await db.commit()
 
 
 # ── Intelligence Engine ───────────────────────────────────────────────────────
@@ -1352,6 +1545,9 @@ async def reprocess_report_for_fraud(session: AsyncSession, report_id: int) -> d
 
     await compute_sku_risk_scores(session, report.platform_id)
     await session.flush()
+    await compute_return_reason_clusters(session)
+    await compute_state_risk_profiles(session)
+    await compute_actor_risk_profiles(session)
     await generate_fraud_alerts(session, report.platform_id, report_id)
     await session.commit()
 
