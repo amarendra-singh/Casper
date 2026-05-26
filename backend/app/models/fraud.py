@@ -17,7 +17,7 @@ class OrderEvent(Base):
     __tablename__ = "order_events"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    report_id: Mapped[int] = mapped_column(Integer, ForeignKey("pnl_reports.id", ondelete="CASCADE"), nullable=False)
+    report_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("pnl_reports.id", ondelete="CASCADE"), nullable=True)
     platform_id: Mapped[int] = mapped_column(Integer, ForeignKey("platforms.id"), nullable=False)
     sku_pricing_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("sku_pricing.id"), nullable=True)
 
@@ -42,6 +42,20 @@ class OrderEvent(Base):
 
     # Payment mode: prepaid | postpaid | cod | unknown
     payment_mode: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+
+    # Return intelligence (populated from FK Orders file + Snapdeal)
+    return_reason:       Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    return_sub_reason:   Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    cancellation_reason: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    # FRAUD_SIGNAL | QUALITY | PREFERENCE | LOGISTICS | None
+    fraud_signal_type:   Mapped[Optional[str]] = mapped_column(String(50),  nullable=True)
+
+    # Geographic actor intelligence (populated from Snapdeal)
+    customer_state_code: Mapped[Optional[str]] = mapped_column(String(10),  nullable=True)
+    customer_state_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
+    # Payment mode actor signal
+    is_cod:              Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
 
     # Financials
     sale_amount: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -137,3 +151,65 @@ class FraudAlert(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     platform: Mapped["Platform"] = relationship("Platform")
+
+
+class ReturnReasonCluster(Base):
+    """
+    Aggregated return reason intelligence per platform.
+    Recalculated after every upload.
+    fraud_signal_type: FRAUD_SIGNAL | QUALITY | PREFERENCE | LOGISTICS
+    """
+    __tablename__ = "return_reason_clusters"
+
+    id:                Mapped[int]           = mapped_column(primary_key=True, autoincrement=True)
+    platform_id:       Mapped[int]           = mapped_column(Integer, ForeignKey("platforms.id"), nullable=False)
+    return_reason:     Mapped[str]           = mapped_column(String(255), nullable=False)
+    return_sub_reason: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    fraud_signal_type: Mapped[str]           = mapped_column(String(50),  nullable=False)
+    order_count:       Mapped[int]           = mapped_column(Integer, default=0)
+    computed_at:       Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    platform: Mapped["Platform"] = relationship("Platform")
+
+
+class StateRiskProfile(Base):
+    """
+    State-level fraud heatmap derived from Snapdeal Customer State codes.
+    Z-score: how far this state's fraud_rate is from the national mean.
+    risk_tier: GREEN | AMBER | RED | CRITICAL based on z_score thresholds.
+    """
+    __tablename__ = "state_risk_profiles"
+
+    id:           Mapped[int]             = mapped_column(primary_key=True, autoincrement=True)
+    state_code:   Mapped[str]             = mapped_column(String(10),  nullable=False)
+    state_name:   Mapped[str]             = mapped_column(String(100), nullable=False)
+    total_orders: Mapped[int]             = mapped_column(Integer, default=0)
+    fraud_orders: Mapped[int]             = mapped_column(Integer, default=0)
+    fraud_rate:   Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    avg_velocity: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    risk_tier:    Mapped[str]             = mapped_column(String(20), default="GREEN")
+    z_score:      Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    computed_at:  Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
+class ActorRiskProfile(Base):
+    """
+    Actor fingerprint: state + dominant return reason cluster = behavioural actor.
+    actor_key: SHA-256 hash (16 chars) of (state_name + dominant_reason).
+    actor_fraud_score 0-100:
+      return_rate(0-25) + fraud_reason_rate(0-30) + velocity(0-25) + repeat_pattern(0-20)
+    """
+    __tablename__ = "actor_risk_profiles"
+
+    id:                 Mapped[int]            = mapped_column(primary_key=True, autoincrement=True)
+    actor_key:          Mapped[str]            = mapped_column(String(64), nullable=False, unique=True)
+    state_name:         Mapped[Optional[str]]  = mapped_column(String(100), nullable=True)
+    dominant_reason:    Mapped[Optional[str]]  = mapped_column(String(255), nullable=True)
+    fraud_signal_type:  Mapped[Optional[str]]  = mapped_column(String(50),  nullable=True)
+    total_orders:       Mapped[int]            = mapped_column(Integer, default=0)
+    return_count:       Mapped[int]            = mapped_column(Integer, default=0)
+    fraud_reason_count: Mapped[int]            = mapped_column(Integer, default=0)
+    avg_velocity_days:  Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    actor_fraud_score:  Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    risk_tier:          Mapped[str]            = mapped_column(String(20), default="GREEN")
+    computed_at:        Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
