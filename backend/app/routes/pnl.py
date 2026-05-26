@@ -428,3 +428,58 @@ async def platforms_with_reports(
     )
     rows = result.all()
     return [{"id": r.id, "name": r.name} for r in rows]
+
+
+# ── FK Orders upload (actor fraud intelligence) ───────────────────────────────
+
+@router.post("/upload/fk-orders")
+async def upload_fk_orders(
+    file: UploadFile = File(...),
+    _current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Upload Flipkart Orders file (flipkarrttt.xlsx) to extract actor fraud signals.
+    This is separate from the FK P&L file. Contains: return reasons, delivery dates,
+    return approval dates. Populates actor risk intelligence.
+    """
+    from app.services.fraud import (
+        extract_order_events_fk_orders,
+        store_order_events,
+        compute_return_reason_clusters,
+        compute_state_risk_profiles,
+        compute_actor_risk_profiles,
+    )
+
+    file_bytes = await file.read()
+
+    # Find Flipkart platform
+    fk_result = await db.execute(
+        select(Platform).where(Platform.name.ilike("%flipkart%"))
+    )
+    fk = fk_result.scalars().first()
+    if not fk:
+        raise HTTPException(status_code=404, detail="Flipkart platform not found in database")
+
+    events = extract_order_events_fk_orders(file_bytes)
+    if not events:
+        raise HTTPException(
+            status_code=422,
+            detail="No order events found in file. Check that file has an 'Orders' sheet.",
+        )
+
+    await store_order_events(db, report_id=None, platform_id=fk.id, events=events)
+    await compute_return_reason_clusters(db)
+    await compute_state_risk_profiles(db)
+    await compute_actor_risk_profiles(db)
+
+    fraud_signals = sum(1 for e in events if e.get("fraud_signal_type") == "FRAUD_SIGNAL")
+    returned      = sum(1 for e in events if e.get("order_status") == "RETURNED")
+
+    return {
+        "status":          "ok",
+        "events_stored":   len(events),
+        "returned_orders": returned,
+        "fraud_signals":   fraud_signals,
+        "platform":        fk.name,
+    }
