@@ -282,6 +282,103 @@ def extract_order_events_fk(file_bytes: bytes) -> list[dict]:
     return [e for e in events if e["sku_platform_name"]]
 
 
+# ── FK Orders file extraction (flipkarrttt.xlsx "Orders" sheet) ──────────────
+
+def extract_order_events_fk_orders(file_bytes: bytes) -> list[dict]:
+    """
+    Extract per-order rows from Flipkart Orders file (NOT the P&L file).
+    File: flipkarrttt.xlsx — sheet: "Orders"
+
+    Columns: order_item_id, order_id, order_item_status, sku,
+             order_date, order_delivery_date, order_return_approval_date,
+             return_reason, return_sub_reason, cancellation_reason, dispatched_date
+
+    Velocity: (order_return_approval_date - order_delivery_date).days
+    Fraud signal: classify_fraud_signal() on returned orders only
+    """
+    from io import BytesIO
+    import pandas as pd
+    import warnings
+    warnings.filterwarnings("ignore", category=UserWarning)
+
+    try:
+        df = pd.read_excel(BytesIO(file_bytes), sheet_name="Orders", header=0)
+    except Exception:
+        df = pd.read_excel(BytesIO(file_bytes), sheet_name=0, header=0)
+
+    df.columns = [str(c).strip().lower().replace(" ", "_") for c in df.columns]
+
+    # Drop rows with no order identity
+    id_col = next((c for c in df.columns if "order_item_id" in c or "order_id" in c), None)
+    if id_col:
+        df = df[df[id_col].notna()]
+
+    _STATUS_FK_ORDERS = {
+        "DELIVERED":        "DELIVERED",
+        "CANCELLED":        "CANCELLED",
+        "RETURNED":         "RETURNED",
+        "RETURN_REQUESTED": "PENDING_RETURN",
+        "RETURN_CANCELLED": "DELIVERED",
+        "SHIPPED":          "IN_TRANSIT",
+    }
+
+    events: list[dict] = []
+    for _, row in df.iterrows():
+        sku = str(row.get("sku", "")).strip()
+        if not sku or sku == "nan":
+            continue
+
+        order_item_id = str(row.get("order_item_id", "")).strip()
+        order_id      = str(row.get("order_id", "")).strip()
+
+        raw_status  = str(row.get("order_item_status", "")).strip().upper()
+        norm_status = _STATUS_FK_ORDERS.get(raw_status, raw_status or "UNKNOWN")
+
+        order_date    = _parse_date_col(row.get("order_date"))
+        delivery_date = _parse_date_col(row.get("order_delivery_date"))
+        return_date   = _parse_date_col(row.get("order_return_approval_date"))
+        dispatch_date = _parse_date_col(row.get("dispatched_date"))
+
+        velocity_days = _compute_velocity_days(delivery_date, return_date)
+
+        return_reason       = str(row.get("return_reason", "")).strip() or None
+        return_sub_reason   = str(row.get("return_sub_reason", "")).strip() or None
+        cancellation_reason = str(row.get("cancellation_reason", "")).strip() or None
+
+        # Clean "nan" strings
+        if return_reason == "nan":       return_reason = None
+        if return_sub_reason == "nan":   return_sub_reason = None
+        if cancellation_reason == "nan": cancellation_reason = None
+
+        fraud_signal = None
+        if norm_status == "RETURNED":
+            fraud_signal = classify_fraud_signal(return_reason, return_sub_reason)
+
+        events.append({
+            "external_order_id":    order_item_id or order_id,
+            "sku_platform_name":    sku,
+            "order_date":           order_date,
+            "dispatch_date":        dispatch_date,
+            "delivery_date":        delivery_date,
+            "return_pickup_date":   return_date,
+            "return_velocity_days": velocity_days,
+            "order_status":         norm_status,
+            "payment_mode":         "unknown",
+            "sale_amount":          None,
+            "settled_amount":       None,
+            "commission_charged":   None,
+            "return_reason":        return_reason,
+            "return_sub_reason":    return_sub_reason,
+            "cancellation_reason":  cancellation_reason,
+            "fraud_signal_type":    fraud_signal,
+            "customer_state_code":  None,
+            "customer_state_name":  None,
+            "is_cod":               None,
+        })
+
+    return events
+
+
 # ── Meesho order extraction ───────────────────────────────────────────────────
 
 def extract_order_events_meesho(file_bytes: bytes) -> list[dict]:
