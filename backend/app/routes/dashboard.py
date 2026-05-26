@@ -128,8 +128,8 @@ def _build_metrics_cells(
         {
             "idx": "a07", "dot": None,
             "label": "Avg fraud velocity",
-            "val": _v(crit_vel),
-            "unit": "d" if crit_vel is not None else "",
+            "val": _v(crit_vel) if crit_vel else "—",
+            "unit": "d" if crit_vel else "",
             "delta": f"▼ {_v(crit_vel)}d avg · CRITICAL tier" if crit_vel else "No CRITICAL actors",
             "trend_cls": "down" if crit_vel and crit_vel < 3 else "flat",
             "meter": 0,

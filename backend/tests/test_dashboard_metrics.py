@@ -126,6 +126,13 @@ def test_fraud_velocity_none():
     assert a07["unit"] == ""
 
 
+def test_fraud_velocity_zero():
+    cells = _cells(crit_vel=0.0)
+    a07 = next(c for c in cells if c["idx"] == "a07")
+    assert a07["val"] == "—"
+    assert a07["unit"] == ""
+
+
 # ── Top fraud score (a08) ─────────────────────────────────────────────────────
 
 def test_top_score_computed():
