@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -10,9 +12,21 @@ from app.routes import entries, auth, users, platforms, vendors, categories, mis
 from app.routes.skus import sku_router, pricing_router
 from app.routes import pnl
 from app.routes import fraud
+from app.routes import dashboard
 
 # Initialise logging before anything else
 setup_logging(log_dir="logs", dev=(settings.APP_ENV == "development"))
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: verify DB connectivity
+    async with engine.connect() as conn:
+        await conn.execute(text("SELECT 1"))
+    app_logger.info(f"Startup complete — {settings.APP_NAME} v0.1.0 [{settings.APP_ENV}]")
+    yield
+    # Shutdown
+    app_logger.info("Shutdown — bye")
 
 
 def create_app() -> FastAPI:
@@ -22,6 +36,7 @@ def create_app() -> FastAPI:
         debug=settings.APP_DEBUG,
         docs_url="/docs" if settings.APP_DEBUG else None,
         redoc_url="/redoc" if settings.APP_DEBUG else None,
+        lifespan=lifespan,
     )
 
     # LoggingMiddleware must be added BEFORE CORSMiddleware so request_id is
@@ -34,16 +49,6 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    @app.on_event("startup")
-    async def startup():
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
-        app_logger.info(f"Startup complete — {settings.APP_NAME} v0.1.0 [{settings.APP_ENV}]")
-
-    @app.on_event("shutdown")
-    async def shutdown():
-        app_logger.info("Shutdown — bye")
 
     prefix = "/api/v1"
 
@@ -60,6 +65,7 @@ def create_app() -> FastAPI:
     app.include_router(entries.router, prefix=prefix)
     app.include_router(pnl.router, prefix=prefix)
     app.include_router(fraud.router, prefix=prefix)
+    app.include_router(dashboard.router, prefix=prefix)
 
     app_logger.info(f"Routes registered under {prefix}")
 

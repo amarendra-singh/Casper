@@ -26,6 +26,130 @@ const fmtLParts = n => [`₹${((n ?? 0) / 100000).toFixed(1)}`, 'L']
 const fmtK   = n => (n ?? 0) >= 100000 ? fmtL(n) : `₹${Math.round((n ?? 0) / 1000)}k`
 const pct    = (a, b) => b > 0 ? ((a / b) * 100).toFixed(1) + '%' : '—'
 
+// ── Settlement reconciliation — real data from /dashboard/reconciliation ─────
+function SettlementRecon({ recon }) {
+  if (!recon?.summary || (recon.summary.bank_settlement <= 0 && recon.summary.underpaid_skus <= 0)) return null
+  const sm = recon.summary
+  return (
+    <section className="recon">
+      <div className="sec-head">
+        <div>
+          <h2>Settlement reconciliation <span className="ct">cash &amp; leakage</span></h2>
+          <div className="sub">What&apos;s settled, what&apos;s pending, and where the platform under-paid vs your expected settlement.</div>
+        </div>
+      </div>
+      <div className="rc-top st-gap">
+        <div className="rc-kpi">
+          <span className="k">Settled</span>
+          <span className="v">{fmtL(sm.settled)}</span>
+          <span className="s">{sm.settled_pct != null ? `${sm.settled_pct}% of ${fmtL(sm.bank_settlement)}` : '—'}</span>
+        </div>
+        <div className="rc-kpi">
+          <span className="k">Pending</span>
+          <span className="v amber">{fmtL(Math.max(sm.pending, 0))}</span>
+          <span className="s">awaiting platform payout</span>
+        </div>
+        <div className="rc-kpi">
+          <span className="k">Fee load</span>
+          <span className="v">{sm.fee_load_pct != null ? `${sm.fee_load_pct}%` : '—'}</span>
+          <span className="s">{fmtL(sm.total_fees)} of gross</span>
+        </div>
+        <div className="rc-kpi flag">
+          <span className="k">Recoverable</span>
+          <span className="v neg">{fmtL(sm.recoverable)}</span>
+          <span className="s">{sm.underpaid_skus} SKUs under-settled</span>
+        </div>
+      </div>
+      <div className="rc-grid">
+        <div className="rc-platforms">
+          {(recon.platforms ?? []).map(p => (
+            <div key={p.platform} className="rc-prow">
+              <span className="rc-pname">
+                <PlatMk name={p.platform} size={22} /> {p.platform}
+                {p.fee_flag && <span className="rc-feeflag">⚠ {p.fee_load_pct}% fees</span>}
+              </span>
+              <div className="rc-bar"><i style={{ width: `${p.settled_pct ?? 0}%` }} /></div>
+              <span className="rc-pval">{p.settled_pct != null ? `${p.settled_pct}%` : '—'}</span>
+            </div>
+          ))}
+        </div>
+        <div className="rc-watch">
+          <div className="rc-whd">Top under-settled SKUs <span>vs expected</span></div>
+          {(recon.underpaid ?? []).length === 0 && <div className="si-empty">No under-settled SKUs — platforms paid in full. ✓</div>}
+          {(recon.underpaid ?? []).map(u => (
+            <div key={u.sku + u.platform} className="rc-wrow">
+              <span className="rc-wsku" title={`${u.sku} · ${u.platform}`}>{u.sku}</span>
+              <span className="rc-wpu">{u.actual_per_unit} / {u.expected_per_unit}</span>
+              <span className="rc-wgap">−₹{fmt(Math.abs(Math.round(u.gap_total)))}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ── Fraud action pipeline — real data from /dashboard/action-pipeline ────────
+function FraudPipeline({ pipeline }) {
+  if (!pipeline?.summary?.total_actors) return null
+  const sm = pipeline.summary
+  const actCls = a => a === 'BLOCK' ? 'block' : a === 'DISPUTE' ? 'dispute' : 'watch'
+
+  const exportBlocklist = () => {
+    const head = 'actor_key,state,reason,score,orders\n'
+    const body = (pipeline.blocklist ?? []).map(b =>
+      `${b.actor_key},${b.state ?? ''},${b.reason},${b.score},${b.orders}`).join('\n')
+    const blob = new Blob([head + body], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url; link.download = `blocklist_${new Date().toISOString().slice(0, 10)}.csv`
+    link.click(); URL.revokeObjectURL(url)
+  }
+
+  return (
+    <section className="pipe">
+      <div className="sec-head">
+        <div>
+          <h2>Fraud action pipeline <span className="ct">{sm.total_actors} actors</span></h2>
+          <div className="sub">Prioritised by recoverable impact. Block repeat refusers, dispute fraud-signal returns.</div>
+        </div>
+        {sm.block > 0 && (
+          <button className="pipe-export" onClick={exportBlocklist}>
+            ↓ Export blocklist ({sm.block})
+          </button>
+        )}
+      </div>
+
+      <div className="pipe-stats st-gap">
+        <div className="pp-stat block"><span className="n">{sm.block}</span><span className="k">Block</span></div>
+        <div className="pp-stat dispute"><span className="n">{sm.dispute}</span><span className="k">Dispute</span></div>
+        <div className="pp-stat watch"><span className="n">{sm.watch}</span><span className="k">Watch</span></div>
+        <div className="pp-stat"><span className="n">{sm.repeat_offenders}</span><span className="k">Repeat refusers</span></div>
+        <div className="pp-stat recover"><span className="n">{fmtL(sm.est_recovery)}</span><span className="k">Est. recoverable</span></div>
+      </div>
+
+      <div className="pipe-queue st-gap-sm">
+        <div className="pq-row pq-hd">
+          <span>Action</span><span>Actor</span><span>Pattern</span><span>Orders · returns</span><span>Score</span><span>Recommended claim</span>
+        </div>
+        {(pipeline.queue ?? []).slice(0, 8).map(q => (
+          <div key={q.actor_key} className="pq-row">
+            <span className={`pq-act ${actCls(q.action)}`}>{q.action}</span>
+            <span className="pq-actor">
+              {q.actor_key?.slice(0, 10)}…
+              {q.repeat_offender && <i className="pq-repeat" title="Repeat refuser">↻</i>}
+            </span>
+            <span className="pq-pat">{q.reason}{q.state ? ` · ${q.state}` : ''}</span>
+            <span className="pq-num">{fmt(q.orders)} · {fmt(q.returns)}{q.return_pct != null ? ` (${q.return_pct}%)` : ''}</span>
+            <span className={`pq-score s${q.score >= 85 ? '3' : q.score >= 50 ? '2' : '1'}`}>{q.score}</span>
+            <span className="pq-claim" title={q.template}>{q.template}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 // Static AI insights
 // titleChip: { text, cls } renders an inline delta-chip INSIDE the title (matches design)
 const INSIGHTS = [
@@ -113,6 +237,9 @@ export default function Dashboard() {
   const [actors,    setActors]    = useState([])
   const [insights,  setInsights]  = useState([])
   const [metrics,   setMetrics]   = useState([])
+  const [skuIntel,  setSkuIntel]  = useState(null)
+  const [recon,     setRecon]     = useState(null)
+  const [pipeline,  setPipeline]  = useState(null)
   const [loading,   setLoading]   = useState(true)
   const [selChan,   setSelChan]   = useState('all')
   const [activeKpi, setActiveKpi] = useState(2)  // margin active by default
@@ -126,9 +253,13 @@ export default function Dashboard() {
       api.get('/fraud/actors').then(r => r.data?.actors ?? []).catch(() => []),
       api.get('/dashboard/insights').then(r => r.data?.insights ?? []).catch(() => []),
       api.get('/dashboard/metrics').then(r => r.data?.metrics ?? []).catch(() => []),
+      api.get('/dashboard/sku-intelligence').then(r => r.data ?? null).catch(() => null),
+      api.get('/dashboard/reconciliation').then(r => r.data ?? null).catch(() => null),
+      api.get('/dashboard/action-pipeline').then(r => r.data ?? null).catch(() => null),
     ])
-      .then(([d, s, a, ins, met]) => {
-        setDash(d); setSkus(s ?? []); setActors(a); setInsights(ins); setMetrics(met)
+      .then(([d, s, a, ins, met, intel, rec, pipe]) => {
+        setDash(d); setSkus(s ?? []); setActors(a); setInsights(ins); setMetrics(met); setSkuIntel(intel)
+        setRecon(rec); setPipeline(pipe)
       })
       .finally(() => setLoading(false))
   }, [])
@@ -150,6 +281,38 @@ export default function Dashboard() {
   const netUnits   = platforms.reduce((s, p) => s + (p.net_units   ?? 0), 0)
   const marginPct  = totalGross > 0 ? (totalEarn / totalGross) * 100 : 0
   const skuCount   = skus.length
+
+  // ── SKU Intelligence rows (real data from /dashboard/sku-intelligence) ──────
+  const SKU_STATUS = {
+    profit:  { label: 'Performing',  cls: 'badge-green' },
+    thin:    { label: 'Thin margin', cls: 'badge-amber' },
+    loss:    { label: 'Below cost',  cls: 'badge-red'   },
+    no_cost: { label: 'No data',     cls: 'badge-muted' },
+  }
+  const SKU_CHIPS = ['sku-chip-teal','sku-chip-blue','sku-chip-purple','sku-chip-orange','sku-chip-clay','sku-chip-ink']
+  const fmtRev = (n) => n >= 100000 ? `₹${(n/100000).toFixed(1)}L`
+                     : n >= 1000   ? `₹${(n/1000).toFixed(1)}K`
+                     : `₹${Math.round(n || 0)}`
+  const skuRows = (skuIntel?.all_skus ?? []).slice(0, 7).map(r => {
+    const stat = SKU_STATUS[r.status] || SKU_STATUS.no_cost
+    const segs = String(r.sku || '').split('-').filter(Boolean)
+    const code = (segs[segs.length - 1] || r.sku || '').slice(0, 3).toUpperCase()
+    const idx = (code.charCodeAt(0) + code.charCodeAt(code.length - 1)) % SKU_CHIPS.length
+    const ret = Math.round((r.return_rate ?? 0) * 10) / 10
+    return {
+      code, codeCls: SKU_CHIPS[idx],
+      name: r.sku, sub: `${r.sku} · Jewellery`,
+      co: 'Shringar', coCls: 'co-nova',
+      plats: (r.platforms || []).map(p => String(p).toLowerCase()),
+      price: '—', priceOn: '',
+      units: r.net_units,
+      rev: fmtRev(r.payout),
+      rto: ret, rtoBar: Math.min(100, ret * 2),
+      ret, margin: r.margin_pct ?? 0,
+      marginCls: (r.margin_pct ?? 0) > 0 ? 'mg-green' : '',
+      status: stat.label, statusCls: stat.cls,
+    }
+  })
 
   // monthly → chart rows
   const months   = dash?.monthly ? [...new Set(dash.monthly.map(m => m.month))].sort() : []
@@ -802,15 +965,7 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {[
-                { code:'KTR', codeCls:'sku-chip-teal',   name:'Kurta · Block Print, XL',  sub:'KTR-024-XL · Apparel', co:'Nova',  coCls:'co-nova',  plats:['flipkart','amazon','meesho','snapdeal','shopdeck'], price:'₹649',   priceOn:'m',  units:482,   rev:'₹2.84L', rto:41, rtoBar:82, ret:9.1,  margin:14.2, marginCls:'',         status:'Returns spike', statusCls:'badge-red'    },
-                { code:'DNM', codeCls:'sku-chip-blue',   name:'Denim · Slim Fit, 32W',    sub:'DNM-SLM-32 · Apparel', co:'Nova',  coCls:'co-nova',  plats:['flipkart','amazon','meesho','snapdeal','shopdeck'], price:'₹1,199', priceOn:'F',  units:1204,  rev:'₹12.1L', rto:12, rtoBar:24, ret:3.4,  margin:26.8, marginCls:'mg-green', status:'Stock 3.4d',   statusCls:'badge-amber'  },
-                { code:'SNK', codeCls:'sku-chip-purple', name:'Sneaker · Court Mid, UK 9',sub:'SNK-CRT-9 · Footwear',  co:'Nova',  coCls:'co-nova',  plats:['flipkart','amazon','meesho','snapdeal'],            price:'₹2,499', priceOn:'a',  units:638,   rev:'₹11.9L', rto:7,  rtoBar:14, ret:4.9,  margin:31.4, marginCls:'mg-green', status:'Performing',   statusCls:'badge-green'  },
-                { code:'SRM', codeCls:'sku-chip-orange', name:'Serum · Vit-C 30ml',       sub:'BTY-SRM-30 · Beauty',   co:'Lumen', coCls:'co-lumen', plats:['flipkart','amazon','meesho','snapdeal'],            price:'₹789',   priceOn:'Sd', units:2118,  rev:'₹14.8L', rto:5,  rtoBar:10, ret:2.1,  margin:18.2, marginCls:'',         status:'Fee hike risk', statusCls:'badge-amber'  },
-                { code:'CKW', codeCls:'sku-chip-clay',   name:'Cookware · Pan 26cm',      sub:'HOM-PAN-26 · Home',     co:'Kanvas',coCls:'co-kanvas',plats:['flipkart','amazon','meesho','snapdeal','shopdeck'], price:'₹1,499', priceOn:'F',  units:874,   rev:'₹8.9L',  rto:9,  rtoBar:18, ret:3.0,  margin:22.4, marginCls:'',         status:'Steady',       statusCls:'badge-muted'  },
-                { code:'SCR', codeCls:'sku-chip-ink',    name:'Scarf · Cotton Linen',     sub:'ACC-SCR-001 · Accessories',co:'Nova', coCls:'co-nova',  plats:['flipkart','amazon','meesho','snapdeal'],             price:'₹349',   priceOn:'m',  units:1612,  rev:'₹4.2L',  rto:32, rtoBar:64, ret:6.8,  margin:9.4,  marginCls:'',         status:'High RTO',     statusCls:'badge-red'    },
-                { code:'WTC', codeCls:'sku-chip-teal',   name:'Watch · Minimal Black',    sub:'ACC-WTC-BLK · Accessories',co:'Kanvas',coCls:'co-kanvas',plats:['flipkart','amazon','meesho','snapdeal','shopdeck'], price:'₹1,899', priceOn:'Sd', units:421,   rev:'₹7.6L',  rto:7,  rtoBar:14, ret:3.2,  margin:34.1, marginCls:'mg-green', status:'Performing',   statusCls:'badge-green'  },
-              ].map(s => (
+              {skuRows.map(s => (
                 <tr key={s.code} className="si-row">
                   <td className="si-td">
                     <div className="si-sku-cell">
@@ -866,15 +1021,21 @@ export default function Dashboard() {
           </table>
           {/* Pagination footer */}
           <div className="si-pagination">
-            <span className="si-pg-count">Showing 7 of 2,184 SKUs</span>
+            <span className="si-pg-count">Showing {skuRows.length} of {skuIntel?.summary?.total_skus ?? 0} SKUs</span>
             <div className="si-pg-nav">
               <button className="si-pg-btn" disabled>‹</button>
-              <span className="si-pg-info">1 / 312</span>
+              <span className="si-pg-info">1 / {Math.max(1, Math.ceil((skuIntel?.summary?.total_skus ?? 0) / 7))}</span>
               <button className="si-pg-btn">›</button>
             </div>
           </div>
         </div>
       </section>
+
+      {/* ── Settlement reconciliation (real /dashboard/reconciliation) ── */}
+      <SettlementRecon recon={recon} />
+
+      {/* ── Fraud action pipeline (real /dashboard/action-pipeline) ───── */}
+      <FraudPipeline pipeline={pipeline} />
 
       {/* ── Reports drill-down ──────────────────────────────────────── */}
       <section className="reports-section">

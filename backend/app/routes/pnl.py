@@ -17,6 +17,10 @@ from sqlalchemy import select, func
 UPLOADS_DIR = Path(__file__).parent.parent.parent / "uploads" / "pnl"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
+# Max accepted upload size — guards against memory-exhaustion DoS via huge files.
+# Real platform P&L exports are well under 25 MB.
+MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_any, require_admin_or_above
 from app.core.logging_config import pnl_logger, app_logger
@@ -80,6 +84,13 @@ async def upload_pnl(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Uploaded file is empty.",
+        )
+
+    if len(file_bytes) > MAX_UPLOAD_BYTES:
+        pnl_logger.warning(f"Upload rejected — too large: {len(file_bytes)} bytes ({file.filename})")
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File exceeds the {MAX_UPLOAD_BYTES // (1024 * 1024)} MB limit.",
         )
 
     pnl_logger.info(f"File read — size={len(file_bytes)} bytes")

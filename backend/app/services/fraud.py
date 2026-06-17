@@ -1031,6 +1031,37 @@ async def compute_sku_risk_scores(session: AsyncSession, platform_id: int) -> in
         delete(SkuRiskScore).where(SkuRiskScore.platform_id == platform_id)
     )
 
+    # Settlement-gap signal (C2): how much the platform UNDERPAID vs Casper-expected
+    # BS, as a fraction, per SKU. Sourced from the latest P&L report's per-SKU
+    # variance_bs (= actual - expected; negative = underpaid). Underpayment-only;
+    # matched to fraud SKUs by sku_pricing_id. Unmatched SKUs stay 0.0.
+    from app.models.pnl import PnlReport, PnlSkuRow
+    settlement_gap: dict[int, float] = {}
+    latest_report_id = (
+        await session.execute(
+            select(PnlReport.id)
+            .where(PnlReport.platform_id == platform_id)
+            .order_by(PnlReport.period_end.desc(), PnlReport.uploaded_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if latest_report_id is not None:
+        gap_rows = (
+            await session.execute(
+                select(
+                    PnlSkuRow.sku_pricing_id,
+                    PnlSkuRow.variance_bs,
+                    PnlSkuRow.casper_expected_bs,
+                ).where(PnlSkuRow.report_id == latest_report_id)
+            )
+        ).all()
+        for spid, var_bs, exp_bs in gap_rows:
+            if spid is None or var_bs is None or not exp_bs:
+                continue
+            gap = min(1.0, abs(var_bs) / abs(exp_bs)) if var_bs < 0 else 0.0
+            if gap > settlement_gap.get(spid, 0.0):
+                settlement_gap[spid] = gap
+
     # Insert fresh scores
     now = datetime.utcnow()
     for s in stats:
@@ -1072,7 +1103,7 @@ async def compute_sku_risk_scores(session: AsyncSession, platform_id: int) -> in
                 z_score=z,
                 velocity_fraud_pct=s["_velocity_fraud_pct"],
                 cod_abuse=s["cod_abuse_flag"],
-                settlement_gap_pct=0.0,    # TODO: wire in from PnlSkuRow.variance_bs (15/100 points currently unused)
+                settlement_gap_pct=settlement_gap.get(s["sku_pricing_id"], 0.0),
                 fee_overcharge_pct=s["_fee_overcharge_pct"],
             ),
         ))

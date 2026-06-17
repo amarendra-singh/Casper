@@ -174,7 +174,7 @@ function compute(row, miscDef, profDef, platforms) {
     crAmt = parseFloat(row.crAmt) || 0
     crPct = crCharge > 0 ? (crAmt / crCharge) * 100 : 0
   } else {
-    crPct = row.crPct !== '' ? parseFloat(row.crPct) : 10
+    crPct = row.crPct !== '' ? parseFloat(row.crPct) : 20
     crAmt = crCharge * crPct / 100
   }
 
@@ -204,7 +204,9 @@ function compute(row, miscDef, profDef, platforms) {
   }
   const profAmtGst = beGst * profPct / 100
 
-  const bsNoGst = +((be + profAmt).toFixed(2))
+  // Target Pre-GST is rounded to a whole rupee (logic.md §3 worked example);
+  // GST is then computed on that integer base.
+  const bsNoGst = Math.round(be + profAmt)
   const gstAmt  = +((bsNoGst * gstRate / 100).toFixed(2))
   const finalBS = +((bsNoGst + gstAmt).toFixed(2))
 
@@ -261,7 +263,7 @@ function computePlatform(row, pl, base, miscDef) {
   const tierAmt = tier?.fee_pct != null
     ? baseAfterGst * tier.fee_pct / 100
     : (tier?.fee || 0)
-  const bs      = baseAfterGst + tierAmt
+  const bs      = +((baseAfterGst + tierAmt).toFixed(2))
 
   return {
     adPct:   +adPct.toFixed(2),
