@@ -17,6 +17,14 @@ const PLAT_CFG = {
 const cfg = n => PLAT_CFG[n?.toLowerCase()] ?? PLAT_CFG.default
 // Ordered platform list (F/a/m/S/Sd — matches design)
 const PLAT_KEYS = ['flipkart', 'amazon', 'meesho', 'snapdeal', 'shopdeck']
+// Order-funnel bar colour per stage (real /dashboard/operations labels)
+const FUNNEL_CLS = {
+  'Dispatched': 'bar-gray',
+  'RTO (logistics)': 'bar-red',
+  'Customer returns': 'bar-amber',
+  'Cancelled': 'bar-black',
+  'Net delivered': 'bar-green',
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 const fmt    = n => (n ?? 0).toLocaleString('en-IN')
@@ -240,6 +248,7 @@ export default function Dashboard() {
   const [skuIntel,  setSkuIntel]  = useState(null)
   const [recon,     setRecon]     = useState(null)
   const [pipeline,  setPipeline]  = useState(null)
+  const [ops,       setOps]       = useState(null)
   const [loading,   setLoading]   = useState(true)
   const [selChan,   setSelChan]   = useState('all')
   const [activeKpi, setActiveKpi] = useState(2)  // margin active by default
@@ -256,10 +265,11 @@ export default function Dashboard() {
       api.get('/dashboard/sku-intelligence').then(r => r.data ?? null).catch(() => null),
       api.get('/dashboard/reconciliation').then(r => r.data ?? null).catch(() => null),
       api.get('/dashboard/action-pipeline').then(r => r.data ?? null).catch(() => null),
+      api.get('/dashboard/operations').then(r => r.data ?? null).catch(() => null),
     ])
-      .then(([d, s, a, ins, met, intel, rec, pipe]) => {
+      .then(([d, s, a, ins, met, intel, rec, pipe, opsData]) => {
         setDash(d); setSkus(s ?? []); setActors(a); setInsights(ins); setMetrics(met); setSkuIntel(intel)
-        setRecon(rec); setPipeline(pipe)
+        setRecon(rec); setPipeline(pipe); setOps(opsData)
       })
       .finally(() => setLoading(false))
   }, [])
@@ -1065,35 +1075,30 @@ export default function Dashboard() {
             <div className="card rpt-card">
               <div className="rpt-tabs">
                 {[
-                  { label:'Orders', count:'8,632', active:true },
-                  { label:'RTO',    count:'1,018' },
-                  { label:'Returns',count:'412'   },
-                  { label:'Cancellations', count:'198' },
+                  { label:'Dispatched', count:ops?.summary?.dispatched, active:true },
+                  { label:'RTO',        count:ops?.summary?.rto_units },
+                  { label:'Returns',    count:ops?.summary?.return_units },
+                  { label:'Net',        count:ops?.summary?.net_delivered },
                 ].map(t => (
                   <button key={t.label} className={`rpt-tab${t.active?' active':''}`}>
-                    {t.label} <span className="rpt-tab-ct">{t.count}</span>
+                    {t.label} <span className="rpt-tab-ct">{fmt(t.count ?? 0)}</span>
                   </button>
                 ))}
               </div>
               <div className="funnel-rows">
-                {[
-                  { label:'Orders placed',    val:8632, pct:100,  cls:'bar-gray'  },
-                  { label:'Confirmed',        val:8322, pct:96.4, cls:'bar-black' },
-                  { label:'Shipped',          val:8004, pct:92.7, cls:'bar-green' },
-                  { label:'Delivered',        val:6786, pct:78.6, cls:'bar-teal'  },
-                  { label:'RTO',              val:1018, pct:11.8, cls:'bar-red'   },
-                  { label:'Customer returns', val:412,  pct:4.8,  cls:'bar-amber' },
-                  { label:'Net delivered',    val:6374, pct:73.8, cls:'bar-pink'  },
-                ].map(r => (
-                  <div key={r.label} className="funnel-row">
-                    <span className="funnel-label">{r.label}</span>
-                    <div className="funnel-track">
-                      <div className={`funnel-bar ${r.cls}`} style={{ width:`${r.pct}%` }} />
+                {(ops?.funnel ?? []).map(r => {
+                  const cls = FUNNEL_CLS[r.label] ?? 'bar-gray'
+                  return (
+                    <div key={r.label} className="funnel-row">
+                      <span className="funnel-label">{r.label}</span>
+                      <div className="funnel-track">
+                        <div className={`funnel-bar ${cls}`} style={{ width:`${r.pct}%` }} />
+                      </div>
+                      <span className="funnel-val">{fmt(r.value)}</span>
+                      <span className="funnel-pct">{r.pct}%</span>
                     </div>
-                    <span className="funnel-val">{r.val.toLocaleString('en-IN')}</span>
-                    <span className="funnel-pct">{r.pct}%</span>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
 
@@ -1102,35 +1107,28 @@ export default function Dashboard() {
               <div className="fees-head">
                 <div>
                   <div className="fees-title">Fees &amp; charges breakdown</div>
-                  <div className="fees-sub">From GMV to bank settlement · last 30d</div>
+                  <div className="fees-sub">GMV → bank settlement · all platforms</div>
                 </div>
-                <div className="fees-tabs">
-                  {['All','Flipkart','Amazon','Meesho'].map((t,i) => (
-                    <button key={t} className={`fees-tab${i===0?' active':''}`}>{t}</button>
-                  ))}
-                </div>
+                <span className="cret-rate">{pct(ops?.summary?.settlement, ops?.summary?.gmv)}</span>
               </div>
               <div className="fees-rows">
-                {[
-                  { dot:'pos', label:'Gross sales (GMV)',     val:'₹52,14,820',  pct:100, cls:'bar-black' },
-                  { dot:'neg', label:'Commission',            val:'−₹12,51,560', pct:24,  cls:'bar-red'   },
-                  { dot:'neg', label:'Closing / fixed fee',   val:'−₹3,12,890',  pct:6,   cls:'bar-red'   },
-                  { dot:'neg', label:'Shipping & logistics',  val:'−₹6,25,780',  pct:12,  cls:'bar-red'   },
-                  { dot:'neg', label:'Storage (FBA / FBF)',   val:'−₹2,08,590',  pct:4,   cls:'bar-red'   },
-                  { dot:'neg', label:'RTO charges',           val:'−₹2,60,740',  pct:5,   cls:'bar-red'   },
-                  { dot:'neg', label:'Ads & promotion',       val:'−₹4,17,180',  pct:8,   cls:'bar-red'   },
-                  { dot:'neg', label:'GST & TCS',             val:'−₹1,56,440',  pct:3,   cls:'bar-red'   },
-                  { dot:'pos', label:'Net settlement',        val:'₹19,81,640',  pct:38,  cls:'bar-green', bold:true },
-                ].map(r => (
-                  <div key={r.label} className={`fees-row${r.bold?' fees-row-bold':''}`}>
-                    <span className={`fees-dot fees-dot-${r.dot}`} />
-                    <span className="fees-label">{r.label}</span>
-                    <div className="fees-track">
-                      <div className={`fees-bar ${r.cls}`} style={{ width:`${r.pct}%` }} />
+                {(ops?.fees ?? []).map(r => {
+                  const isNeg = r.kind === 'neg'
+                  const isSettle = r.kind === 'settle'
+                  const cls = isSettle ? 'bar-green' : isNeg ? 'bar-red' : 'bar-black'
+                  const dot = isNeg ? 'neg' : 'pos'
+                  const valTxt = `${isNeg ? '−' : ''}₹${fmt(Math.round(r.value))}`
+                  return (
+                    <div key={r.label} className={`fees-row${isSettle ? ' fees-row-bold' : ''}`}>
+                      <span className={`fees-dot fees-dot-${dot}`} />
+                      <span className="fees-label">{r.label}</span>
+                      <div className="fees-track">
+                        <div className={`fees-bar ${cls}`} style={{ width:`${Math.min(r.pct, 100)}%` }} />
+                      </div>
+                      <span className={`fees-val${isSettle ? ' fees-val-settle' : isNeg ? ' fees-val-neg' : ''}`}>{valTxt}</span>
                     </div>
-                    <span className={`fees-val${r.bold?' fees-val-settle':r.dot==='neg'?' fees-val-neg':''}`}>{r.val}</span>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
 
@@ -1139,50 +1137,44 @@ export default function Dashboard() {
           {/* ── Right column ── */}
           <div className="reports-right">
 
-            {/* RTO reasons donut */}
+            {/* Return reasons donut */}
             <div className="card rpt-card">
               <div className="rto-reasons-head">
                 <div>
-                  <div className="rto-r-title">RTO reasons</div>
-                  <div className="rto-r-sub">1,018 RTO events · 30d</div>
+                  <div className="rto-r-title">Return reasons</div>
+                  <div className="rto-r-sub">{fmt(ops?.summary?.return_units ?? 0)} return events · clustered</div>
                 </div>
-                <span className="rto-r-rate">11.8%</span>
+                <span className="rto-r-rate">{ops?.summary?.return_rate ?? 0}%</span>
               </div>
               <div className="rto-donut-wrap">
-                {/* SVG donut — r=35, C=219.91 */}
+                {/* SVG donut — r=35, C=219.91; segments computed from real clusters */}
                 <svg width="108" height="108" viewBox="0 0 108 108" style={{ flexShrink:0 }}>
                   <circle cx="54" cy="54" r="35" fill="none" stroke="#ECE6DA" strokeWidth="16"/>
                   <g transform="rotate(-90 54 54)">
-                    {/* Customer not available 38% = 83.57 */}
-                    <circle cx="54" cy="54" r="35" fill="none" stroke="#3B7CE8" strokeWidth="16"
-                      strokeDasharray="83.6 136.3" strokeDashoffset="0"/>
-                    {/* COD reject at door 24% = 52.78; offset=C-83.6=136.3 */}
-                    <circle cx="54" cy="54" r="35" fill="none" stroke="#F43397" strokeWidth="16"
-                      strokeDasharray="52.8 167.1" strokeDashoffset="136.3"/>
-                    {/* Address incomplete 16% = 35.19; offset=C-83.6-52.8=83.5 */}
-                    <circle cx="54" cy="54" r="35" fill="none" stroke="#FF9900" strokeWidth="16"
-                      strokeDasharray="35.2 184.7" strokeDashoffset="83.5"/>
-                    {/* Refused on delivery 12% = 26.39; offset=C-83.6-52.8-35.2=48.3 */}
-                    <circle cx="54" cy="54" r="35" fill="none" stroke="#C43BCC" strokeWidth="16"
-                      strokeDasharray="26.4 193.5" strokeDashoffset="48.3"/>
-                    {/* Other / unknown 10% = 21.99; offset=C-83.6-52.8-35.2-26.4=21.9 */}
-                    <circle cx="54" cy="54" r="35" fill="none" stroke="#A8A39A" strokeWidth="16"
-                      strokeDasharray="22.0 197.9" strokeDashoffset="21.9"/>
+                    {(() => {
+                      const C = 219.911
+                      let cum = 0
+                      return (ops?.return_reasons ?? []).map(s => {
+                        const dash = (s.pct / 100) * C
+                        const offset = ((C - cum) % C + C) % C
+                        cum += dash
+                        return (
+                          <circle key={s.reason} cx="54" cy="54" r="35" fill="none"
+                            stroke={s.color} strokeWidth="16"
+                            strokeDasharray={`${dash.toFixed(1)} ${(C - dash).toFixed(1)}`}
+                            strokeDashoffset={offset.toFixed(1)} />
+                        )
+                      })
+                    })()}
                   </g>
-                  <text x="54" y="49" textAnchor="middle" fontSize="13" fontWeight="700" fill="#1A1714" fontFamily="Geist,sans-serif">11.8%</text>
-                  <text x="54" y="62" textAnchor="middle" fontSize="8.5" fill="#A8A39A" fontFamily="Geist,sans-serif">RTO RATE</text>
+                  <text x="54" y="49" textAnchor="middle" fontSize="13" fontWeight="700" fill="#1A1714" fontFamily="Geist,sans-serif">{ops?.summary?.return_rate ?? 0}%</text>
+                  <text x="54" y="62" textAnchor="middle" fontSize="8.5" fill="#A8A39A" fontFamily="Geist,sans-serif">RETURN RATE</text>
                 </svg>
                 <div className="rto-legend">
-                  {[
-                    { color:'#3B7CE8', label:'Customer not available', count:387, pct:38 },
-                    { color:'#F43397', label:'COD reject at door',      count:244, pct:24 },
-                    { color:'#FF9900', label:'Address incomplete',       count:163, pct:16 },
-                    { color:'#C43BCC', label:'Refused on delivery',      count:122, pct:12 },
-                    { color:'#A8A39A', label:'Other / unknown',          count:102, pct:10 },
-                  ].map(l => (
-                    <div key={l.label} className="rto-leg-row">
+                  {(ops?.return_reasons ?? []).map(l => (
+                    <div key={l.reason} className="rto-leg-row">
                       <span className="rto-leg-dot" style={{ background:l.color }} />
-                      <span className="rto-leg-label">{l.label}</span>
+                      <span className="rto-leg-label">{l.reason}</span>
                       <span className="rto-leg-count">{l.count}</span>
                       <span className="rto-leg-pct">{l.pct}%</span>
                     </div>
@@ -1196,34 +1188,23 @@ export default function Dashboard() {
               <div className="cret-head">
                 <div>
                   <div className="cret-title">Customer returns by channel</div>
-                  <div className="cret-sub">412 returns · 30d</div>
+                  <div className="cret-sub">{fmt(ops?.summary?.return_units ?? 0)} customer returns · {fmt(ops?.summary?.rto_units ?? 0)} RTO</div>
                 </div>
-                <span className="cret-rate">4.8%</span>
+                <span className="cret-rate">{ops?.summary?.return_rate ?? 0}%</span>
               </div>
               <div className="cret-rows">
-                {[
-                  { mk:'flipkart', name:'Flipkart',  count:142, delta:-6,   flat:false, reasons:'Size · 41% · Quality · 22% · Wrong item · 14%' },
-                  { mk:'amazon',   name:'Amazon',    count:98,  delta:-2,   flat:false, reasons:'Quality · 38% · Damaged · 21% · Size · 18%'     },
-                  { mk:'meesho',   name:'Meesho',    count:114, delta:34,   flat:false, reasons:'Size · 62% · Quality · 18% · Color · 9%'        },
-                  { mk:'snapdeal', name:'Snapdeal',  count:42,  delta:null, flat:true,  reasons:'Quality · 34% · Damaged · 28%'                  },
-                  { mk:'shopdeck', name:'ShopDeck',  count:16,  delta:-12,  flat:false, reasons:'Color · 29% · Fit · 24%'                        },
-                ].map(r => {
-                  const c = cfg(r.mk)
+                {(ops?.returns_by_channel ?? []).map(r => {
+                  const c = cfg(r.platform)
                   return (
-                    <div key={r.mk} className="cret-row">
+                    <div key={r.platform} className="cret-row">
                       <span className="cret-av" style={{ background:c.color, color:c.textColor, fontStyle:c.italic?'italic':'normal' }}>{c.short}</span>
                       <div className="cret-info">
-                        <div className="cret-name">{r.name}</div>
-                        <div className="cret-reasons">{r.reasons}</div>
+                        <div className="cret-name">{r.platform}</div>
+                        <div className="cret-reasons">{fmt(r.returns)} customer returns · {fmt(r.rto)} RTO</div>
                       </div>
                       <div className="cret-stat">
-                        <span className="cret-count">{r.count}</span>
-                        {r.flat
-                          ? <span className="cret-flat">— flat</span>
-                          : <span className={`cret-delta ${r.delta > 0 ? 'cret-up' : 'cret-down'}`}>
-                              {r.delta > 0 ? '▲' : '▼'}{Math.abs(r.delta)}%
-                            </span>
-                        }
+                        <span className="cret-count">{fmt(r.total)}</span>
+                        <span className="cret-flat">total</span>
                       </div>
                     </div>
                   )

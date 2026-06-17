@@ -18,6 +18,7 @@ from app.models.platform import Platform
 from app.services.profitability import compute_sku_intelligence
 from app.services.reconciliation import compute_reconciliation
 from app.services.action_pipeline import compute_action_pipeline
+from app.services.operations import compute_operations
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -523,4 +524,19 @@ async def get_action_pipeline(
     - estimated recoverable ₹ + repeat-offender flags + claim templates
     """
     data = await compute_action_pipeline(db)
+    return {**data, "generated_at": datetime.now(timezone.utc).isoformat()}
+
+
+@router.get("/operations")
+async def get_operations(
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_any),
+):
+    """
+    Operations reports drill-down from real parsed P&L:
+    - order funnel (dispatched → RTO → returns → cancelled → net)
+    - fees waterfall (GMV → fee components + Other → bank settlement)
+    - top return-reason clusters + per-channel customer returns / RTO
+    """
+    data = await compute_operations(db)
     return {**data, "generated_at": datetime.now(timezone.utc).isoformat()}
