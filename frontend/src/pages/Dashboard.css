@@ -82,14 +82,19 @@ body:has(.pulse)::before {
 .pulse-subnav {
   display: flex; align-items: center;
   margin-top: -20px;
-  padding: 0 0;
+  padding: 6px 4px;
+  gap: 2px;
   border-bottom: 1px solid var(--rule);
-  background: transparent;
-  gap: 0;
-  position: sticky; top: 0; z-index: 10;
+  position: sticky; top: 0; z-index: 20;
   background: rgba(239,234,224,.92);
   backdrop-filter: blur(10px);
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+.pulse-subnav::-webkit-scrollbar { display: none; }
+/* Sticky-nav offset so scroll-to-section never hides a heading under the bar */
+#sec-overview, #sec-catalog, #sec-orders,
+#sec-returns, #sec-finance, #sec-insights { scroll-margin-top: 72px; }
 .sn-tab {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 8px 14px; font-size: 13.5px; font-weight: 500;
@@ -114,9 +119,10 @@ body:has(.pulse)::before {
   background: var(--pink-soft);
   color: var(--pink);
 }
-.sn-right { margin-left: auto; display: flex; align-items: center; }
+.sn-right { margin-left: auto; display: flex; align-items: center; flex-shrink: 0; }
+.sn-tab { flex-shrink: 0; }
 .sn-customize {
-  display: inline-flex; align-items: center; gap: 5px;
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
   padding: 8px 10px; font-size: 12px; font-weight: 500;
   color: var(--muted); background: transparent; border: none; cursor: pointer;
   border-radius: var(--r-sm); transition: background .15s;

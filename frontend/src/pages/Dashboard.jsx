@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { getSkus, getPnlDashboard } from '../api/client'
 import api from '../api/client'
@@ -17,6 +18,15 @@ const PLAT_CFG = {
 const cfg = n => PLAT_CFG[n?.toLowerCase()] ?? PLAT_CFG.default
 // Ordered platform list (F/a/m/S/Sd — matches design)
 const PLAT_KEYS = ['flipkart', 'amazon', 'meesho', 'snapdeal', 'shopdeck']
+// Subnav tabs → dashboard section ids (real in-page scroll navigation)
+const SUBNAV = [
+  { id: 'sec-overview', label: 'Overview' },
+  { id: 'sec-catalog',  label: 'Catalog' },
+  { id: 'sec-orders',   label: 'Orders' },
+  { id: 'sec-returns',  label: 'Returns & RTO' },
+  { id: 'sec-finance',  label: 'Finance' },
+  { id: 'sec-insights', label: 'Insights' },
+]
 // Order-funnel bar colour per stage (real /dashboard/operations labels)
 const FUNNEL_CLS = {
   'Dispatched': 'bar-gray',
@@ -33,6 +43,21 @@ const fmtL   = n => `₹${((n ?? 0) / 100000).toFixed(1)}L`
 const fmtLParts = n => [`₹${((n ?? 0) / 100000).toFixed(1)}`, 'L']
 const fmtK   = n => (n ?? 0) >= 100000 ? fmtL(n) : `₹${Math.round((n ?? 0) / 1000)}k`
 const pct    = (a, b) => b > 0 ? ((a / b) * 100).toFixed(1) + '%' : '—'
+
+// Download an array of objects as a CSV file
+function downloadCSV(filename, rows) {
+  if (!rows?.length) return
+  const cols = Object.keys(rows[0])
+  const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`
+  const body = rows.map(r => cols.map(c => esc(r[c])).join(',')).join('\n')
+  const blob = new Blob([cols.join(',') + '\n' + body], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${filename}_${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+}
 
 // ── Settlement reconciliation — real data from /dashboard/reconciliation ─────
 function SettlementRecon({ recon }) {
@@ -254,6 +279,33 @@ export default function Dashboard() {
   const [activeKpi, setActiveKpi] = useState(2)  // margin active by default
   const [viewMode,  setViewMode]  = useState('consolidated') // consolidated | per-company
   const [perfMetric,setPerfMetric]= useState('Revenue')
+  const [activeSec, setActiveSec] = useState('sec-overview')
+  const [skuFilter, setSkuFilter] = useState('All')
+  const [skuPage,   setSkuPage]   = useState(0)
+  const navigate = useNavigate()
+
+  // Smooth-scroll the subnav to a section (offset handled via CSS scroll-margin-top)
+  const goToSection = (id) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  // Scrollspy — highlight the subnav tab for whichever section is in view
+  useEffect(() => {
+    const els = SUBNAV.map(s => document.getElementById(s.id)).filter(Boolean)
+    if (!els.length) return
+    const obs = new IntersectionObserver(
+      entries => {
+        // Thin trigger band just below the nav — the section spanning it is "current".
+        // If several intersect, the one with the largest top is the most recently entered.
+        const visible = entries.filter(e => e.isIntersecting)
+          .sort((a, b) => b.boundingClientRect.top - a.boundingClientRect.top)
+        if (visible[0]) setActiveSec(visible[0].target.id)
+      },
+      { rootMargin: '-72px 0px -88% 0px', threshold: 0 }
+    )
+    els.forEach(el => obs.observe(el))
+    return () => obs.disconnect()
+  })
 
   useEffect(() => {
     Promise.all([
@@ -303,7 +355,19 @@ export default function Dashboard() {
   const fmtRev = (n) => n >= 100000 ? `₹${(n/100000).toFixed(1)}L`
                      : n >= 1000   ? `₹${(n/1000).toFixed(1)}K`
                      : `₹${Math.round(n || 0)}`
-  const skuRows = (skuIntel?.all_skus ?? []).slice(0, 7).map(r => {
+  // Filter + paginate the real SKU-intelligence rows
+  const SKU_PAGE = 7
+  const allSkuRows = skuIntel?.all_skus ?? []
+  const SKU_FILTERS = {
+    'All':         () => true,
+    'Heroes':      r => r.status === 'profit',
+    'Below cost':  r => r.status === 'loss',
+    'High return': r => (r.return_rate ?? 0) > 30,
+  }
+  const filteredSkus = allSkuRows.filter(SKU_FILTERS[skuFilter] || SKU_FILTERS.All)
+  const skuPageCount = Math.max(1, Math.ceil(filteredSkus.length / SKU_PAGE))
+  const skuPageSafe  = Math.min(skuPage, skuPageCount - 1)
+  const skuRows = filteredSkus.slice(skuPageSafe * SKU_PAGE, skuPageSafe * SKU_PAGE + SKU_PAGE).map(r => {
     const stat = SKU_STATUS[r.status] || SKU_STATUS.no_cost
     const segs = String(r.sku || '').split('-').filter(Boolean)
     const code = (segs[segs.length - 1] || r.sku || '').slice(0, 3).toUpperCase()
@@ -421,36 +485,38 @@ export default function Dashboard() {
     <div className="pulse">
 
       {/* ── Subnav — Overview/Catalog/Orders/Returns/Finance/Insights ─── */}
-      <nav className="pulse-subnav">
-        {[
-          { label:'Overview',      count:null,   active:true  },
-          { label:'Catalog',       count:skuCount             },
-          { label:'Orders',        count:fmt(netUnits)        },
-          { label:'Returns & RTO', count:null                 },
-          { label:'Finance',       count:null                 },
-          { label:'Insights',      count:INSIGHTS.length      },
-        ].map(tab => (
-          <button key={tab.label} className={`sn-tab${tab.active?' active':''}`}>
-            {tab.label === 'Overview' && (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight:4 }}>
-                <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-                <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-              </svg>
-            )}
-            {tab.label}
-            {tab.count != null && <span className="ct">{tab.count}</span>}
-          </button>
-        ))}
+      <nav className="pulse-subnav" aria-label="Dashboard sections">
+        {SUBNAV.map(tab => {
+          const count = tab.id === 'sec-catalog' ? skuCount
+            : tab.id === 'sec-orders' ? fmt(netUnits)
+            : tab.id === 'sec-insights' ? INSIGHTS.length
+            : null
+          const active = activeSec === tab.id
+          return (
+            <button key={tab.id} className={`sn-tab${active ? ' active' : ''}`}
+              aria-current={active ? 'true' : undefined}
+              onClick={() => goToSection(tab.id)}>
+              {tab.id === 'sec-overview' && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight:4 }}>
+                  <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                  <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+                </svg>
+              )}
+              {tab.label}
+              {count != null && <span className="ct">{count}</span>}
+            </button>
+          )
+        })}
         <div className="sn-right">
-          <button className="sn-customize">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M4.93 19.07l1.41-1.41M19.07 19.07l-1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
-            Customize
+          <button className="sn-customize" onClick={() => navigate('/skus')}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Manage SKUs
           </button>
         </div>
       </nav>
 
       {/* ── Page head ────────────────────────────────────────────────── */}
-      <section className="page-head">
+      <section className="page-head" id="sec-overview">
         <div className="title-block">
           <h1 className="pulse-h1">Multichannel <em>pulse</em></h1>
           <div className="pulse-meta">
@@ -482,7 +548,13 @@ export default function Dashboard() {
             Last 30 days
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
-          <button className="p-pill dark">
+          <button className="p-pill dark" onClick={() => downloadCSV('casper_sku_intelligence',
+            allSkuRows.map(r => ({
+              sku: r.sku, platforms: (r.platforms || []).join(' '),
+              net_units: r.net_units, payout: r.payout, cost: r.cost,
+              net_profit: r.net_profit, margin_pct: r.margin_pct,
+              return_rate: r.return_rate, status: r.status,
+            })))}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg>
             Export
           </button>
@@ -507,7 +579,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── AI Insights ───────────────────────────────────────────────── */}
-      <section className="insights">
+      <section className="insights" id="sec-insights">
         {insights.length === 0 ? (
           /* Loading skeleton — same layout, muted content */
           <>
@@ -938,23 +1010,20 @@ export default function Dashboard() {
       </section>
 
       {/* ── SKU intelligence ─────────────────────────────────────────── */}
-      <section>
+      <section id="sec-catalog">
         <div className="sku-int-head">
           <div className="sku-int-left">
             <span className="sku-int-title">SKU intelligence</span>
-            <span className="ct">2,184 tracked</span>
+            <span className="ct">{fmt(skuIntel?.summary?.total_skus ?? 0)} tracked</span>
           </div>
           <div className="sku-int-right">
-            <button className="p-pill">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
-              Filters · 2
-            </button>
             <div className="sku-int-tabs">
-              {['All','Top sellers','High RTO','Stock-out risk','Price drift'].map((t,i) => (
-                <button key={t} className={`sku-int-tab${i===0?' active':''}`}>{t}</button>
+              {['All','Heroes','Below cost','High return'].map(t => (
+                <button key={t} className={`sku-int-tab${skuFilter===t?' active':''}`}
+                  onClick={() => { setSkuFilter(t); setSkuPage(0) }}>{t}</button>
               ))}
             </div>
-            <button className="sku-add-btn">+ Add SKU</button>
+            <button className="sku-add-btn" onClick={() => navigate('/skus')}>+ Add SKU</button>
           </div>
         </div>
 
@@ -981,7 +1050,7 @@ export default function Dashboard() {
                     <div className="si-sku-cell">
                       <span className={`si-code-chip ${s.codeCls}`}>{s.code}</span>
                       <div>
-                        <div className="si-name">{s.name}</div>
+                        <div className="si-name" title={s.name}>{s.name}</div>
                         <div className="si-sub-row">
                           {s.sub && <span className="si-sub">{s.sub}</span>}
                           {s.co && <span className={`si-co-tag ${s.coCls}`}>📦 {s.co}</span>}
@@ -1023,7 +1092,8 @@ export default function Dashboard() {
                     <span className={`si-status-badge ${s.statusCls}`}>● {s.status}</span>
                   </td>
                   <td className="si-td si-td-act">
-                    <button className="si-more-btn">···</button>
+                    <button className="si-more-btn" title="Open in SKU manager"
+                      onClick={() => navigate('/skus')}>···</button>
                   </td>
                 </tr>
               ))}
@@ -1031,37 +1101,40 @@ export default function Dashboard() {
           </table>
           {/* Pagination footer */}
           <div className="si-pagination">
-            <span className="si-pg-count">Showing {skuRows.length} of {skuIntel?.summary?.total_skus ?? 0} SKUs</span>
+            <span className="si-pg-count">Showing {skuRows.length} of {filteredSkus.length} SKUs{skuFilter !== 'All' ? ` · ${skuFilter}` : ''}</span>
             <div className="si-pg-nav">
-              <button className="si-pg-btn" disabled>‹</button>
-              <span className="si-pg-info">1 / {Math.max(1, Math.ceil((skuIntel?.summary?.total_skus ?? 0) / 7))}</span>
-              <button className="si-pg-btn">›</button>
+              <button className="si-pg-btn" disabled={skuPageSafe === 0}
+                onClick={() => setSkuPage(p => Math.max(0, p - 1))}>‹</button>
+              <span className="si-pg-info">{skuPageSafe + 1} / {skuPageCount}</span>
+              <button className="si-pg-btn" disabled={skuPageSafe >= skuPageCount - 1}
+                onClick={() => setSkuPage(p => Math.min(skuPageCount - 1, p + 1))}>›</button>
             </div>
           </div>
         </div>
       </section>
 
       {/* ── Settlement reconciliation (real /dashboard/reconciliation) ── */}
-      <SettlementRecon recon={recon} />
+      <div id="sec-finance"><SettlementRecon recon={recon} /></div>
 
       {/* ── Fraud action pipeline (real /dashboard/action-pipeline) ───── */}
-      <FraudPipeline pipeline={pipeline} />
+      <div id="sec-returns"><FraudPipeline pipeline={pipeline} /></div>
 
       {/* ── Reports drill-down ──────────────────────────────────────── */}
-      <section className="reports-section">
+      <section className="reports-section" id="sec-orders">
         <div className="sec-head" style={{ marginBottom:16 }}>
           <div>
             <h2>Reports <span className="ct">drill-down</span></h2>
             <div className="sub">Breakdowns for orders, RTO, fees and returns across all channels.</div>
           </div>
           <div style={{ display:'flex', gap:8 }}>
-            <button className="p-pill">
+            <button className="p-pill" onClick={() => downloadCSV('casper_reports', [
+              ...(ops?.funnel ?? []).map(f => ({ section: 'funnel', label: f.label, value: f.value, pct: f.pct })),
+              ...(ops?.fees ?? []).map(f => ({ section: 'fees', label: f.label, value: f.value, pct: f.pct })),
+              ...(ops?.return_reasons ?? []).map(r => ({ section: 'return_reason', label: r.reason, value: r.count, pct: r.pct })),
+              ...(ops?.returns_by_channel ?? []).map(c => ({ section: 'channel', label: c.platform, value: c.returns, pct: c.rto })),
+            ])}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               CSV
-            </button>
-            <button className="p-pill">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              Schedule
             </button>
           </div>
         </div>
@@ -1080,9 +1153,9 @@ export default function Dashboard() {
                   { label:'Returns',    count:ops?.summary?.return_units },
                   { label:'Net',        count:ops?.summary?.net_delivered },
                 ].map(t => (
-                  <button key={t.label} className={`rpt-tab${t.active?' active':''}`}>
+                  <div key={t.label} className={`rpt-tab${t.active?' active':''}`}>
                     {t.label} <span className="rpt-tab-ct">{fmt(t.count ?? 0)}</span>
-                  </button>
+                  </div>
                 ))}
               </div>
               <div className="funnel-rows">
