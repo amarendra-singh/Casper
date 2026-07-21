@@ -234,13 +234,6 @@ function PlatMk({ name, size = 34 }) {
   )
 }
 
-function DeltaChip({ val, invert }) {
-  if (val == null) return null
-  const up = val >= 0
-  const good = invert ? !up : up
-  return <span className={`delta-chip ${good ? 'up' : 'down'}`}>{up ? '▲' : '▼'} {Math.abs(val).toFixed(1)}%</span>
-}
-
 // ── Chart tooltip ─────────────────────────────────────────────────────────
 const WEEK_MON = { W1:'Mar',W2:'Mar',W3:'Apr',W4:'Apr',W5:'May',W6:'May',W7:'Jun',W8:'Jun',W9:'Jul',W10:'Jul',W11:'Aug',W12:'Aug' }
 function ChartTooltip({ active, payload, label }) {
