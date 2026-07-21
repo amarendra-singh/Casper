@@ -1,0 +1,125 @@
+/* Profit Calculator — compact, Pulse-styled unit-economics tool */
+.pcalc {
+  --pos: #1FA968;
+  --pos-soft: rgba(31, 169, 104, .10);
+  --neg: #E0435F;
+  --neg-soft: rgba(224, 67, 95, .10);
+  padding: 22px 28px 40px;
+  max-width: 1160px;
+  margin: 0 auto;
+  color: var(--ink, #1A1714);
+  font-family: 'Geist', system-ui, sans-serif;
+}
+
+.pcalc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.pcalc-title { font-size: 24px; font-weight: 700; letter-spacing: -.02em; margin: 0; }
+.pcalc-sub { margin: 4px 0 0; color: var(--muted, #6F6B62); font-size: 13.5px; max-width: 560px; line-height: 1.5; }
+.pcalc-head-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+/* tabs */
+.pcalc-tabs { display: flex; gap: 3px; padding: 4px; background: var(--surface-2, #F7F3EC); border: 1px solid var(--rule, #E4DFD5); border-radius: 10px; }
+.pcalc-tab { padding: 7px 16px; font-size: 13px; font-weight: 600; color: var(--muted, #6F6B62); background: transparent; border: none; border-radius: 7px; cursor: pointer; transition: background .15s, color .15s, box-shadow .15s; }
+.pcalc-tab:hover { color: var(--ink-2, #3A362F); }
+.pcalc-tab.active { color: var(--ink, #1A1714); background: var(--surface, #fff); box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,.08)); }
+
+.pcalc-reset { padding: 8px 15px; font-size: 13px; font-weight: 500; color: var(--ink-2, #3A362F); background: var(--surface, #fff); border: 1px solid var(--rule, #E4DFD5); border-radius: 8px; cursor: pointer; transition: background .15s, border-color .15s; }
+.pcalc-reset:hover { background: var(--surface-2, #F5F1E9); border-color: var(--muted-2, #B8B2A6); }
+
+/* ── Calculator layout: inputs (2-col packed) + summary rail ── */
+.pcalc-grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
+
+.pcalc-inputs { columns: 2; column-gap: 14px; }
+.pcalc-group {
+  break-inside: avoid; display: inline-block; width: 100%; margin-bottom: 14px;
+  background: var(--surface, #fff); border: 1px solid var(--rule, #E4DFD5);
+  border-radius: 13px; padding: 14px 16px;
+}
+.pcalc-group-title { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted, #6F6B62); margin: 0 0 11px; }
+.pcalc-fields { display: flex; flex-direction: column; gap: 11px; }
+.pcalc-field { display: flex; flex-direction: column; gap: 5px; }
+.pcalc-flabel { font-size: 12.5px; font-weight: 500; color: var(--ink-2, #3A362F); display: flex; flex-direction: column; gap: 1px; }
+.pcalc-fhint { font-size: 10.5px; font-weight: 400; color: var(--muted-2, #9A9488); }
+
+.pcalc-input-wrap { display: flex; align-items: center; background: var(--surface-2, #F7F3EC); border: 1px solid var(--rule, #E4DFD5); border-radius: 9px; transition: border-color .15s, background .15s; }
+.pcalc-input-wrap:focus-within { border-color: var(--pink, #F43397); background: #fff; }
+.pcalc-unit { padding: 0 9px; font-size: 13px; color: var(--muted, #6F6B62); border-right: 1px solid var(--rule, #E4DFD5); align-self: stretch; display: flex; align-items: center; }
+.pcalc-input { flex: 1; width: 100%; min-width: 0; border: none; background: transparent; outline: none; padding: 9px 11px; font-size: 14.5px; font-weight: 600; color: var(--ink, #1A1714); font-family: 'Geist Mono', monospace; }
+.pcalc-input::-webkit-outer-spin-button, .pcalc-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.pcalc-input[type=number] { -moz-appearance: textfield; }
+
+/* ₹/% bidirectional toggle inside the field */
+.pcalc-uxtoggle { display: flex; gap: 2px; padding: 3px; margin-right: 4px; background: rgba(0,0,0,.04); border-radius: 7px; flex-shrink: 0; }
+.pcalc-uxtoggle button { width: 22px; height: 22px; font-size: 12px; font-weight: 700; color: var(--muted, #6F6B62); background: transparent; border: none; border-radius: 5px; cursor: pointer; transition: background .12s, color .12s; }
+.pcalc-uxtoggle button.on { color: var(--ink, #1A1714); background: var(--surface, #fff); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+.pcalc-equiv { font-size: 10.5px; color: var(--muted-2, #9A9488); font-family: 'Geist Mono', monospace; padding-left: 2px; }
+
+/* channel segmented control */
+.pcalc-seg { display: flex; gap: 4px; padding: 4px; background: var(--surface-2, #F7F3EC); border-radius: 9px; border: 1px solid var(--rule, #E4DFD5); }
+.pcalc-seg-btn { flex: 1; padding: 8px 10px; font-size: 12.5px; font-weight: 600; color: var(--muted, #6F6B62); background: transparent; border: none; border-radius: 6px; cursor: pointer; transition: background .15s, color .15s, box-shadow .15s; }
+.pcalc-seg-btn:hover { color: var(--ink-2, #3A362F); }
+.pcalc-seg-btn.active { color: var(--ink, #1A1714); background: var(--surface, #fff); box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,.08)); }
+.pcalc-seg-note { margin: 9px 2px 0; font-size: 11px; line-height: 1.45; color: var(--muted-2, #9A9488); }
+
+/* ── Result cards (shared by rail + overview) ── */
+.pcalc-results { position: sticky; top: 16px; }
+.pcalc-result-card { background: var(--surface, #fff); border: 1px solid var(--rule, #E4DFD5); border-radius: 15px; padding: 18px; box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,.06)); }
+.pcalc-result-card + .pcalc-result-card { margin-top: 16px; }
+
+.pcalc-hero { display: flex; flex-direction: column; gap: 2px; padding: 15px 16px; border-radius: 12px; margin-bottom: 16px; }
+.pcalc-hero.pos { background: var(--pos-soft); }
+.pcalc-hero.neg { background: var(--neg-soft); }
+.pcalc-hero-label { font-size: 12px; font-weight: 600; color: var(--muted, #6F6B62); }
+.pcalc-hero-val { font-size: 32px; font-weight: 700; letter-spacing: -.02em; font-family: 'Geist Mono', monospace; }
+.pcalc-hero.pos .pcalc-hero-val { color: var(--pos); }
+.pcalc-hero.neg .pcalc-hero-val { color: var(--neg); }
+.pcalc-hero-sub { font-size: 12px; color: var(--ink-2, #3A362F); margin-top: 2px; }
+
+.pcalc-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pcalc-metrics-3 { grid-template-columns: repeat(3, 1fr); }
+.pcalc-metric { display: flex; flex-direction: column; gap: 3px; padding: 11px 13px; background: var(--surface-2, #F7F3EC); border-radius: 10px; }
+.pcalc-mlabel { font-size: 11px; color: var(--muted, #6F6B62); display: flex; flex-direction: column; }
+.pcalc-mlabel em { font-style: normal; font-size: 9.5px; color: var(--muted-2, #9A9488); }
+.pcalc-mval { font-size: 16px; font-weight: 700; font-family: 'Geist Mono', monospace; font-variant-numeric: tabular-nums; }
+.pcalc-metric-pos .pcalc-mval { color: var(--pos); }
+.pcalc-metric-neg .pcalc-mval { color: var(--neg); }
+.pcalc-metric-muted .pcalc-mval { color: var(--muted, #6F6B62); font-weight: 600; font-size: 14px; }
+
+.pcalc-note { font-size: 11px; line-height: 1.5; color: var(--muted-2, #9A9488); margin: 14px 0 0; }
+
+/* waterfall */
+.pcalc-waterfall { display: flex; flex-direction: column; gap: 1px; }
+.pcalc-wrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 2px; font-size: 13px; }
+.pcalc-wlabel { color: var(--ink-2, #3A362F); }
+.pcalc-wval { font-family: 'Geist Mono', monospace; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pcalc-wrow-neg .pcalc-wval { color: var(--neg); }
+.pcalc-wrow-sub { border-top: 1px solid var(--rule, #E4DFD5); margin-top: 2px; padding-top: 9px; }
+.pcalc-wrow-sub .pcalc-wlabel, .pcalc-wrow-sub .pcalc-wval { font-weight: 700; }
+.pcalc-wrow-pos, .pcalc-wrow-neg-bold { border-top: 2px solid var(--ink, #1A1714); margin-top: 2px; padding-top: 9px; }
+.pcalc-wrow-pos .pcalc-wlabel, .pcalc-wrow-pos .pcalc-wval, .pcalc-wrow-neg-bold .pcalc-wlabel, .pcalc-wrow-neg-bold .pcalc-wval { font-weight: 700; font-size: 15px; }
+.pcalc-wrow-pos .pcalc-wval { color: var(--pos); }
+.pcalc-wrow-neg-bold .pcalc-wval { color: var(--neg); }
+
+/* failure drag block */
+.pcalc-drag { background: var(--neg-soft); border-radius: 12px; padding: 11px 13px; margin-bottom: 16px; }
+.pcalc-drag-head { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--neg); margin-bottom: 3px; display: flex; align-items: baseline; gap: 6px; }
+.pcalc-drag-head span { font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--muted-2, #9A9488); font-size: 10px; }
+.pcalc-drag .pcalc-wrow { padding: 5px 2px; font-size: 12.5px; }
+
+/* ── Overview tab ── */
+.pcalc-ov { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+.pcalc-ov-col { display: flex; flex-direction: column; gap: 16px; }
+.pcalc-ov-h { font-size: 13px; font-weight: 700; margin: 0 0 12px; display: flex; align-items: baseline; gap: 8px; }
+.pcalc-ov-h span { font-size: 11px; font-weight: 500; color: var(--muted-2, #9A9488); }
+
+@media (max-width: 940px) {
+  .pcalc { padding: 18px 14px 40px; }
+  .pcalc-grid { grid-template-columns: 1fr; }
+  .pcalc-results { position: static; }
+  .pcalc-inputs { columns: 2; }
+  .pcalc-ov { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .pcalc-head { flex-direction: column; }
+  .pcalc-inputs { columns: 1; }
+  .pcalc-metrics-3 { grid-template-columns: 1fr 1fr; }
+}

@@ -19,6 +19,7 @@ const IcChevron = () => <svg viewBox="0 0 16 16" fill="none" stroke="currentColo
 const IcUsers   = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M13 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM3 17a7 7 0 0 1 14 0"/></svg>
 const IcTag     = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h6l8 8a2 2 0 0 1 0 2.83l-3.17 3.17a2 2 0 0 1-2.83 0L3 9V3z"/><circle cx="7" cy="7" r="1" fill="currentColor" stroke="none"/></svg>
 const IcPnl     = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="16" height="14" rx="2"/><path d="M6 8h5M6 11h8M6 14h4"/><path d="M14 6l1.5 1.5L14 9"/></svg>
+const IcCalc    = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="12" height="16" rx="2"/><path d="M7 6h6M7 10h.01M10 10h.01M13 10h.01M7 13h.01M10 13h.01M13 13v3"/></svg>
 
 // ── Nav data ──────────────────────────────────────────────────────────────
 const RAIL_NAV = [
@@ -43,6 +44,7 @@ const WORKSPACE = [
     { to: '/pricing',        label: 'New Pricing',   end: true },
     { to: '/pricing/intro',  label: 'Overview' },
   ]},
+  { to: '/calculator', label: 'Profit Calculator', Icon: IcCalc, end: true },
   { to: '/settings', label: 'Settings',  Icon: IcSettings, subItems: [
     { to: '/settings',       label: 'Platforms & Tiers', end: true },
     { to: '/settings/intro', label: 'Overview' },
