@@ -1,0 +1,4 @@
+# Cloudflare Pages SPA fallback — serve index.html for client-side routes.
+# Real static assets (JS/CSS/geojson) are served first; only unmatched paths
+# fall through to the app so refreshing /calculator, /skus, etc. works.
+/*    /index.html   200

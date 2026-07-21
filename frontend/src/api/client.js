@@ -1,7 +1,12 @@
 import axios from 'axios'
 
+// In dev this stays '/api/v1' (Vite proxies it to the backend). In production
+// (e.g. Cloudflare Pages, which is static-only) set VITE_API_BASE to the
+// deployed backend's absolute URL, e.g. https://api.example.com/api/v1
+export const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
+
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' }
 })
 
@@ -22,7 +27,7 @@ api.interceptors.response.use(
       const refresh = localStorage.getItem('refresh_token')
       if (refresh) {
         try {
-          const { data } = await axios.post('/api/v1/auth/refresh', { refresh_token: refresh })
+          const { data } = await axios.post(`${API_BASE}/auth/refresh`, { refresh_token: refresh })
           localStorage.setItem('access_token', data.access_token)
           localStorage.setItem('refresh_token', data.refresh_token)
           original.headers.Authorization = `Bearer ${data.access_token}`

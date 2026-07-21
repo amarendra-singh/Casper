@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { Component } from 'react'
+import { Component, lazy, Suspense } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 
 class ErrorBoundary extends Component {
@@ -16,22 +16,29 @@ class ErrorBoundary extends Component {
 }
 import Layout from './components/Layout'
 import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import SKUs from './pages/SKUs'
-import Pricing from './pages/Pricing'
-import Vendors from './pages/Vendors'
-import PnLList from './pages/PnL/PnLList'
-import PnLReport from './pages/PnL/PnLReport'
-import Settings from './pages/Settings'
-import ProfitCalculator from './pages/ProfitCalculator'
-import FraudDashboard from './pages/Fraud/FraudDashboard'
-import FraudPlatformPage from './pages/Fraud/FraudPlatformPage'
-import PnLIntro from './pages/intros/PnLIntro'
-import SKUsIntro from './pages/intros/SKUsIntro'
-import VendorsIntro from './pages/intros/VendorsIntro'
-import PricingIntro from './pages/intros/PricingIntro'
-import SettingsIntro from './pages/intros/SettingsIntro'
-// import Entries from './pages/Entries'
+// Route pages are code-split so heavy deps (recharts, react-simple-maps) load
+// only when their page is visited — keeps the initial bundle small.
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const SKUs = lazy(() => import('./pages/SKUs'))
+const Pricing = lazy(() => import('./pages/Pricing'))
+const Vendors = lazy(() => import('./pages/Vendors'))
+const PnLList = lazy(() => import('./pages/PnL/PnLList'))
+const PnLReport = lazy(() => import('./pages/PnL/PnLReport'))
+const Settings = lazy(() => import('./pages/Settings'))
+const ProfitCalculator = lazy(() => import('./pages/ProfitCalculator'))
+const FraudDashboard = lazy(() => import('./pages/Fraud/FraudDashboard'))
+const FraudPlatformPage = lazy(() => import('./pages/Fraud/FraudPlatformPage'))
+const PnLIntro = lazy(() => import('./pages/intros/PnLIntro'))
+const SKUsIntro = lazy(() => import('./pages/intros/SKUsIntro'))
+const VendorsIntro = lazy(() => import('./pages/intros/VendorsIntro'))
+const PricingIntro = lazy(() => import('./pages/intros/PricingIntro'))
+const SettingsIntro = lazy(() => import('./pages/intros/SettingsIntro'))
+
+const RouteLoader = () => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
+    <div className="loader" style={{ width: 28, height: 28 }} />
+  </div>
+)
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -75,7 +82,9 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <AppRoutes />
+        <Suspense fallback={<RouteLoader />}>
+          <AppRoutes />
+        </Suspense>
       </AuthProvider>
     </ErrorBoundary>
   )
