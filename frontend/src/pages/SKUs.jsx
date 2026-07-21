@@ -743,12 +743,12 @@ export default function SKUs() {
       <div className="e-bar">
         <div className="e-bar-item">
           <label>Global Profit %</label>
-          <input type="number" value={profDef} min={0} max={100}
+          <input type="number" value={profDef} min={0} max={100} aria-label="Global profit percent"
             onChange={e => setProfDef(parseFloat(e.target.value)||20)} />
         </div>
         <div className="e-bar-item">
           <label>Default Misc ₹</label>
-          <input type="number" value={miscDef} min={0}
+          <input type="number" value={miscDef} min={0} aria-label="Default misc cost in rupees"
             onChange={e => setMiscDef(parseFloat(e.target.value)||0)} />
         </div>
         <div className="e-bar-sep"/>
@@ -1072,6 +1072,7 @@ export default function SKUs() {
                     <td className="ec w-gst sh-tax">
                       <select
                         className="ec-input gst-select"
+                        aria-label="GST rate"
                         value={row.gstType || '5'}
                         onChange={e => {
                           const newType = e.target.value
@@ -1152,7 +1153,7 @@ export default function SKUs() {
                         </div>
                       </td>,
                       <td key={`${pl.id}-tier`} className="ec ec-plat w-plat-tier">
-                        <select className="plat-tier-s" value={plc.tierIdx}
+                        <select className="plat-tier-s" aria-label="Platform tier" value={plc.tierIdx}
                           onChange={e => {
                             const v = e.target.value
                             if (v === '__add__') {
@@ -1277,7 +1278,7 @@ export default function SKUs() {
                         disabled={row.profPct !== ''}
                         onChange={e => { updImportRow(i,'profAmt',e.target.value); updImportRow(i,'profPct','') }} /></td>
                       <td>
-                        <select className="imp-inp" value={row.gst}
+                        <select className="imp-inp" aria-label="GST rate" value={row.gst}
                           onChange={e => updImportRow(i,'gst',e.target.value)}>
                           {[0,5,12,18,28].map(g => <option key={g} value={g}>{g}%</option>)}
                         </select>
@@ -1465,7 +1466,7 @@ function MobileCard({ row, calc:c, vendorOpts, catOpts, miscDef, profDef,
               <input className="m-input mono right" readOnly value={row.price?`₹${c.bsNoGst}`:''} placeholder="—"/>
             </div>
             <div className="m-field"><label>GST Type</label>
-              <select className="m-input" value={row.gstType || '5'}
+              <select className="m-input" aria-label="GST rate" value={row.gstType || '5'}
                 onChange={e => {
                   const newType = e.target.value
                   const newGst  = resolveGst(newType, row.price)
@@ -1506,7 +1507,7 @@ function MobileCard({ row, calc:c, vendorOpts, catOpts, miscDef, profDef,
                         value={override.adAmt ?? ''} placeholder={`₹${plc.adAmt}`}
                         onChange={e => onPlatOverride(row.id, pl.id, 'adAmt', e.target.value)}/>
                     </div>
-                    <select className="m-plat-tier" value={plc.tierIdx}
+                    <select className="m-plat-tier" aria-label="Platform tier" value={plc.tierIdx}
                       onChange={e=>onTier(row.id,pl.id,parseInt(e.target.value))}>
                       {pl.tiers?.map((t,i)=>(
                         <option key={i} value={i}>{t.tier_name}</option>

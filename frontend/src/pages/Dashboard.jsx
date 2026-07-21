@@ -578,7 +578,7 @@ export default function Dashboard() {
           <>
             <article className="insight hero" style={{ opacity: 0.45 }}>
               <div className="ins-head"><span className="tag"><span className="d" />Analyzing data…</span></div>
-              <h3 className="ins-title">Loading real-time insights</h3>
+              <h2 className="ins-title">Loading real-time insights</h2>
               <p className="ins-body">Scanning fraud actors, return patterns and platform health…</p>
               <div className="ins-foot"><span>—</span><span className="go">—</span></div>
             </article>
@@ -602,12 +602,12 @@ export default function Dashboard() {
                     </span>
                   </div>
                   {/* Hero supports split title: title1 + em + title2, or plain title */}
-                  <h3 className="ins-title">
+                  <h2 className="ins-title">
                     {ins.title1
                       ? <>{ins.title1}<em>{ins.title_em}</em>{ins.title2}</>
                       : ins.title
                     }
-                  </h3>
+                  </h2>
                   <p className="ins-body">{ins.body}</p>
                   {ins.chips?.length > 0 && (
                     <div className="reason-chips">
@@ -635,12 +635,12 @@ export default function Dashboard() {
                     <span className="d" />{ins.tag}
                   </span>
                 </div>
-                <h3 className="ins-title">
+                <h2 className="ins-title">
                   {ins.title}
                   {ins.title_chip && (
                     <> <span className={`delta-chip ${ins.title_chip.cls}`}>{ins.title_chip.text}</span></>
                   )}
-                </h3>
+                </h2>
                 <p className="ins-body">{ins.body}</p>
                 <div className="ins-foot">
                   <span>{ins.time}</span>
