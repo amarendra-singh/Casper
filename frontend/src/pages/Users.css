@@ -1,0 +1,62 @@
+/* Users management — Pulse-styled */
+.usr { padding: 24px 28px 48px; max-width: 980px; margin: 0 auto; color: var(--ink, #1A1714); font-family: 'Geist', system-ui, sans-serif; }
+.usr-loading { display: flex; align-items: center; justify-content: center; height: 60vh; }
+
+.usr-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.usr-title { font-size: 24px; font-weight: 700; letter-spacing: -.02em; margin: 0; }
+.usr-sub { margin: 4px 0 0; color: var(--muted, #6F6B62); font-size: 13.5px; }
+.usr-add-btn { flex-shrink: 0; padding: 9px 16px; font-size: 13px; font-weight: 600; color: #fff; background: var(--ink, #1A1714); border: none; border-radius: 9px; cursor: pointer; transition: opacity .15s; }
+.usr-add-btn:hover { opacity: .88; }
+
+.usr-error { background: rgba(224,67,95,.1); color: #C43050; border: 1px solid rgba(224,67,95,.25); border-radius: 9px; padding: 10px 14px; font-size: 13px; margin-bottom: 14px; }
+
+.usr-add-form { display: flex; gap: 10px; flex-wrap: wrap; background: var(--surface, #fff); border: 1px solid var(--rule, #E4DFD5); border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+.usr-input { flex: 1; min-width: 140px; padding: 9px 12px; font-size: 14px; color: var(--ink, #1A1714); background: var(--surface-2, #F7F3EC); border: 1px solid var(--rule, #E4DFD5); border-radius: 8px; outline: none; font-family: inherit; transition: border-color .15s, background .15s; }
+.usr-input:focus { border-color: var(--pink, #F43397); background: #fff; }
+.usr-input-sm { padding: 6px 9px; font-size: 13px; min-width: 0; width: 100%; }
+.usr-select { cursor: pointer; }
+.usr-save { padding: 9px 18px; font-size: 13px; font-weight: 600; color: #fff; background: var(--pink, #F43397); border: none; border-radius: 8px; cursor: pointer; transition: opacity .15s; }
+.usr-save:hover { opacity: .9; }
+.usr-save:disabled { opacity: .5; cursor: default; }
+
+.usr-table-wrap { background: var(--surface, #fff); border: 1px solid var(--rule, #E4DFD5); border-radius: 14px; overflow: hidden; }
+.usr-table { width: 100%; border-collapse: collapse; }
+.usr-table th { text-align: left; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted, #6F6B62); padding: 12px 16px; border-bottom: 1px solid var(--rule, #E4DFD5); }
+.usr-th-act, .usr-td-act { text-align: right; }
+.usr-table td { padding: 12px 16px; font-size: 14px; border-bottom: 1px solid var(--rule, #E4DFD5); vertical-align: middle; }
+.usr-table tbody tr:last-child td { border-bottom: none; }
+.usr-table tbody tr:hover { background: var(--surface-2, #F7F3EC); }
+.usr-inactive { opacity: .55; }
+
+.usr-name { font-weight: 600; display: inline-flex; align-items: center; gap: 7px; }
+.usr-you { font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--pink, #F43397); background: var(--pink-soft, rgba(244,51,151,.12)); padding: 1px 6px; border-radius: 5px; }
+.usr-email { color: var(--muted, #6F6B62); font-family: 'Geist Mono', monospace; font-size: 13px; }
+
+.usr-role { font-size: 11.5px; font-weight: 600; padding: 3px 10px; border-radius: 6px; }
+.role-super { color: #7A5BFF; background: rgba(122,91,255,.12); }
+.role-admin { color: #1FA968; background: rgba(31,169,104,.12); }
+.role-viewer { color: var(--muted, #6F6B62); background: rgba(0,0,0,.05); }
+
+.usr-status { font-size: 12.5px; color: var(--muted, #6F6B62); }
+.usr-status.active { color: #1FA968; }
+
+/* active toggle */
+.usr-toggle { width: 38px; height: 22px; border-radius: 11px; border: none; background: var(--muted-2, #C7C1B6); cursor: pointer; position: relative; padding: 0; transition: background .18s; }
+.usr-toggle.on { background: #1FA968; }
+.usr-toggle:disabled { opacity: .6; cursor: default; }
+.usr-toggle-dot { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .18s; }
+.usr-toggle.on .usr-toggle-dot { transform: translateX(16px); }
+
+.usr-act { padding: 5px 11px; font-size: 12.5px; font-weight: 500; color: var(--ink-2, #3A362F); background: transparent; border: 1px solid var(--rule, #E4DFD5); border-radius: 7px; cursor: pointer; margin-left: 6px; transition: background .15s, border-color .15s; }
+.usr-act:hover { background: var(--surface-2, #F7F3EC); }
+.usr-act:disabled { opacity: .5; cursor: default; }
+.usr-act-save { color: #fff; background: var(--pink, #F43397); border-color: var(--pink, #F43397); }
+.usr-act-del { color: #C43050; border-color: rgba(224,67,95,.3); }
+.usr-act-del:hover { background: rgba(224,67,95,.08); }
+
+.usr-note { margin: 14px 2px 0; font-size: 12.5px; color: var(--muted-2, #9A9488); }
+
+@media (max-width: 640px) {
+  .usr { padding: 18px 14px 40px; }
+  .usr-table th:nth-child(2), .usr-table td:nth-child(2) { display: none; }
+}

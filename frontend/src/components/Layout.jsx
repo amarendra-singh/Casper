@@ -45,6 +45,7 @@ const WORKSPACE = [
     { to: '/pricing/intro',  label: 'Overview' },
   ]},
   { to: '/calculator', label: 'Profit Calculator', Icon: IcCalc, end: true },
+  { to: '/users', label: 'Users', Icon: IcUsers, end: true },
   { to: '/settings', label: 'Settings',  Icon: IcSettings, subItems: [
     { to: '/settings',       label: 'Platforms & Tiers', end: true },
     { to: '/settings/intro', label: 'Overview' },
