@@ -35,7 +35,7 @@ const GST_OPTIONS = [
   { value: 'footwear', label: 'Footwear'},
 ]
 
-function resolveGst(gstType, price) {
+export function resolveGst(gstType, price) {
   const p = parseFloat(price) || 0
   if (gstType === 'apparel' || gstType === 'footwear') {
     return p <= 2500 ? 5 : 18
@@ -161,7 +161,7 @@ function backendRowToFrontend(r) {
 }
 
 // ─── Base compute (no AD — AD is per-platform) ────────────────────────────────
-function compute(row, miscDef, profDef, platforms) {
+export function compute(row, miscDef, profDef, platforms) {
   const p      = parseFloat(row.price)  || 0
   const pkg    = parseFloat(row.pkg)    || 0
   const log    = parseFloat(row.log)    || 0
@@ -221,7 +221,7 @@ function compute(row, miscDef, profDef, platforms) {
 }
 
 // ─── Per-platform compute (uses platform-specific AD and CR) ─────────────────
-function computePlatform(row, pl, base, miscDef) {
+export function computePlatform(row, pl, base, miscDef) {
   if (!row.price) return { bs: null, adPct: 0, adAmt: 0, tierIdx: row.tiers[pl.id] ?? 0 }
 
   const price  = parseFloat(row.price)  || 0
