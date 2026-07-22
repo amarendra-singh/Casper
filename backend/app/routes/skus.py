@@ -18,7 +18,7 @@ from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 
 # Role guards — who can access what
-from app.core.dependencies import require_admin_or_above, require_any
+from app.core.dependencies import require_admin_or_above, require_any, get_active_company
 
 # DB models
 from app.models.sku import Sku, SkuPricing
@@ -48,11 +48,13 @@ pricing_router = APIRouter(prefix="/pricing", tags=["Pricing"])
 async def list_skus(
     # Depends(get_db) injects a DB session automatically
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     # _ means we don't use the return value, just enforce the auth
     _=Depends(require_any),
 ):
     result = await db.execute(
         select(Sku)
+        .where(Sku.company_id == company.id)
         # order_by = ORDER BY shringar_sku ASC
         .order_by(Sku.shringar_sku)
     )
@@ -66,9 +68,10 @@ async def get_sku(
     # {sku_id} in path becomes a function parameter automatically
     sku_id: int,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_any),
 ):
-    result = await db.execute(select(Sku).where(Sku.id == sku_id))
+    result = await db.execute(select(Sku).where(Sku.id == sku_id, Sku.company_id == company.id))
     sku = result.scalar_one_or_none()
     if not sku:
         # 404 = resource not found HTTP status code
@@ -82,11 +85,12 @@ async def create_sku(
     # payload = the request body, automatically parsed by Pydantic
     payload: SkuCreate,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_admin_or_above),
 ):
-    # Check if shringar_sku already exists — must be unique
+    # Check if shringar_sku already exists in THIS company — must be unique
     existing = await db.execute(
-        select(Sku).where(Sku.shringar_sku == payload.shringar_sku)
+        select(Sku).where(Sku.shringar_sku == payload.shringar_sku, Sku.company_id == company.id)
     )
     if existing.scalar_one_or_none():
         # 400 = Bad Request — client sent invalid data
@@ -94,7 +98,7 @@ async def create_sku(
 
     # ** unpacks dict into keyword arguments
     # model_dump() converts Pydantic model to plain dict
-    sku = Sku(**payload.model_dump())
+    sku = Sku(**payload.model_dump(), company_id=company.id)
     db.add(sku)       # stage the insert (not committed yet)
     await db.commit() # actually write to DB
     await db.refresh(sku)  # reload from DB to get generated id, timestamps
@@ -106,9 +110,10 @@ async def update_sku(
     sku_id: int,
     payload: SkuUpdate,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_admin_or_above),
 ):
-    result = await db.execute(select(Sku).where(Sku.id == sku_id))
+    result = await db.execute(select(Sku).where(Sku.id == sku_id, Sku.company_id == company.id))
     sku = result.scalar_one_or_none()
     if not sku:
         raise HTTPException(status_code=404, detail="SKU not found")
@@ -128,9 +133,10 @@ async def update_sku(
 async def delete_sku(
     sku_id: int,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_admin_or_above),
 ):
-    result = await db.execute(select(Sku).where(Sku.id == sku_id))
+    result = await db.execute(select(Sku).where(Sku.id == sku_id, Sku.company_id == company.id))
     sku = result.scalar_one_or_none()
     if not sku:
         raise HTTPException(status_code=404, detail="SKU not found")
@@ -147,12 +153,13 @@ async def delete_sku(
 async def list_pricing_for_sku(
     sku_id: int,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_any),
 ):
     """Get all platform pricing rows for a single SKU."""
     result = await db.execute(
         select(SkuPricing)
-        .where(SkuPricing.sku_id == sku_id)
+        .where(SkuPricing.sku_id == sku_id, SkuPricing.company_id == company.id)
         .order_by(SkuPricing.platform_id)
     )
     return result.scalars().all()
@@ -162,18 +169,20 @@ async def list_pricing_for_sku(
 async def create_pricing(
     payload: PricingCreate,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_admin_or_above),
 ):
     """
     Create pricing for a SKU on a platform.
-    Auto-calculates CR cost, damage cost, misc total, 
+    Auto-calculates CR cost, damage cost, misc total,
     breakeven, net profit, BS w/o GST, bank settlement.
     """
-    # Check duplicate — same SKU + platform combo
+    # Check duplicate — same SKU + platform combo within this company
     existing = await db.execute(
         select(SkuPricing).where(
             SkuPricing.sku_id == payload.sku_id,
             SkuPricing.platform_id == payload.platform_id,
+            SkuPricing.company_id == company.id,
         )
     )
     if existing.scalar_one_or_none():
@@ -210,6 +219,7 @@ async def create_pricing(
     # Step 3: Build and save the pricing record
     # {**a, **b} merges two dicts — inputs + resolved + calculated
     pricing = SkuPricing(
+        company_id=company.id,
         sku_id=payload.sku_id,
         platform_id=payload.platform_id,
         price=payload.price,
@@ -233,6 +243,7 @@ async def update_pricing(
     pricing_id: int,
     payload: PricingUpdate,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_admin_or_above),
 ):
     """
@@ -240,7 +251,7 @@ async def update_pricing(
     All calculations automatically recompute after any change.
     """
     result = await db.execute(
-        select(SkuPricing).where(SkuPricing.id == pricing_id)
+        select(SkuPricing).where(SkuPricing.id == pricing_id, SkuPricing.company_id == company.id)
     )
     pricing = result.scalar_one_or_none()
     if not pricing:
@@ -294,9 +305,10 @@ async def update_pricing(
 async def delete_pricing(
     pricing_id: int,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_admin_or_above),
 ):
-    result = await db.execute(select(SkuPricing).where(SkuPricing.id == pricing_id))
+    result = await db.execute(select(SkuPricing).where(SkuPricing.id == pricing_id, SkuPricing.company_id == company.id))
     pricing = result.scalar_one_or_none()
     if not pricing:
         raise HTTPException(status_code=404, detail="Pricing not found")
