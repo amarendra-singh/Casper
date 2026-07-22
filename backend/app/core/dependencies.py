@@ -4,7 +4,7 @@ CasperV2 — Reusable FastAPI dependencies (auth guards)
 
 from typing import Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -72,3 +72,39 @@ def require_roles(*roles: UserRole):
 require_super_admin = require_roles(UserRole.super_admin)
 require_admin_or_above = require_roles(UserRole.super_admin, UserRole.admin)
 require_any = require_roles(UserRole.super_admin, UserRole.admin, UserRole.viewer)
+
+
+# ── Company-scoped guards (multi-tenancy) ──────────────────────────
+# The frontend sends the active company via the X-Company-Id header; these
+# verify the caller's membership and return the Company for query scoping.
+
+async def get_active_company(
+    x_company_id: int = Header(..., alias="X-Company-Id"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.company import get_membership
+    row = await get_membership(db, current_user.id, x_company_id)
+    if not row:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this company")
+    company, _role = row
+    return company
+
+
+def require_company_role(*roles):
+    """Factory — dependency that enforces the caller's role within the active company."""
+    async def guard(
+        x_company_id: int = Header(..., alias="X-Company-Id"),
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+    ):
+        from app.services.company import get_membership
+        row = await get_membership(db, current_user.id, x_company_id)
+        if not row:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this company")
+        company, role = row
+        if role not in roles:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail=f"Requires company role: {[r.value for r in roles]}")
+        return company
+    return guard

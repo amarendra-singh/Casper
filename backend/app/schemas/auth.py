@@ -12,6 +12,7 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     role: str
     name: str
+    companies: list = []          # populated on login/register; empty on refresh
 
 
 class RefreshRequest(BaseModel):

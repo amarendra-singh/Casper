@@ -11,9 +11,19 @@ from datetime import datetime, timedelta, timezone
 from app.core.database import get_db
 from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token, hash_password
 from app.core.dependencies import get_current_user
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.auth import LoginRequest, TokenResponse, RefreshRequest, ChangePasswordRequest
 from app.schemas.user import UserResponse
+from app.schemas.company import RegisterRequest
+from app.services.company import create_company, list_user_companies
+
+
+def _companies_payload(rows) -> list[dict]:
+    """[(Company, role)] → list of dicts for the auth response."""
+    return [
+        {"id": c.id, "name": c.name, "slug": c.slug, "color": c.color, "role": r.value}
+        for c, r in rows
+    ]
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -54,12 +64,44 @@ async def login(payload: LoginRequest, request: Request, db: AsyncSession = Depe
         )
 
     token_data = {"sub": str(user.id)}
+    companies = _companies_payload(await list_user_companies(db, user.id))
 
     return TokenResponse(
         access_token=create_access_token(token_data),
         refresh_token=create_refresh_token(token_data),
         role=user.role.value,
         name=user.name,
+        companies=companies,
+    )
+
+
+@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    """Self-service signup: creates the user + their first company (owner)."""
+    existing = await db.execute(select(User).where(User.email == payload.email))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+
+    user = User(
+        name=payload.name.strip(),
+        email=payload.email,
+        password_hash=hash_password(payload.password),
+        role=UserRole.admin,          # platform-level role; company role lives on membership
+        is_active=True,
+    )
+    db.add(user)
+    await db.flush()
+    await create_company(db, user.id, payload.company_name)
+    await db.commit()
+
+    token_data = {"sub": str(user.id)}
+    companies = _companies_payload(await list_user_companies(db, user.id))
+    return TokenResponse(
+        access_token=create_access_token(token_data),
+        refresh_token=create_refresh_token(token_data),
+        role=user.role.value,
+        name=user.name,
+        companies=companies,
     )
 
 
