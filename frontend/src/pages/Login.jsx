@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import './Login.css'
 
@@ -53,7 +53,9 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="login-footer">Casper · Ecommerce Pricing Platform</div>
+        <div className="login-footer">
+          New to Casper? <Link to="/register" className="login-link">Create an account</Link>
+        </div>
       </div>
     </div>
   )

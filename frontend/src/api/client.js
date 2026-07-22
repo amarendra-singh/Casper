@@ -10,10 +10,12 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' }
 })
 
-// Attach JWT token to every request automatically
+// Attach JWT token + active company to every request automatically
 api.interceptors.request.use(cfg => {
   const token = localStorage.getItem('access_token')
   if (token) cfg.headers.Authorization = `Bearer ${token}`
+  const cid = localStorage.getItem('active_company_id')
+  if (cid) cfg.headers['X-Company-Id'] = cid
   return cfg
 })
 
@@ -45,6 +47,11 @@ api.interceptors.response.use(
 
 // Auth
 export const login         = (email, password) => api.post('/auth/login', { email, password }).then(r => r.data)
+export const register      = (data)             => api.post('/auth/register', data).then(r => r.data)
+// Companies (multi-tenancy)
+export const getCompanies      = ()     => api.get('/companies/').then(r => r.data)
+export const createCompany     = (data) => api.post('/companies/', data).then(r => r.data)
+export const getCompanyContext = (id)   => api.get(`/companies/${id}/context`).then(r => r.data)
 export const getMe         = ()                => api.get('/auth/me').then(r => r.data)
 export const changePassword= (data)            => api.post('/auth/change-password', data).then(r => r.data)
 export const apiLogout     = ()                => api.post('/auth/logout').then(r => r.data)

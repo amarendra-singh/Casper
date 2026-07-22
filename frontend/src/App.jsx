@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Component, lazy, Suspense } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { CompanyProvider } from './context/CompanyContext'
 
 class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null } }
@@ -16,6 +17,7 @@ class ErrorBoundary extends Component {
 }
 import Layout from './components/Layout'
 import Login from './pages/Login'
+import Register from './pages/Register'
 // Route pages are code-split so heavy deps (recharts, react-simple-maps) load
 // only when their page is visited — keeps the initial bundle small.
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -57,6 +59,7 @@ function AppRoutes() {
     <Routes>
       {/* <Route path="entries" element={<Entries />} /> */}
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+      <Route path="/register" element={user ? <Navigate to="/" replace /> : <Register />} />
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="skus/intro" element={<SKUsIntro />} />
@@ -84,9 +87,11 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <Suspense fallback={<RouteLoader />}>
-          <AppRoutes />
-        </Suspense>
+        <CompanyProvider>
+          <Suspense fallback={<RouteLoader />}>
+            <AppRoutes />
+          </Suspense>
+        </CompanyProvider>
       </AuthProvider>
     </ErrorBoundary>
   )

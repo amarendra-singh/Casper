@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useCompany } from '../context/CompanyContext'
 import { getPlatforms } from '../api/client'
 import './Layout.css'
 
@@ -56,12 +57,6 @@ const ANALYTICS      = ['Overview','Revenue','Platform Performance','SKU Analysi
 const REPORTS_MY     = ['Sales Report','Profitability','Platform Compare']
 const REPORTS_SHARED = ['Weekly Summary','Deal Duration']
 
-const COMPANIES = [
-  { name: 'Shringar House Jewellery', color: '#EC2D6E', sub: 'Active' },
-  { name: 'My Fashion Brand',         color: '#7C5CFC', sub: '3 SKUs' },
-  { name: 'Electronics Store',        color: '#F59E0B', sub: '12 SKUs' },
-]
-
 const ALL_SEARCH = [
   { label: 'Dashboard',           sub: 'Workspace', to: '/' },
   { label: 'SKUs',                sub: 'Workspace', to: '/skus' },
@@ -85,7 +80,8 @@ export default function Layout() {
   const [open,      setOpen]      = useState({ workspace:true, pnl:true, analytics:false, reports:true, settings:false })
   const [openWsItem,setOpenWsItem]= useState({})
   const [treeOpen,  setTreeOpen]  = useState({ my:true, shared:false })
-  const [company,   setCompany]   = useState(COMPANIES[0])
+  const { companies, activeCompany, setActive, createCompany } = useCompany()
+  const company = activeCompany || { name: 'Select company', color: 'var(--muted-2)' }
   const [showCo,    setShowCo]    = useState(false)
   const [query,     setQuery]     = useState('')
   const [searchRes, setSearchRes] = useState([])
@@ -180,16 +176,22 @@ export default function Layout() {
           </div>
           {showCo && (
             <div className="co-dd">
-              {COMPANIES.map((c, i) => (
-                <div key={i} className="co-row" onClick={() => { setCompany(c); setShowCo(false) }}>
+              {companies.map(c => (
+                <div key={c.id} className="co-row"
+                  onClick={() => { setShowCo(false); if (c.id !== activeCompany?.id) setActive(c.id) }}>
                   <div className="co-rdot" style={{ background: c.color }} />
                   <div>
                     <div className="co-rname">{c.name}</div>
-                    <div className="co-rsub">{c.sub}</div>
+                    <div className="co-rsub">{c.role}{c.id === activeCompany?.id ? ' · active' : ''}</div>
                   </div>
                 </div>
               ))}
-              <div className="co-add">
+              <div className="co-add" onClick={async () => {
+                const name = window.prompt('New company name')
+                if (!name?.trim()) return
+                try { const co = await createCompany(name.trim()); setShowCo(false); setActive(co.id) }
+                catch (e) { alert(e.response?.data?.detail || 'Could not create company') }
+              }}>
                 <span className="co-add-plus">+</span>
                 <span className="co-add-label">Add new company</span>
               </div>
