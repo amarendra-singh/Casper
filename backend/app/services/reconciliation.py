@@ -104,7 +104,7 @@ def build_reconciliation(reports: list[dict], watch_rows: list[dict]) -> dict:
     }
 
 
-async def compute_reconciliation(db: AsyncSession) -> dict:
+async def compute_reconciliation(db: AsyncSession, company_id: int) -> dict:
     """Pull per-report settlement + per-SKU expected vs actual, feed pure fn."""
     rep_res = await db.execute(
         select(
@@ -116,6 +116,7 @@ async def compute_reconciliation(db: AsyncSession) -> dict:
             func.coalesce(func.sum(PnlReport.total_expenses), 0.0),
         )
         .join(Platform, Platform.id == PnlReport.platform_id)
+        .where(PnlReport.company_id == company_id)
         .group_by(Platform.name)
     )
     reports = [
@@ -138,6 +139,7 @@ async def compute_reconciliation(db: AsyncSession) -> dict:
         .join(Sku, Sku.id == SkuPricing.sku_id)
         .join(Platform, Platform.id == SkuPricing.platform_id)
         .where(
+            PnlSkuRow.company_id == company_id,
             PnlSkuRow.sku_pricing_id.isnot(None),
             PnlSkuRow.casper_expected_bs.isnot(None),
             PnlSkuRow.bank_settlement_projected.isnot(None),

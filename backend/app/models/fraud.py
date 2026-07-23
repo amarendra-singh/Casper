@@ -17,6 +17,7 @@ class OrderEvent(Base):
     __tablename__ = "order_events"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    company_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
     report_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("pnl_reports.id", ondelete="CASCADE"), nullable=True)
     platform_id: Mapped[int] = mapped_column(Integer, ForeignKey("platforms.id"), nullable=False)
     sku_pricing_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("sku_pricing.id"), nullable=True)
@@ -75,6 +76,7 @@ class SkuRiskScore(Base):
     __tablename__ = "sku_risk_scores"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    company_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
     sku_pricing_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("sku_pricing.id"), nullable=True)
     platform_id: Mapped[int] = mapped_column(Integer, ForeignKey("platforms.id"), nullable=False)
     sku_platform_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -136,6 +138,7 @@ class FraudAlert(Base):
     __tablename__ = "fraud_alerts"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    company_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
     platform_id: Mapped[int] = mapped_column(Integer, ForeignKey("platforms.id"), nullable=False)
     report_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("pnl_reports.id", ondelete="CASCADE"), nullable=True)
 
@@ -162,6 +165,7 @@ class ReturnReasonCluster(Base):
     __tablename__ = "return_reason_clusters"
 
     id:                Mapped[int]           = mapped_column(primary_key=True, autoincrement=True)
+    company_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
     platform_id:       Mapped[int]           = mapped_column(Integer, ForeignKey("platforms.id"), nullable=False)
     return_reason:     Mapped[str]           = mapped_column(String(255), nullable=False)
     return_sub_reason: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
@@ -181,6 +185,7 @@ class StateRiskProfile(Base):
     __tablename__ = "state_risk_profiles"
 
     id:           Mapped[int]             = mapped_column(primary_key=True, autoincrement=True)
+    company_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
     state_code:   Mapped[str]             = mapped_column(String(10),  nullable=False)
     state_name:   Mapped[str]             = mapped_column(String(100), nullable=False)
     total_orders: Mapped[int]             = mapped_column(Integer, default=0)
@@ -202,6 +207,7 @@ class ActorRiskProfile(Base):
     __tablename__ = "actor_risk_profiles"
 
     id:                 Mapped[int]            = mapped_column(primary_key=True, autoincrement=True)
+    company_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
     actor_key:          Mapped[str]            = mapped_column(String(64), nullable=False, unique=True)
     state_name:         Mapped[Optional[str]]  = mapped_column(String(100), nullable=True)
     dominant_reason:    Mapped[Optional[str]]  = mapped_column(String(255), nullable=True)

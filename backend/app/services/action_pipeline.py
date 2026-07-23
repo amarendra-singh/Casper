@@ -136,9 +136,9 @@ def build_action_pipeline(actors: list[dict]) -> dict:
     }
 
 
-async def compute_action_pipeline(db: AsyncSession) -> dict:
+async def compute_action_pipeline(db: AsyncSession, company_id: int) -> dict:
     """Load actor risk profiles, feed the pure pipeline builder."""
-    result = await db.execute(select(ActorRiskProfile))
+    result = await db.execute(select(ActorRiskProfile).where(ActorRiskProfile.company_id == company_id))
     actors = [
         {
             "actor_key": a.actor_key,

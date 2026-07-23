@@ -144,7 +144,7 @@ def build_operations(units: dict, fees: dict, reasons: list[dict], channels: lis
     }
 
 
-async def compute_operations(db: AsyncSession) -> dict:
+async def compute_operations(db: AsyncSession, company_id: int) -> dict:
     """Aggregate units, fees, return reasons, and per-channel returns, feed pure fn."""
     units_res = await db.execute(
         select(
@@ -153,7 +153,7 @@ async def compute_operations(db: AsyncSession) -> dict:
             func.coalesce(func.sum(PnlSkuRow.rvp_units), 0),
             func.coalesce(func.sum(PnlSkuRow.cancelled_units), 0),
             func.coalesce(func.sum(PnlSkuRow.net_units), 0),
-        )
+        ).where(PnlSkuRow.company_id == company_id)
     )
     u = units_res.one()
     units = {"gross": u[0], "rto": u[1], "rvp": u[2], "cancelled": u[3], "net": u[4]}
@@ -168,7 +168,7 @@ async def compute_operations(db: AsyncSession) -> dict:
             func.coalesce(func.sum(PnlReport.tcs_amount), 0.0),
             func.coalesce(func.sum(PnlReport.total_expenses), 0.0),
             func.coalesce(func.sum(PnlReport.bank_settlement), 0.0),
-        )
+        ).where(PnlReport.company_id == company_id)
     )
     f = fee_res.one()
     fees = {
@@ -178,6 +178,7 @@ async def compute_operations(db: AsyncSession) -> dict:
 
     reason_res = await db.execute(
         select(ReturnReasonCluster.return_reason, func.sum(ReturnReasonCluster.order_count))
+        .where(ReturnReasonCluster.company_id == company_id)
         .group_by(ReturnReasonCluster.return_reason)
     )
     reasons = [{"reason": r[0], "count": r[1]} for r in reason_res.all()]
@@ -190,6 +191,7 @@ async def compute_operations(db: AsyncSession) -> dict:
         )
         .join(PnlReport, PnlReport.id == PnlSkuRow.report_id)
         .join(Platform, Platform.id == PnlReport.platform_id)
+        .where(PnlSkuRow.company_id == company_id)
         .group_by(Platform.name)
     )
     channels = [{"platform": r[0], "rvp": r[1], "rto": r[2]} for r in chan_res.all()]

@@ -127,7 +127,7 @@ def build_sku_intelligence(rows: list[dict]) -> dict:
     }
 
 
-async def compute_sku_intelligence(db: AsyncSession) -> dict:
+async def compute_sku_intelligence(db: AsyncSession, company_id: int) -> dict:
     """Join matched P&L rows → pricing → master SKU/platform, feed pure fn."""
     result = await db.execute(
         select(
@@ -145,6 +145,7 @@ async def compute_sku_intelligence(db: AsyncSession) -> dict:
         .join(Sku, Sku.id == SkuPricing.sku_id)
         .join(Platform, Platform.id == SkuPricing.platform_id)
         .where(
+            PnlSkuRow.company_id == company_id,
             PnlSkuRow.sku_pricing_id.isnot(None),
             PnlSkuRow.bank_settlement_projected.isnot(None),
             SkuPricing.breakeven.isnot(None),

@@ -8,6 +8,7 @@ class MiscItem(Base):
     __tablename__ = "misc_items"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    company_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False, comment="e.g. Rent, Electricity, Internet")
     amount: Mapped[float] = mapped_column(Float, nullable=False, comment="Monthly amount in INR")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
