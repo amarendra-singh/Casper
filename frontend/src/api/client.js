@@ -53,6 +53,11 @@ export const getCompanies      = ()     => api.get('/companies/').then(r => r.da
 export const createCompany     = (data) => api.post('/companies/', data).then(r => r.data)
 export const getCompanyContext = (id)   => api.get(`/companies/${id}/context`).then(r => r.data)
 export const updateCompanyModules = (id, modules) => api.patch(`/companies/${id}/modules`, { modules }).then(r => r.data)
+// Company team members
+export const getMembers        = (id)        => api.get(`/companies/${id}/members`).then(r => r.data)
+export const inviteMember      = (id, data)  => api.post(`/companies/${id}/members`, data).then(r => r.data)
+export const updateMemberRole  = (id, uid, role) => api.patch(`/companies/${id}/members/${uid}`, { role }).then(r => r.data)
+export const removeMember      = (id, uid)   => api.delete(`/companies/${id}/members/${uid}`).then(r => r.data)
 export const getMe         = ()                => api.get('/auth/me').then(r => r.data)
 export const changePassword= (data)            => api.post('/auth/change-password', data).then(r => r.data)
 export const apiLogout     = ()                => api.post('/auth/logout').then(r => r.data)

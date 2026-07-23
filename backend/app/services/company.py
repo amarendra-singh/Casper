@@ -6,6 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.company import Company, CompanyMembership, CompanyModule, CompanyRole, MODULE_KEYS
+from app.models.user import User, UserRole
+from app.core.security import hash_password
 
 
 def slugify(name: str) -> str:
@@ -59,6 +61,68 @@ async def get_modules(db: AsyncSession, company_id: int) -> dict[str, bool]:
     mods = {m.module_key: m.enabled for m in rows.scalars().all()}
     # ensure every known module has a value (default on) even if missing
     return {mk: mods.get(mk, True) for mk in MODULE_KEYS}
+
+
+async def list_members(db: AsyncSession, company_id: int):
+    """Return [(User, role)] for every member of the company."""
+    rows = await db.execute(
+        select(User, CompanyMembership.role)
+        .join(CompanyMembership, CompanyMembership.user_id == User.id)
+        .where(CompanyMembership.company_id == company_id)
+        .order_by(CompanyMembership.created_at)
+    )
+    return rows.all()
+
+
+async def add_member(db: AsyncSession, company_id: int, email: str, name: str,
+                     password: str | None, role: CompanyRole):
+    """
+    Add a member to a company. If the email already belongs to a user, reuse
+    that account; otherwise create it (temp password required for a new user).
+    Returns (User, role). Raises ValueError on conflict/missing data.
+    """
+    email = email.strip().lower()
+    user = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
+    if user is None:
+        if not password:
+            raise ValueError("A temporary password is required for a new user")
+        user = User(name=name.strip() or email, email=email,
+                    password_hash=hash_password(password),
+                    role=UserRole.viewer, is_active=True)
+        db.add(user)
+        await db.flush()
+    else:
+        existing = (await db.execute(
+            select(CompanyMembership).where(
+                CompanyMembership.company_id == company_id,
+                CompanyMembership.user_id == user.id)
+        )).scalar_one_or_none()
+        if existing:
+            raise ValueError("This user is already a member of the company")
+    db.add(CompanyMembership(company_id=company_id, user_id=user.id, role=role))
+    return user, role
+
+
+async def update_member_role(db: AsyncSession, company_id: int, user_id: int, role: CompanyRole):
+    m = (await db.execute(
+        select(CompanyMembership).where(
+            CompanyMembership.company_id == company_id, CompanyMembership.user_id == user_id)
+    )).scalar_one_or_none()
+    if not m:
+        return None
+    m.role = role
+    return m
+
+
+async def remove_member(db: AsyncSession, company_id: int, user_id: int) -> bool:
+    m = (await db.execute(
+        select(CompanyMembership).where(
+            CompanyMembership.company_id == company_id, CompanyMembership.user_id == user_id)
+    )).scalar_one_or_none()
+    if not m:
+        return False
+    await db.delete(m)
+    return True
 
 
 async def set_company_modules(db: AsyncSession, company_id: int, updates: dict[str, bool]) -> None:

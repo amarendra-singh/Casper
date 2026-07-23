@@ -1,12 +1,29 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.models.company import CompanyRole
-from app.schemas.company import CompanyCreate, CompanyResponse, CompanyContext, ModulesUpdate
-from app.services.company import create_company, list_user_companies, get_membership, get_modules, set_company_modules
+from app.schemas.company import (
+    CompanyCreate, CompanyResponse, CompanyContext, ModulesUpdate,
+    MemberResponse, MemberCreate, MemberRoleUpdate,
+)
+from app.services.company import (
+    create_company, list_user_companies, get_membership, get_modules, set_company_modules,
+    list_members, add_member, update_member_role, remove_member,
+)
+
+
+async def _require_owner(db, user, company_id):
+    row = await get_membership(db, user.id, company_id)
+    if not row:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this company")
+    company, role = row
+    if role != CompanyRole.owner:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Owner only")
+    return company
 
 router = APIRouter(prefix="/companies", tags=["Companies"])
 
@@ -52,3 +69,52 @@ async def update_modules(company_id: int, payload: ModulesUpdate,
     await set_company_modules(db, company_id, payload.modules)
     await db.commit()
     return CompanyContext(company=_resp(company, role), modules=await get_modules(db, company_id))
+
+
+# ── Team members ─────────────────────────────────────────────────────────────
+
+@router.get("/{company_id}/members", response_model=list[MemberResponse])
+async def company_members(company_id: int, db: AsyncSession = Depends(get_db),
+                          user: User = Depends(get_current_user)):
+    if not await get_membership(db, user.id, company_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this company")
+    return [MemberResponse(id=u.id, name=u.name, email=u.email, role=r)
+            for u, r in await list_members(db, company_id)]
+
+
+@router.post("/{company_id}/members", response_model=MemberResponse, status_code=status.HTTP_201_CREATED)
+async def invite_member(company_id: int, payload: MemberCreate, db: AsyncSession = Depends(get_db),
+                        user: User = Depends(get_current_user)):
+    await _require_owner(db, user, company_id)
+    try:
+        u, role = await add_member(db, company_id, payload.email, payload.name or "",
+                                   payload.password, payload.role)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    await db.commit()
+    await db.refresh(u)
+    return MemberResponse(id=u.id, name=u.name, email=u.email, role=role)
+
+
+@router.patch("/{company_id}/members/{user_id}", response_model=MemberResponse)
+async def change_member_role(company_id: int, user_id: int, payload: MemberRoleUpdate,
+                             db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+    await _require_owner(db, user, company_id)
+    m = await update_member_role(db, company_id, user_id, payload.role)
+    if not m:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
+    await db.commit()
+    from app.models.user import User as U
+    target = (await db.execute(select(U).where(U.id == user_id))).scalar_one()
+    return MemberResponse(id=target.id, name=target.name, email=target.email, role=payload.role)
+
+
+@router.delete("/{company_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def kick_member(company_id: int, user_id: int, db: AsyncSession = Depends(get_db),
+                      user: User = Depends(get_current_user)):
+    company = await _require_owner(db, user, company_id)
+    if user_id == company.owner_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot remove the company owner")
+    if not await remove_member(db, company_id, user_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
+    await db.commit()

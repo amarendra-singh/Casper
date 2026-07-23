@@ -25,6 +25,24 @@ class ModulesUpdate(BaseModel):
     modules: dict[str, bool]          # {module_key: enabled}
 
 
+class MemberResponse(BaseModel):
+    id: int                            # user id
+    name: str
+    email: str
+    role: CompanyRole
+
+
+class MemberCreate(BaseModel):
+    email: EmailStr
+    name: Optional[str] = ""
+    password: Optional[str] = None     # required only for a brand-new user
+    role: CompanyRole = CompanyRole.viewer
+
+
+class MemberRoleUpdate(BaseModel):
+    role: CompanyRole
+
+
 class RegisterRequest(BaseModel):
     name: str
     email: EmailStr
