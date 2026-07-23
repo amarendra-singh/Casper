@@ -1363,14 +1363,14 @@ async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_
 
 # ── Overview + per-platform views ─────────────────────────────────────────────
 
-async def get_fraud_overview(session: AsyncSession) -> dict:
+async def get_fraud_overview(session: AsyncSession, company_id: int) -> dict:
     """Verdict + top alerts + platform health summary."""
     sev_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
 
     alerts_result = await session.execute(
         select(FraudAlert, Platform.name.label("platform_name"))
         .join(Platform, FraudAlert.platform_id == Platform.id)
-        .where(FraudAlert.is_resolved == False)
+        .where(FraudAlert.is_resolved == False, FraudAlert.company_id == company_id)
         .order_by(FraudAlert.created_at.desc())
     )
     alert_rows = alerts_result.all()
@@ -1454,7 +1454,7 @@ async def get_fraud_overview(session: AsyncSession) -> dict:
     }
 
 
-async def get_platform_fraud_view(session: AsyncSession, platform_id: int) -> dict:
+async def get_platform_fraud_view(session: AsyncSession, platform_id: int, company_id: int) -> dict:
     """Per-platform fraud view: risk table + alerts."""
     plat_result = await session.execute(
         select(Platform).where(Platform.id == platform_id)
@@ -1465,7 +1465,7 @@ async def get_platform_fraud_view(session: AsyncSession, platform_id: int) -> di
 
     scores_result = await session.execute(
         select(SkuRiskScore)
-        .where(SkuRiskScore.platform_id == platform_id)
+        .where(SkuRiskScore.platform_id == platform_id, SkuRiskScore.company_id == company_id)
         .order_by(SkuRiskScore.z_score.desc().nullslast())
     )
     scores = scores_result.scalars().all()
@@ -1600,7 +1600,7 @@ async def reprocess_report_for_fraud(session: AsyncSession, report_id: int) -> d
     return {"reprocessed": True, "report_id": report_id, "events_extracted": count}
 
 
-async def get_settlement_gaps(session: AsyncSession) -> dict:
+async def get_settlement_gaps(session: AsyncSession, company_id: int) -> dict:
     """Settlement reconciliation across all reports using PnlSkuRow.variance_bs."""
     from app.models.pnl import PnlSkuRow
 
@@ -1620,6 +1620,7 @@ async def get_settlement_gaps(session: AsyncSession) -> dict:
         .where(
             PnlSkuRow.variance_bs.isnot(None),
             PnlSkuRow.casper_expected_bs.isnot(None),
+            PnlReport.company_id == company_id,
         )
         .group_by(PnlReport.id, PnlReport.period_start, PnlReport.period_end, Platform.name)
         .order_by(PnlReport.period_start.desc())
@@ -1656,25 +1657,27 @@ async def get_settlement_gaps(session: AsyncSession) -> dict:
 
 # ── Actor intelligence service functions ──────────────────────────────────────
 
-async def get_actor_overview(db: AsyncSession) -> dict:
+async def get_actor_overview(db: AsyncSession, company_id: int) -> dict:
     """Summary stats for the Actor Intelligence tab."""
     from app.models.fraud import ActorRiskProfile, StateRiskProfile, ReturnReasonCluster
 
-    total     = (await db.execute(select(func.count(ActorRiskProfile.id)))).scalar() or 0
+    total     = (await db.execute(select(func.count(ActorRiskProfile.id))
+        .where(ActorRiskProfile.company_id == company_id))).scalar() or 0
     high_risk = (await db.execute(
         select(func.count(ActorRiskProfile.id))
-        .where(ActorRiskProfile.risk_tier.in_(["RED", "CRITICAL"]))
+        .where(ActorRiskProfile.risk_tier.in_(["RED", "CRITICAL"]), ActorRiskProfile.company_id == company_id)
     )).scalar() or 0
 
     top_state = (await db.execute(
         select(StateRiskProfile)
+        .where(StateRiskProfile.company_id == company_id)
         .order_by(StateRiskProfile.fraud_rate.desc())
         .limit(1)
     )).scalars().first()
 
     top_reason = (await db.execute(
         select(ReturnReasonCluster)
-        .where(ReturnReasonCluster.fraud_signal_type == "FRAUD_SIGNAL")
+        .where(ReturnReasonCluster.fraud_signal_type == "FRAUD_SIGNAL", ReturnReasonCluster.company_id == company_id)
         .order_by(ReturnReasonCluster.order_count.desc())
         .limit(1)
     )).scalars().first()
@@ -1689,12 +1692,13 @@ async def get_actor_overview(db: AsyncSession) -> dict:
     }
 
 
-async def get_actor_risk_table(db: AsyncSession) -> list[dict]:
+async def get_actor_risk_table(db: AsyncSession, company_id: int) -> list[dict]:
     """Actor risk profiles sorted by fraud score descending."""
     from app.models.fraud import ActorRiskProfile
 
     result = await db.execute(
-        select(ActorRiskProfile).order_by(ActorRiskProfile.actor_fraud_score.desc())
+        select(ActorRiskProfile).where(ActorRiskProfile.company_id == company_id)
+        .order_by(ActorRiskProfile.actor_fraud_score.desc())
     )
     return [
         {
@@ -1713,12 +1717,13 @@ async def get_actor_risk_table(db: AsyncSession) -> list[dict]:
     ]
 
 
-async def get_return_reason_intelligence(db: AsyncSession) -> dict:
+async def get_return_reason_intelligence(db: AsyncSession, company_id: int) -> dict:
     """Return reason breakdown — categories + top reasons."""
     from app.models.fraud import ReturnReasonCluster
 
     result = await db.execute(
-        select(ReturnReasonCluster).order_by(ReturnReasonCluster.order_count.desc())
+        select(ReturnReasonCluster).where(ReturnReasonCluster.company_id == company_id)
+        .order_by(ReturnReasonCluster.order_count.desc())
     )
     clusters = result.scalars().all()
 
@@ -1747,12 +1752,13 @@ async def get_return_reason_intelligence(db: AsyncSession) -> dict:
     }
 
 
-async def get_state_risk_intelligence(db: AsyncSession) -> list[dict]:
+async def get_state_risk_intelligence(db: AsyncSession, company_id: int) -> list[dict]:
     """State risk profiles for India heatmap, sorted by fraud_rate desc."""
     from app.models.fraud import StateRiskProfile
 
     result = await db.execute(
-        select(StateRiskProfile).order_by(StateRiskProfile.fraud_rate.desc())
+        select(StateRiskProfile).where(StateRiskProfile.company_id == company_id)
+        .order_by(StateRiskProfile.fraud_rate.desc())
     )
     return [
         {
@@ -1771,31 +1777,32 @@ async def get_state_risk_intelligence(db: AsyncSession) -> list[dict]:
 
 # ── Dashboard aggregates ──────────────────────────────────────────────────────
 
-async def get_fraud_dashboard(session: AsyncSession) -> dict:
+async def get_fraud_dashboard(session: AsyncSession, company_id: int) -> dict:
     """Aggregated risk view across all platforms."""
     # Risk tier distribution
     tier_result = await session.execute(
         select(SkuRiskScore.risk_tier, func.count(SkuRiskScore.id))
+        .where(SkuRiskScore.company_id == company_id)
         .group_by(SkuRiskScore.risk_tier)
     )
     tier_counts = {row[0]: row[1] for row in tier_result}
 
     # Total revenue at risk
     rev_result = await session.execute(
-        select(func.sum(SkuRiskScore.revenue_at_risk))
+        select(func.sum(SkuRiskScore.revenue_at_risk)).where(SkuRiskScore.company_id == company_id)
     )
     total_rev_at_risk = float(rev_result.scalar() or 0)
 
     # Pending returns count
     pending_result = await session.execute(
-        select(func.sum(SkuRiskScore.pending_return_orders))
+        select(func.sum(SkuRiskScore.pending_return_orders)).where(SkuRiskScore.company_id == company_id)
     )
     total_pending = int(pending_result.scalar() or 0)
 
     # COD abuse count
     cod_result = await session.execute(
         select(func.count(SkuRiskScore.id))
-        .where(SkuRiskScore.cod_abuse_flag == True)
+        .where(SkuRiskScore.cod_abuse_flag == True, SkuRiskScore.company_id == company_id)
     )
     cod_abuse_count = int(cod_result.scalar() or 0)
 
@@ -1803,6 +1810,7 @@ async def get_fraud_dashboard(session: AsyncSession) -> dict:
     scores_result = await session.execute(
         select(SkuRiskScore, Platform.name.label("platform_name"))
         .join(Platform, SkuRiskScore.platform_id == Platform.id)
+        .where(SkuRiskScore.company_id == company_id)
         .order_by(SkuRiskScore.z_score.desc().nullslast(), SkuRiskScore.combined_loss_rate.desc().nullslast())
     )
     scores_rows = scores_result.all()
