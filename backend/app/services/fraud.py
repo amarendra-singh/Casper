@@ -555,6 +555,7 @@ async def store_order_events(
     events: list[dict],
     report_id: Optional[int],
     platform_id: int,
+    company_id: int,
 ) -> int:
     """Persist order events. Returns count stored."""
     if not events:
@@ -565,6 +566,7 @@ async def store_order_events(
     for ev in events:
         pricing_id = sku_lookup.get(ev["sku_platform_name"].upper())
         obj = OrderEvent(
+            company_id=company_id,
             report_id=report_id,
             platform_id=platform_id,
             sku_pricing_id=pricing_id,
@@ -595,14 +597,14 @@ async def store_order_events(
 
 # ── Actor intelligence computation ────────────────────────────────────────────
 
-async def compute_return_reason_clusters(db: AsyncSession) -> None:
+async def compute_return_reason_clusters(db: AsyncSession, company_id: int) -> None:
     """
-    Aggregate return reasons across all order_events into ReturnReasonCluster.
-    Fully replaces table on each call.
+    Aggregate return reasons across this company's order_events into
+    ReturnReasonCluster. Replaces the company's rows on each call.
     """
     from app.models.fraud import ReturnReasonCluster
 
-    await db.execute(delete(ReturnReasonCluster))
+    await db.execute(delete(ReturnReasonCluster).where(ReturnReasonCluster.company_id == company_id))
 
     q = select(
         OrderEvent.platform_id,
@@ -611,7 +613,8 @@ async def compute_return_reason_clusters(db: AsyncSession) -> None:
         OrderEvent.fraud_signal_type,
         func.count(OrderEvent.id).label("order_count"),
     ).where(
-        OrderEvent.return_reason.isnot(None)
+        OrderEvent.return_reason.isnot(None),
+        OrderEvent.company_id == company_id,
     ).group_by(
         OrderEvent.platform_id,
         OrderEvent.return_reason,
@@ -624,6 +627,7 @@ async def compute_return_reason_clusters(db: AsyncSession) -> None:
     now = datetime.utcnow()
     for row in rows:
         cluster = ReturnReasonCluster(
+            company_id        = company_id,
             platform_id       = row.platform_id,
             return_reason     = row.return_reason,
             return_sub_reason = row.return_sub_reason,
@@ -636,7 +640,7 @@ async def compute_return_reason_clusters(db: AsyncSession) -> None:
     await db.commit()
 
 
-async def compute_state_risk_profiles(db: AsyncSession) -> None:
+async def compute_state_risk_profiles(db: AsyncSession, company_id: int) -> None:
     """
     Build state-level fraud heatmap from Snapdeal Customer State data.
     fraud_rate = fraud_orders / total_orders.
@@ -645,7 +649,7 @@ async def compute_state_risk_profiles(db: AsyncSession) -> None:
     """
     from app.models.fraud import StateRiskProfile
 
-    await db.execute(delete(StateRiskProfile))
+    await db.execute(delete(StateRiskProfile).where(StateRiskProfile.company_id == company_id))
 
     q = select(
         OrderEvent.customer_state_code,
@@ -656,7 +660,8 @@ async def compute_state_risk_profiles(db: AsyncSession) -> None:
         ).label("fraud_orders"),
         func.avg(OrderEvent.return_velocity_days).label("avg_velocity"),
     ).where(
-        OrderEvent.customer_state_code.isnot(None)
+        OrderEvent.customer_state_code.isnot(None),
+        OrderEvent.company_id == company_id,
     ).group_by(
         OrderEvent.customer_state_code,
         OrderEvent.customer_state_name,
@@ -686,6 +691,7 @@ async def compute_state_risk_profiles(db: AsyncSession) -> None:
             tier = "CRITICAL"
 
         db.add(StateRiskProfile(
+            company_id   = company_id,
             state_code   = row.customer_state_code,
             state_name   = row.customer_state_name or row.customer_state_code,
             total_orders = row.total_orders,
@@ -700,7 +706,7 @@ async def compute_state_risk_profiles(db: AsyncSession) -> None:
     await db.commit()
 
 
-async def compute_actor_risk_profiles(db: AsyncSession) -> None:
+async def compute_actor_risk_profiles(db: AsyncSession, company_id: int) -> None:
     """
     Build actor risk profiles keyed by (state_name + dominant_return_reason).
     actor_fraud_score 0-100:
@@ -712,7 +718,7 @@ async def compute_actor_risk_profiles(db: AsyncSession) -> None:
     import hashlib
     from app.models.fraud import ActorRiskProfile
 
-    await db.execute(delete(ActorRiskProfile))
+    await db.execute(delete(ActorRiskProfile).where(ActorRiskProfile.company_id == company_id))
 
     q = select(
         OrderEvent.customer_state_name,
@@ -727,7 +733,8 @@ async def compute_actor_risk_profiles(db: AsyncSession) -> None:
         ).label("fraud_reason_count"),
         func.avg(OrderEvent.return_velocity_days).label("avg_velocity"),
     ).where(
-        OrderEvent.return_reason.isnot(None)
+        OrderEvent.return_reason.isnot(None),
+        OrderEvent.company_id == company_id,
     ).group_by(
         OrderEvent.customer_state_name,
         OrderEvent.return_reason,
@@ -770,6 +777,7 @@ async def compute_actor_risk_profiles(db: AsyncSession) -> None:
         actor_key = hashlib.sha256(key_raw.encode()).hexdigest()[:16]
 
         db.add(ActorRiskProfile(
+            company_id         = company_id,
             actor_key          = actor_key,
             state_name         = row.customer_state_name,
             dominant_reason    = row.return_reason,
@@ -896,18 +904,18 @@ def _composite_fraud_score(
     return round(min(100.0, z_component + v_component + cod_component + s_component + f_component), 1)
 
 
-async def compute_sku_risk_scores(session: AsyncSession, platform_id: int) -> int:
+async def compute_sku_risk_scores(session: AsyncSession, platform_id: int, company_id: int) -> int:
     """
     Recompute all SkuRiskScore rows for a platform after an upload.
-    1. Pull all order_events for this platform
+    1. Pull all order_events for this platform + company
     2. Group by sku_platform_name
     3. Compute rates + Z-score + risk tier
     4. Delete old scores + insert fresh ones
     Returns count of SKUs scored.
     """
-    # Pull all events for this platform
+    # Pull all events for this platform + company
     result = await session.execute(
-        select(OrderEvent).where(OrderEvent.platform_id == platform_id)
+        select(OrderEvent).where(OrderEvent.platform_id == platform_id, OrderEvent.company_id == company_id)
     )
     events = result.scalars().all()
 
@@ -1028,7 +1036,7 @@ async def compute_sku_risk_scores(session: AsyncSession, platform_id: int) -> in
 
     # Delete old scores for this platform
     await session.execute(
-        delete(SkuRiskScore).where(SkuRiskScore.platform_id == platform_id)
+        delete(SkuRiskScore).where(SkuRiskScore.platform_id == platform_id, SkuRiskScore.company_id == company_id)
     )
 
     # Settlement-gap signal (C2): how much the platform UNDERPAID vs Casper-expected
@@ -1070,6 +1078,7 @@ async def compute_sku_risk_scores(session: AsyncSession, platform_id: int) -> in
         tier  = _risk_tier(z, clr)
 
         session.add(SkuRiskScore(
+            company_id=company_id,
             sku_pricing_id=s["sku_pricing_id"],
             platform_id=platform_id,
             sku_platform_name=s["sku_platform_name"],
@@ -1113,7 +1122,7 @@ async def compute_sku_risk_scores(session: AsyncSession, platform_id: int) -> in
 
 # ── Alert generation ──────────────────────────────────────────────────────────
 
-async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_id: int) -> int:
+async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_id: int, company_id: int) -> int:
     """
     Generate FraudAlert rows after an upload.
     Runs AFTER store_order_events() + compute_sku_risk_scores().
@@ -1122,11 +1131,12 @@ async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_
     """
     from app.models.pnl import PnlSkuRow
 
-    # Delete old unresolved alerts for this platform
+    # Delete old unresolved alerts for this platform + company
     await session.execute(
         delete(FraudAlert).where(
             FraudAlert.platform_id == platform_id,
             FraudAlert.is_resolved == False,
+            FraudAlert.company_id == company_id,
         )
     )
 
@@ -1157,6 +1167,7 @@ async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_
                     if r.variance_bs and r.variance_bs < -100
                 ]
                 alerts.append(FraudAlert(
+                company_id=company_id,
                     platform_id=platform_id,
                     report_id=report_id,
                     alert_type="SETTLEMENT_GAP",
@@ -1194,6 +1205,7 @@ async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_
         post = sku.postpaid_return_rate or 0
         diff = post - pre
         alerts.append(FraudAlert(
+                company_id=company_id,
             platform_id=platform_id,
             report_id=report_id,
             alert_type="COD_ABUSE",
@@ -1245,6 +1257,7 @@ async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_
 
         sev = _classify_alert_severity("VELOCITY_FRAUD", velocity_days=min_days)
         alert = FraudAlert(
+                company_id=company_id,
             platform_id=platform_id,
             report_id=report_id,
             alert_type="VELOCITY_FRAUD",
@@ -1280,6 +1293,7 @@ async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_
     for s in fo_skus[:3]:
         sev = _classify_alert_severity("FEE_OVERCHARGE", amount=s.fee_overcharge_amount)
         alert = FraudAlert(
+                company_id=company_id,
             platform_id=platform_id,
             report_id=report_id,
             alert_type="FEE_OVERCHARGE",
@@ -1316,6 +1330,7 @@ async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_
     for sku in critical_skus:
         if (sku.z_score or 0) >= 1.0:
             alerts.append(FraudAlert(
+                company_id=company_id,
                 platform_id=platform_id,
                 report_id=report_id,
                 alert_type="RETURN_SPIKE",

@@ -22,7 +22,7 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_any, require_admin_or_above
+from app.core.dependencies import get_current_user, require_any, require_admin_or_above, get_active_company
 from app.core.logging_config import pnl_logger, app_logger
 from app.models.user import User
 from app.models.pnl import PnlReport, PnlSkuRow
@@ -61,6 +61,7 @@ async def upload_pnl(
     force: bool = Form(default=False),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any),
+    company=Depends(get_active_company),
 ):
     """
     Upload a Flipkart P&L xlsx report.
@@ -138,7 +139,7 @@ async def upload_pnl(
         # Delete old saved file if present
         for old_file in UPLOADS_DIR.glob(f"{existing.id}.*"):
             old_file.unlink(missing_ok=True)
-        await delete_report(db, existing.id)
+        await delete_report(db, existing.id, company.id)
 
     # Full parse + store
     try:
@@ -150,6 +151,7 @@ async def upload_pnl(
             uploaded_by=current_user.id,
             period_start=period_start,
             period_end=period_end,
+            company_id=company.id,
             platform_name=platform_name,
         )
         # Save original file to disk for future reference / debugging
@@ -200,10 +202,11 @@ async def upload_pnl(
 async def list_reports(
     platform_id: int | None = None,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_any),
 ):
     """List all P&L reports, optionally filtered by platform."""
-    reports = await get_all_reports(db, platform_id=platform_id)
+    reports = await get_all_reports(db, company.id, platform_id=platform_id)
 
     result = []
     for r in reports:
@@ -322,10 +325,11 @@ def _build_sku_row_response(row) -> PnlSkuRowResponse:
 async def get_report(
     report_id: int,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_any),
 ):
     """Full report with all SKU rows. Casper-derived fields are LIVE from sku_pricing."""
-    report = await get_report_detail(db, report_id)
+    report = await get_report_detail(db, report_id, company.id)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found.")
 
@@ -378,10 +382,11 @@ async def get_report(
 async def remove_report(
     report_id: int,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_admin_or_above),
 ):
     """Delete a P&L report and all its SKU rows. Admin+ only."""
-    deleted = await delete_report(db, report_id)
+    deleted = await delete_report(db, report_id, company.id)
     if not deleted:
         pnl_logger.warning(f"Delete failed — report_id={report_id} not found")
         raise HTTPException(status_code=404, detail="Report not found.")
@@ -397,6 +402,7 @@ async def remove_report(
 async def download_report_file(
     report_id: int,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_any),
 ):
     """Download the original uploaded Excel file for a report."""
@@ -416,15 +422,17 @@ async def download_report_file(
 @router.get("/dashboard")
 async def dashboard_summary(
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_any),
 ):
     """Aggregated P&L stats across all platforms and periods for the dashboard."""
-    return await get_dashboard_summary(db)
+    return await get_dashboard_summary(db, company.id)
 
 
 @router.get("/platforms-with-reports")
 async def platforms_with_reports(
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_any),
 ):
     """
