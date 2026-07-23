@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
-from app.core.dependencies import require_admin_or_above, require_any
+from app.core.dependencies import require_admin_or_above, require_any, get_active_company
 from app.models.misc_item import MiscItem
 from app.schemas.misc_item import MiscItemCreate, MiscItemUpdate, MiscItemResponse, MiscTotalResponse
 
@@ -13,20 +13,22 @@ router = APIRouter(prefix="/misc-items", tags=["Misc Items"])
 @router.get("/", response_model=list[MiscItemResponse])
 async def list_misc_items(
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_any),
 ):
-    result = await db.execute(select(MiscItem).order_by(MiscItem.name))
+    result = await db.execute(select(MiscItem).where(MiscItem.company_id == company.id).order_by(MiscItem.name))
     return result.scalars().all()
 
 
 @router.get("/total", response_model=MiscTotalResponse)
 async def get_misc_total(
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_any),
 ):
     """Returns sum of all active misc items — used as default misc_total in pricing."""
     result = await db.execute(
-        select(MiscItem).where(MiscItem.is_active == True)
+        select(MiscItem).where(MiscItem.is_active == True, MiscItem.company_id == company.id)
     )
     items = result.scalars().all()
     return MiscTotalResponse(
@@ -39,9 +41,10 @@ async def get_misc_total(
 async def create_misc_item(
     payload: MiscItemCreate,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_admin_or_above),
 ):
-    item = MiscItem(name=payload.name, amount=payload.amount)
+    item = MiscItem(name=payload.name, amount=payload.amount, company_id=company.id)
     db.add(item)
     await db.commit()
     await db.refresh(item)
@@ -53,9 +56,10 @@ async def update_misc_item(
     item_id: int,
     payload: MiscItemUpdate,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_admin_or_above),
 ):
-    result = await db.execute(select(MiscItem).where(MiscItem.id == item_id))
+    result = await db.execute(select(MiscItem).where(MiscItem.company_id == company.id, MiscItem.id == item_id))
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Misc item not found")
@@ -72,9 +76,10 @@ async def update_misc_item(
 async def delete_misc_item(
     item_id: int,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_admin_or_above),
 ):
-    result = await db.execute(select(MiscItem).where(MiscItem.id == item_id))
+    result = await db.execute(select(MiscItem).where(MiscItem.company_id == company.id, MiscItem.id == item_id))
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Misc item not found")

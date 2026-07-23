@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
-from app.core.dependencies import require_admin_or_above, require_any
+from app.core.dependencies import require_admin_or_above, require_any, get_active_company
 from app.models.vendor import Vendor
 from app.schemas.vendor import VendorCreate, VendorUpdate, VendorResponse
 
@@ -13,9 +13,10 @@ router = APIRouter(prefix="/vendors", tags=["Vendors"])
 @router.get("/", response_model=list[VendorResponse])
 async def list_vendors(
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_any),
 ):
-    result = await db.execute(select(Vendor).order_by(Vendor.name))
+    result = await db.execute(select(Vendor).where(Vendor.company_id == company.id).order_by(Vendor.name))
     return result.scalars().all()
 
 
@@ -23,14 +24,15 @@ async def list_vendors(
 async def create_vendor(
     payload: VendorCreate,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_admin_or_above),
 ):
     short_code = payload.short_code.strip().upper()
-    existing = await db.execute(select(Vendor).where(Vendor.short_code == short_code))
+    existing = await db.execute(select(Vendor).where(Vendor.short_code == short_code, Vendor.company_id == company.id))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Vendor short code already exists")
 
-    vendor = Vendor(name=payload.name, short_code=short_code)
+    vendor = Vendor(name=payload.name, short_code=short_code, company_id=company.id)
     db.add(vendor)
     await db.commit()
     await db.refresh(vendor)
@@ -41,9 +43,10 @@ async def create_vendor(
 async def get_vendor(
     vendor_id: int,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_any),
 ):
-    result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
+    result = await db.execute(select(Vendor).where(Vendor.company_id == company.id, Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
     if not vendor:
         raise HTTPException(status_code=404, detail="Vendor not found")
@@ -55,9 +58,10 @@ async def update_vendor(
     vendor_id: int,
     payload: VendorUpdate,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_admin_or_above),
 ):
-    result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
+    result = await db.execute(select(Vendor).where(Vendor.company_id == company.id, Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
     if not vendor:
         raise HTTPException(status_code=404, detail="Vendor not found")
@@ -74,9 +78,10 @@ async def update_vendor(
 async def delete_vendor(
     vendor_id: int,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_admin_or_above),
 ):
-    result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
+    result = await db.execute(select(Vendor).where(Vendor.company_id == company.id, Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
     if not vendor:
         raise HTTPException(status_code=404, detail="Vendor not found")
