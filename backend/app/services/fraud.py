@@ -1854,10 +1854,11 @@ async def get_fraud_dashboard(session: AsyncSession, company_id: int) -> dict:
                 COUNT(CASE WHEN order_status NOT IN ('CANCELLED','IN_TRANSIT') THEN 1 END) AS shipped,
                 COUNT(*) AS total
             FROM order_events
-            WHERE order_date IS NOT NULL
+            WHERE order_date IS NOT NULL AND company_id = :cid
             GROUP BY week
             ORDER BY week
-        """)
+        """),
+        {"cid": company_id},
     )
     weekly_data = [
         {
@@ -1881,7 +1882,7 @@ async def get_fraud_dashboard(session: AsyncSession, company_id: int) -> dict:
             SkuRiskScore.gross_orders,
         )
         .join(Platform, SkuRiskScore.platform_id == Platform.id)
-        .where(SkuRiskScore.sku_pricing_id.isnot(None))
+        .where(SkuRiskScore.sku_pricing_id.isnot(None), SkuRiskScore.company_id == company_id)
         .order_by(SkuRiskScore.sku_pricing_id, SkuRiskScore.combined_loss_rate.desc().nullslast())
     )
     cross_rows = cross_result.all()
