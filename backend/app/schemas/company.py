@@ -21,6 +21,10 @@ class CompanyContext(BaseModel):
     modules: dict[str, bool]
 
 
+class ModulesUpdate(BaseModel):
+    modules: dict[str, bool]          # {module_key: enabled}
+
+
 class RegisterRequest(BaseModel):
     name: str
     email: EmailStr

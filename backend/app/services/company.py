@@ -59,3 +59,19 @@ async def get_modules(db: AsyncSession, company_id: int) -> dict[str, bool]:
     mods = {m.module_key: m.enabled for m in rows.scalars().all()}
     # ensure every known module has a value (default on) even if missing
     return {mk: mods.get(mk, True) for mk in MODULE_KEYS}
+
+
+async def set_company_modules(db: AsyncSession, company_id: int, updates: dict[str, bool]) -> None:
+    """Upsert per-company module enablement (only known module keys)."""
+    for key, enabled in updates.items():
+        if key not in MODULE_KEYS:
+            continue
+        row = (await db.execute(
+            select(CompanyModule).where(
+                CompanyModule.company_id == company_id, CompanyModule.module_key == key
+            )
+        )).scalar_one_or_none()
+        if row:
+            row.enabled = enabled
+        else:
+            db.add(CompanyModule(company_id=company_id, module_key=key, enabled=enabled))

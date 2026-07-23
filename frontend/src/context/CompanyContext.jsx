@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { getCompanies, createCompany as apiCreate } from '../api/client'
+import { getCompanies, createCompany as apiCreate, getCompanyContext, updateCompanyModules } from '../api/client'
 import { useAuth } from './AuthContext'
 
 const CompanyContext = createContext(null)
@@ -26,6 +26,22 @@ export function CompanyProvider({ children }) {
   // Re-fetch whenever the logged-in user changes (login / logout).
   useEffect(() => { load() }, [user, load])
 
+  // Load the active company's enabled modules + the user's role in it.
+  const [modules, setModules] = useState({})
+  const [role, setRole] = useState(null)
+  useEffect(() => {
+    if (!activeId || !localStorage.getItem('access_token')) { setModules({}); setRole(null); return }
+    getCompanyContext(activeId)
+      .then(ctx => { setModules(ctx.modules || {}); setRole(ctx.company?.role || null) })
+      .catch(() => {})
+  }, [activeId, user])
+
+  const updateModules = useCallback(async (next) => {
+    const ctx = await updateCompanyModules(activeId, next)
+    setModules(ctx.modules || {})
+    return ctx.modules
+  }, [activeId])
+
   // Switching company reloads the app so every screen refetches scoped data.
   const setActive = useCallback((id) => {
     localStorage.setItem('active_company_id', String(id))
@@ -42,7 +58,7 @@ export function CompanyProvider({ children }) {
   const activeCompany = companies.find(c => c.id === activeId) || companies[0] || null
 
   return (
-    <CompanyContext.Provider value={{ companies, activeCompany, activeId, setActive, createCompany, reload: load }}>
+    <CompanyContext.Provider value={{ companies, activeCompany, activeId, setActive, createCompany, reload: load, modules, role, updateModules }}>
       {children}
     </CompanyContext.Provider>
   )

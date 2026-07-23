@@ -52,6 +52,7 @@ export const register      = (data)             => api.post('/auth/register', da
 export const getCompanies      = ()     => api.get('/companies/').then(r => r.data)
 export const createCompany     = (data) => api.post('/companies/', data).then(r => r.data)
 export const getCompanyContext = (id)   => api.get(`/companies/${id}/context`).then(r => r.data)
+export const updateCompanyModules = (id, modules) => api.patch(`/companies/${id}/modules`, { modules }).then(r => r.data)
 export const getMe         = ()                => api.get('/auth/me').then(r => r.data)
 export const changePassword= (data)            => api.post('/auth/change-password', data).then(r => r.data)
 export const apiLogout     = ()                => api.post('/auth/logout').then(r => r.data)

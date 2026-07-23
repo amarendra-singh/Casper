@@ -33,20 +33,20 @@ const RAIL_NAV = [
 
 const WORKSPACE = [
   { to: '/',         label: 'Dashboard', Icon: IcHome,     end: true },
-  { to: '/skus',     label: 'SKUs',      Icon: IcLayers,   subItems: [
+  { to: '/skus',     label: 'SKUs',      Icon: IcLayers,   module: 'skus', subItems: [
     { to: '/skus',         label: 'Manage SKUs',    end: true },
     { to: '/skus/intro',   label: 'Overview' },
   ]},
-  { to: '/vendors',  label: 'Vendors',   Icon: IcUsers,    subItems: [
+  { to: '/vendors',  label: 'Vendors',   Icon: IcUsers,    module: 'skus', subItems: [
     { to: '/vendors',        label: 'Manage Vendors', end: true },
     { to: '/vendors/intro',  label: 'Overview' },
   ]},
-  { to: '/pricing',  label: 'Pricing',   Icon: IcTag,      subItems: [
+  { to: '/pricing',  label: 'Pricing',   Icon: IcTag,      module: 'pricing', subItems: [
     { to: '/pricing',        label: 'New Pricing',   end: true },
     { to: '/pricing/intro',  label: 'Overview' },
   ]},
-  { to: '/calculator', label: 'Profit Calculator', Icon: IcCalc, end: true },
-  { to: '/users', label: 'Users', Icon: IcUsers, end: true },
+  { to: '/calculator', label: 'Profit Calculator', Icon: IcCalc, module: 'calculator', end: true },
+  { to: '/users', label: 'Users', Icon: IcUsers, module: 'users', end: true },
   { to: '/settings', label: 'Settings',  Icon: IcSettings, subItems: [
     { to: '/settings',       label: 'Platforms & Tiers', end: true },
     { to: '/settings/intro', label: 'Overview' },
@@ -80,7 +80,7 @@ export default function Layout() {
   const [open,      setOpen]      = useState({ workspace:true, pnl:true, analytics:false, reports:true, settings:false })
   const [openWsItem,setOpenWsItem]= useState({})
   const [treeOpen,  setTreeOpen]  = useState({ my:true, shared:false })
-  const { companies, activeCompany, setActive, createCompany } = useCompany()
+  const { companies, activeCompany, setActive, createCompany, modules } = useCompany()
   const company = activeCompany || { name: 'Select company', color: 'var(--muted-2)' }
   const [showCo,    setShowCo]    = useState(false)
   const [query,     setQuery]     = useState('')
@@ -208,7 +208,7 @@ export default function Layout() {
               <span className="sec-lbl">Workspace</span>
               <span className={`sec-chev ${open.workspace ? '' : 'closed'}`}>▾</span>
             </div>
-            {open.workspace && WORKSPACE.map(item => {
+            {open.workspace && WORKSPACE.filter(item => !item.module || modules[item.module] !== false).map(item => {
               if (!item.subItems) return (
                 <NavLink key={item.to} to={item.to} end={item.end}
                   className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>

@@ -5,8 +5,8 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.models.company import CompanyRole
-from app.schemas.company import CompanyCreate, CompanyResponse, CompanyContext
-from app.services.company import create_company, list_user_companies, get_membership, get_modules
+from app.schemas.company import CompanyCreate, CompanyResponse, CompanyContext, ModulesUpdate
+from app.services.company import create_company, list_user_companies, get_membership, get_modules, set_company_modules
 
 router = APIRouter(prefix="/companies", tags=["Companies"])
 
@@ -37,4 +37,18 @@ async def company_context(company_id: int, db: AsyncSession = Depends(get_db),
     if not row:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this company")
     company, role = row
+    return CompanyContext(company=_resp(company, role), modules=await get_modules(db, company_id))
+
+
+@router.patch("/{company_id}/modules", response_model=CompanyContext)
+async def update_modules(company_id: int, payload: ModulesUpdate,
+                         db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+    row = await get_membership(db, user.id, company_id)
+    if not row:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this company")
+    company, role = row
+    if role != CompanyRole.owner:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the owner can change modules")
+    await set_company_modules(db, company_id, payload.modules)
+    await db.commit()
     return CompanyContext(company=_resp(company, role), modules=await get_modules(db, company_id))
