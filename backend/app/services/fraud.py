@@ -1580,21 +1580,23 @@ async def reprocess_report_for_fraud(session: AsyncSession, report_id: int) -> d
     else:
         return {"error": f"Cannot detect platform type from name: {plat_name!r}. Expected flipkart/meesho/snapdeal."}
 
+    cid = report.company_id
+
     # Delete existing events for this report and reinsert
     await session.execute(
         delete(OrderEvent).where(OrderEvent.report_id == report_id)
     )
     await session.flush()
 
-    count = await store_order_events(session, events, report_id, report.platform_id)
+    count = await store_order_events(session, events, report_id, report.platform_id, cid)
     await session.flush()
 
-    await compute_sku_risk_scores(session, report.platform_id)
+    await compute_sku_risk_scores(session, report.platform_id, cid)
     await session.flush()
-    await compute_return_reason_clusters(session)
-    await compute_state_risk_profiles(session)
-    await compute_actor_risk_profiles(session)
-    await generate_fraud_alerts(session, report.platform_id, report_id)
+    await compute_return_reason_clusters(session, cid)
+    await compute_state_risk_profiles(session, cid)
+    await compute_actor_risk_profiles(session, cid)
+    await generate_fraud_alerts(session, report.platform_id, report_id, cid)
     await session.commit()
 
     return {"reprocessed": True, "report_id": report_id, "events_extracted": count}

@@ -76,6 +76,7 @@ class SkuPlatformConfig(Base):
     __tablename__ = "sku_platform_config"
 
     id:             Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    company_id:     Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
     sku_pricing_id: Mapped[int] = mapped_column(Integer, ForeignKey("sku_pricing.id", ondelete="CASCADE"), nullable=False)
     platform_id:    Mapped[int] = mapped_column(Integer, ForeignKey("platforms.id", ondelete="RESTRICT"), nullable=False)
 

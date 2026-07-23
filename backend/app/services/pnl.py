@@ -781,10 +781,12 @@ async def check_duplicate(
     platform_id: int,
     period_start,
     period_end,
+    company_id: int,
 ) -> Optional[PnlReport]:
-    """Check if a report for this platform + period already exists."""
+    """Check if a report for this company + platform + period already exists."""
     result = await session.execute(
         select(PnlReport).where(
+            PnlReport.company_id == company_id,
             PnlReport.platform_id == platform_id,
             PnlReport.period_start == period_start,
             PnlReport.period_end == period_end,
@@ -818,15 +820,16 @@ def _parse_workbook(file_bytes: bytes) -> tuple[dict, list[dict]]:
     return summary, sku_rows_raw
 
 
-async def _build_pricing_lookup(session: AsyncSession, platform_id: int) -> dict[str, SkuPricing]:
+async def _build_pricing_lookup(session: AsyncSession, platform_id: int, company_id: int) -> dict[str, SkuPricing]:
     """
     Build a case-insensitive map: platform_sku_name.upper() → SkuPricing.
-    Used to match Flipkart SKU names against Casper pricing records.
+    Used to match Flipkart SKU names against this company's Casper pricing.
     """
     config_result = await session.execute(
         select(SkuPlatformConfig).where(
             SkuPlatformConfig.platform_id == platform_id,
             SkuPlatformConfig.platform_sku_name.isnot(None),
+            SkuPlatformConfig.company_id == company_id,
         )
     )
     configs = config_result.scalars().all()
@@ -836,7 +839,7 @@ async def _build_pricing_lookup(session: AsyncSession, platform_id: int) -> dict
         return {}
 
     pricing_result = await session.execute(
-        select(SkuPricing).where(SkuPricing.id.in_(pricing_ids))
+        select(SkuPricing).where(SkuPricing.id.in_(pricing_ids), SkuPricing.company_id == company_id)
     )
     pricing_by_id = {sp.id: sp for sp in pricing_result.scalars().all()}
 
@@ -967,7 +970,7 @@ async def parse_and_store(
     platform = await session.scalar(select(Platform).where(Platform.id == platform_id))
     platform_name = platform.name if platform else "Unknown"
 
-    name_to_pricing = await _build_pricing_lookup(session, platform_id)
+    name_to_pricing = await _build_pricing_lookup(session, platform_id, company_id)
 
     report = _build_report_model(summary, platform_id, filename, uploaded_by, period_start, period_end, company_id)
     session.add(report)

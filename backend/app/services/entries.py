@@ -234,6 +234,7 @@ async def _upsert_platform_configs(
             cfg.platform_sku_name = override.platform_sku_name or None
         else:
             session.add(SkuPlatformConfig(
+                company_id        = pricing.company_id,
                 sku_pricing_id    = pricing.id,
                 platform_id       = override.platform_id,
                 ad_pct            = override.ad_pct,

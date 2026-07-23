@@ -117,7 +117,7 @@ async def upload_pnl(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     # Duplicate check using extracted period
-    existing = await check_duplicate(db, platform_id, period_start, period_end)
+    existing = await check_duplicate(db, platform_id, period_start, period_end, company.id)
     if existing and not force:
         pnl_logger.warning(f"Duplicate detected — existing report_id={existing.id} period={period_start}→{period_end}")
         plat = await db.get(Platform, platform_id)
@@ -442,6 +442,7 @@ async def platforms_with_reports(
     result = await db.execute(
         select(Platform.id, Platform.name)
         .join(PnlReport, PnlReport.platform_id == Platform.id)
+        .where(PnlReport.company_id == company.id)
         .distinct()
         .order_by(Platform.name)
     )
@@ -455,6 +456,7 @@ async def platforms_with_reports(
 async def upload_fk_orders(
     file: UploadFile = File(...),
     _current_user: User = Depends(get_current_user),
+    company=Depends(get_active_company),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -487,10 +489,10 @@ async def upload_fk_orders(
             detail="No order events found in file. Check that file has an 'Orders' sheet.",
         )
 
-    await store_order_events(db, report_id=None, platform_id=fk.id, events=events)
-    await compute_return_reason_clusters(db)
-    await compute_state_risk_profiles(db)
-    await compute_actor_risk_profiles(db)
+    await store_order_events(db, report_id=None, platform_id=fk.id, events=events, company_id=company.id)
+    await compute_return_reason_clusters(db, company_id=company.id)
+    await compute_state_risk_profiles(db, company_id=company.id)
+    await compute_actor_risk_profiles(db, company_id=company.id)
 
     fraud_signals = sum(1 for e in events if e.get("fraud_signal_type") == "FRAUD_SIGNAL")
     returned      = sum(1 for e in events if e.get("order_status") == "RETURNED")
