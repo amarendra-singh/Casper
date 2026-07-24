@@ -18,7 +18,7 @@ class ErrorBoundary extends Component {
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Register from './pages/Register'
-// Route pages are code-split so heavy deps (recharts, react-simple-maps) load
+// Route pages are code-split so heavy deps (recharts) load
 // only when their page is visited — keeps the initial bundle small.
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const SKUs = lazy(() => import('./pages/SKUs'))

@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { getSkus, getPnlDashboard } from '../api/client'
 import api from '../api/client'
-import IndiaMapCard from '../components/IndiaMapCard'
 import './Dashboard.css'
 
 // ── Platform display config ────────────────────────────────────────────────
@@ -924,81 +923,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-        </div>
-      </section>
-
-      {/* ── Geographic intelligence ──────────────────────────────────── */}
-      <section>
-        <div className="sec-head" style={{ marginBottom:14 }}>
-          <div>
-            <h2>Geographic intelligence <span className="ct">India · live</span></h2>
-            <div className="sub">State &amp; pincode heatmap across all channels. Switch the layer to reframe by metric.</div>
-          </div>
-          <div style={{ display:'flex', gap:8 }}>
-            <button className="p-pill">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-              India
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <button className="p-pill" style={{ color:'var(--emerald)', borderColor:'rgba(31,169,104,.3)' }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6z"/>
-                <path d="M19 17l.6 1.8L21 19l-1.4.6L19 21l-.6-1.4L17 19l1.4-.6z"/>
-              </svg>
-              Anomalies on
-            </button>
-          </div>
-        </div>
-        <IndiaMapCard />
-      </section>
-
-      {/* ── Pincode risk table ───────────────────────────────────────── */}
-      <section>
-        <div className="pc-table-wrap">
-          <table className="pc-table">
-            <thead>
-              <tr>
-                <th className="pc-th pc-th-rank">#</th>
-                <th className="pc-th">PINCODE</th>
-                <th className="pc-th">CITY · STATE</th>
-                <th className="pc-th pc-th-num">ORDERS</th>
-                <th className="pc-th pc-th-num">RTO%</th>
-                <th className="pc-th pc-th-num">RETURNS</th>
-                <th className="pc-th pc-th-num">FRAUD RISK</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                { rank:1, pin:'700091', city:'Kolkata · Salt Lake',     state:'West Bengal',  orders:412,  rto:28.4, ret:7.1,  fraud:1.2,  risk:'Critical' },
-                { rank:2, pin:'221005', city:'Varanasi · BHU',           state:'Uttar Pradesh',orders:218,  rto:24.8, ret:5.4,  fraud:0.9,  risk:'High'     },
-                { rank:3, pin:'800001', city:'Patna · Central',          state:'Bihar',        orders:184,  rto:21.2, ret:4.8,  fraud:0.4,  risk:'High'     },
-                { rank:4, pin:'110092', city:'Delhi · East Vinod Nagar', state:'Delhi NCT',    orders:562,  rto:14.6, ret:3.8,  fraud:0.3,  risk:'Watch'    },
-                { rank:5, pin:'400070', city:'Mumbai · Kurla West',      state:'Maharashtra',  orders:684,  rto:8.2,  ret:3.1,  fraud:0.1,  risk:'Healthy'  },
-                { rank:6, pin:'560037', city:'Bangalore · Marathahalli', state:'Karnataka',    orders:724,  rto:5.4,  ret:2.8,  fraud:0.04, risk:'Healthy'  },
-                { rank:7, pin:'500032', city:'Hyderabad · Gachibowli',   state:'Telangana',    orders:488,  rto:6.1,  ret:3.4,  fraud:0.08, risk:'Healthy'  },
-              ].map(r => {
-                const riskCls = { Critical:'risk-critical', High:'risk-high', Watch:'risk-watch', Healthy:'risk-healthy' }[r.risk]
-                const rtoCls  = r.rto > 20 ? 'rto-crit' : r.rto > 14 ? 'rto-high' : r.rto > 8 ? 'rto-warn' : 'rto-ok'
-                return (
-                  <tr key={r.pin} className="pc-row">
-                    <td className="pc-td pc-td-rank">{String(r.rank).padStart(2,'0')}</td>
-                    <td className="pc-td pc-td-pin">{r.pin}</td>
-                    <td className="pc-td">
-                      <div className="pc-city">{r.city}</div>
-                      <div className="pc-state">{r.state}</div>
-                    </td>
-                    <td className="pc-td pc-td-num">{fmt(r.orders)}</td>
-                    <td className={`pc-td pc-td-num ${rtoCls}`}>{r.rto}%</td>
-                    <td className="pc-td pc-td-num pc-ret">{r.ret}%</td>
-                    <td className="pc-td pc-td-num">
-                      <span className={`pc-fraud-val ${rtoCls}`}>{r.fraud}%</span>
-                      <span className={`pc-risk-badge ${riskCls}`}>● {r.risk}</span>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
         </div>
       </section>
 
