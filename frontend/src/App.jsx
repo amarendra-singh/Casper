@@ -1,7 +1,7 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, Link } from 'react-router-dom'
 import { Component, lazy, Suspense } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
-import { CompanyProvider } from './context/CompanyContext'
+import { CompanyProvider, useCompany } from './context/CompanyContext'
 
 class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null } }
@@ -53,6 +53,24 @@ function ProtectedRoute({ children }) {
   return user ? children : <Navigate to="/login" replace />
 }
 
+// Blocks direct-URL access to a module the active company has turned off,
+// mirroring the sidebar nav (which hides disabled modules). Modules default
+// to enabled, so we only block on an explicit `false`. Settings is never
+// gated — it's where an owner re-enables modules.
+function RequireModule({ module, children }) {
+  const { modules } = useCompany()
+  if (modules && modules[module] === false) return (
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'60vh', gap:10, textAlign:'center', padding:24 }}>
+      <div style={{ fontSize:15, fontWeight:600 }}>This module is turned off for this company</div>
+      <div style={{ fontSize:13, color:'var(--text-2)', maxWidth:380 }}>
+        An owner can re-enable it under Settings → Modules.
+      </div>
+      <Link to="/settings" style={{ fontSize:13, textDecoration:'underline' }}>Go to Settings</Link>
+    </div>
+  )
+  return children
+}
+
 function AppRoutes() {
   const { user } = useAuth()
   return (
@@ -62,21 +80,21 @@ function AppRoutes() {
       <Route path="/register" element={user ? <Navigate to="/" replace /> : <Register />} />
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
-        <Route path="skus/intro" element={<SKUsIntro />} />
-        <Route path="skus" element={<SKUs />} />
-        <Route path="calculator" element={<ProfitCalculator />} />
-        <Route path="vendors/intro" element={<VendorsIntro />} />
-        <Route path="vendors" element={<Vendors />} />
-        <Route path="pricing/intro" element={<PricingIntro />} />
-        <Route path="pricing/:skuId?" element={<Pricing />} />
+        <Route path="skus/intro" element={<RequireModule module="skus"><SKUsIntro /></RequireModule>} />
+        <Route path="skus" element={<RequireModule module="skus"><SKUs /></RequireModule>} />
+        <Route path="calculator" element={<RequireModule module="calculator"><ProfitCalculator /></RequireModule>} />
+        <Route path="vendors/intro" element={<RequireModule module="skus"><VendorsIntro /></RequireModule>} />
+        <Route path="vendors" element={<RequireModule module="skus"><Vendors /></RequireModule>} />
+        <Route path="pricing/intro" element={<RequireModule module="pricing"><PricingIntro /></RequireModule>} />
+        <Route path="pricing/:skuId?" element={<RequireModule module="pricing"><Pricing /></RequireModule>} />
         <Route path="settings/intro" element={<SettingsIntro />} />
-        <Route path="pnl/intro" element={<PnLIntro />} />
-        <Route path="pnl/:platform" element={<PnLList />} />
-        <Route path="pnl/:platform/:reportId" element={<PnLReport />} />
-        <Route path="fraud" element={<FraudDashboard />} />
-        <Route path="fraud/platform/:platformId" element={<FraudPlatformPage />} />
+        <Route path="pnl/intro" element={<RequireModule module="pnl"><PnLIntro /></RequireModule>} />
+        <Route path="pnl/:platform" element={<RequireModule module="pnl"><PnLList /></RequireModule>} />
+        <Route path="pnl/:platform/:reportId" element={<RequireModule module="pnl"><PnLReport /></RequireModule>} />
+        <Route path="fraud" element={<RequireModule module="fraud"><FraudDashboard /></RequireModule>} />
+        <Route path="fraud/platform/:platformId" element={<RequireModule module="fraud"><FraudPlatformPage /></RequireModule>} />
         <Route path="settings" element={<Settings />} />
-        <Route path="users" element={<Users />} />
+        <Route path="users" element={<RequireModule module="users"><Users /></RequireModule>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
