@@ -53,6 +53,9 @@ export const getCompanies      = ()     => api.get('/companies/').then(r => r.da
 export const createCompany     = (data) => api.post('/companies/', data).then(r => r.data)
 export const getCompanyContext = (id)   => api.get(`/companies/${id}/context`).then(r => r.data)
 export const updateCompanyModules = (id, modules) => api.patch(`/companies/${id}/modules`, { modules }).then(r => r.data)
+export const renameCompany     = (id, name)  => api.patch(`/companies/${id}`, { name }).then(r => r.data)
+export const archiveCompany    = (id)        => api.delete(`/companies/${id}`).then(r => r.data)
+export const leaveCompany      = (id)        => api.post(`/companies/${id}/leave`).then(r => r.data)
 // Company team members
 export const getMembers        = (id)        => api.get(`/companies/${id}/members`).then(r => r.data)
 export const inviteMember      = (id, data)  => api.post(`/companies/${id}/members`, data).then(r => r.data)

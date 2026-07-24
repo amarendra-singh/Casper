@@ -8,6 +8,10 @@ class CompanyCreate(BaseModel):
     color: Optional[str] = "#EC2D6E"
 
 
+class CompanyUpdate(BaseModel):
+    name: str
+
+
 class CompanyResponse(BaseModel):
     id: int
     name: str

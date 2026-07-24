@@ -7,11 +7,12 @@ from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.models.company import CompanyRole
 from app.schemas.company import (
-    CompanyCreate, CompanyResponse, CompanyContext, ModulesUpdate,
+    CompanyCreate, CompanyUpdate, CompanyResponse, CompanyContext, ModulesUpdate,
     MemberResponse, MemberCreate, MemberRoleUpdate,
 )
 from app.services.company import (
-    create_company, list_user_companies, get_membership, get_modules, set_company_modules,
+    create_company, rename_company, archive_company,
+    list_user_companies, get_membership, get_modules, set_company_modules,
     list_members, add_member, update_member_role, remove_member,
 )
 
@@ -45,6 +46,40 @@ async def new_company(payload: CompanyCreate, db: AsyncSession = Depends(get_db)
     await db.commit()
     await db.refresh(co)
     return _resp(co, CompanyRole.owner)
+
+
+@router.patch("/{company_id}", response_model=CompanyResponse)
+async def rename_company_route(company_id: int, payload: CompanyUpdate,
+                              db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+    await _require_owner(db, user, company_id)
+    co = await rename_company(db, company_id, payload.name)
+    await db.commit()
+    await db.refresh(co)
+    return _resp(co, CompanyRole.owner)
+
+
+@router.delete("/{company_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def archive_company_route(company_id: int, db: AsyncSession = Depends(get_db),
+                                user: User = Depends(get_current_user)):
+    """Owner-only soft-delete. Company drops out of the switcher; data is retained."""
+    await _require_owner(db, user, company_id)
+    await archive_company(db, company_id)
+    await db.commit()
+
+
+@router.post("/{company_id}/leave", status_code=status.HTTP_204_NO_CONTENT)
+async def leave_company_route(company_id: int, db: AsyncSession = Depends(get_db),
+                              user: User = Depends(get_current_user)):
+    """A non-owner member removes their own membership. The owner must archive instead."""
+    row = await get_membership(db, user.id, company_id)
+    if not row:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this company")
+    _company, role = row
+    if role == CompanyRole.owner:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="The owner can't leave — archive the company instead")
+    await remove_member(db, company_id, user.id)
+    await db.commit()
 
 
 @router.get("/{company_id}/context", response_model=CompanyContext)

@@ -46,6 +46,24 @@ async def list_user_companies(db: AsyncSession, user_id: int):
     return rows.all()
 
 
+async def rename_company(db: AsyncSession, company_id: int, name: str):
+    """Update a company's display name (slug stays stable). Returns Company or None."""
+    co = (await db.execute(select(Company).where(Company.id == company_id))).scalar_one_or_none()
+    if not co:
+        return None
+    co.name = name.strip()
+    return co
+
+
+async def archive_company(db: AsyncSession, company_id: int) -> bool:
+    """Soft-delete: mark inactive so it drops out of the switcher. Data is retained."""
+    co = (await db.execute(select(Company).where(Company.id == company_id))).scalar_one_or_none()
+    if not co:
+        return False
+    co.is_active = False
+    return True
+
+
 async def get_membership(db: AsyncSession, user_id: int, company_id: int):
     """Return (Company, role) if the user belongs to the company, else None."""
     row = await db.execute(

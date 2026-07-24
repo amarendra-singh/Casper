@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { getCompanies, createCompany as apiCreate, getCompanyContext, updateCompanyModules } from '../api/client'
+import { getCompanies, createCompany as apiCreate, getCompanyContext, updateCompanyModules,
+         renameCompany as apiRename, archiveCompany as apiArchive, leaveCompany as apiLeave } from '../api/client'
 import { useAuth } from './AuthContext'
 
 const CompanyContext = createContext(null)
@@ -55,10 +56,31 @@ export function CompanyProvider({ children }) {
     return co
   }, [])
 
+  const renameCompany = useCallback(async (id, name) => {
+    const co = await apiRename(id, name)
+    setCompanies(p => p.map(c => (c.id === id ? { ...c, name: co.name } : c)))
+    return co
+  }, [])
+
+  // After archiving or leaving a company: if it was active, drop the stored id
+  // and hard-reload so load() picks a new first company; otherwise just refetch.
+  const afterRemoval = useCallback(async (id) => {
+    if (id === activeId) {
+      localStorage.removeItem('active_company_id')
+      window.location.assign('/')
+    } else {
+      await load()
+    }
+  }, [activeId, load])
+
+  const archiveCompany = useCallback(async (id) => { await apiArchive(id); await afterRemoval(id) }, [afterRemoval])
+  const leaveCompany   = useCallback(async (id) => { await apiLeave(id);   await afterRemoval(id) }, [afterRemoval])
+
   const activeCompany = companies.find(c => c.id === activeId) || companies[0] || null
 
   return (
-    <CompanyContext.Provider value={{ companies, activeCompany, activeId, setActive, createCompany, reload: load, modules, role, updateModules }}>
+    <CompanyContext.Provider value={{ companies, activeCompany, activeId, setActive, createCompany,
+        renameCompany, archiveCompany, leaveCompany, reload: load, modules, role, updateModules }}>
       {children}
     </CompanyContext.Provider>
   )

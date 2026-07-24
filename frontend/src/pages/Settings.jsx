@@ -58,6 +58,66 @@ function CompanyModules() {
   )
 }
 
+function CompanyManage() {
+  const { activeCompany, companies, role, renameCompany, archiveCompany, leaveCompany } = useCompany()
+  const isOwner = role === 'owner'
+  const id = activeCompany?.id
+  const canRemove = companies.length > 1   // never let the user remove their only company
+  const [name, setName] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err,  setErr]  = useState('')
+  useEffect(() => { setName(activeCompany?.name || '') }, [activeCompany?.id, activeCompany?.name])
+
+  const doRename = async () => {
+    const n = name.trim()
+    if (!n || n === activeCompany?.name) return
+    setBusy(true); setErr('')
+    try { await renameCompany(id, n) } catch (e) { setErr(e?.response?.data?.detail || 'Rename failed') }
+    finally { setBusy(false) }
+  }
+  const doArchive = async () => {
+    if (!confirm(`Archive "${activeCompany?.name}"? It's hidden from the switcher but its data is kept.`)) return
+    setBusy(true); setErr('')
+    try { await archiveCompany(id) } catch (e) { setErr(e?.response?.data?.detail || 'Archive failed'); setBusy(false) }
+  }
+  const doLeave = async () => {
+    if (!confirm(`Leave "${activeCompany?.name}"? You'll lose access unless re-invited.`)) return
+    setBusy(true); setErr('')
+    try { await leaveCompany(id) } catch (e) { setErr(e?.response?.data?.detail || 'Leave failed'); setBusy(false) }
+  }
+
+  return (
+    <div className="st-add-card" style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 12 }}>
+        <div className="st-title" style={{ fontSize: 16 }}>Company</div>
+        <p className="st-sub" style={{ margin: '2px 0 0' }}>
+          Rename or remove <b>{activeCompany?.name || 'this company'}</b>
+        </p>
+      </div>
+      {isOwner ? (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input className="st-input" style={{ maxWidth: 280 }} value={name}
+            onChange={e => setName(e.target.value)} aria-label="Company name" />
+          <button className="st-save-btn" onClick={doRename}
+            disabled={busy || !name.trim() || name.trim() === activeCompany?.name}>Rename</button>
+          <button className="st-cancel-btn" onClick={doArchive} disabled={busy || !canRemove}
+            title={canRemove ? '' : 'You must keep at least one company'}
+            style={{ marginLeft: 'auto', color: '#dc2626', borderColor: 'rgba(220,38,38,.35)' }}>
+            Archive company
+          </button>
+        </div>
+      ) : (
+        <button className="st-cancel-btn" onClick={doLeave} disabled={busy || !canRemove}
+          style={{ color: '#dc2626', borderColor: 'rgba(220,38,38,.35)' }}>
+          Leave company
+        </button>
+      )}
+      {err && <p className="st-sub" style={{ margin: '10px 0 0', color: '#dc2626' }}>{err}</p>}
+      {!canRemove && <p className="st-sub" style={{ margin: '10px 0 0' }}>You must belong to at least one company.</p>}
+    </div>
+  )
+}
+
 const TIER_DEFAULTS = { tier_name: '', fee: '', fee_pct: '', mode: 'amt' /* 'amt' = ₹, 'pct' = % */ }
 
 function Toast({ msg, type }) {
@@ -399,7 +459,8 @@ export default function Settings() {
         <button className="st-add-btn" onClick={() => setShowAdd(p => !p)}>+ Add Platform</button>
       </div>
 
-      {/* Per-company module enablement */}
+      {/* Per-company management + module enablement */}
+      <CompanyManage />
       <CompanyModules />
 
       {/* Add Platform form */}
