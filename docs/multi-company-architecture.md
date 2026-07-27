@@ -72,9 +72,13 @@ Global / shared (no `company_id`):
 `User` (a global identity — one login, many companies), **standard** `HsnCode`
 reference rows.
 
-**Open decision (flag):** `Platform` — I propose per-company (each company
-configures its own marketplace economics). Alternative: a global platform list
-+ a per-company `PlatformConfig`. Per-company is simpler; confirm.
+**Resolved (2026-07-24):** `Platform` is **per-company** — each company owns its
+own platform rows + fee tiers and configures its own marketplace economics.
+Every new company is seeded with the standard set (Flipkart / Meesho / Snapdeal /
+ShopDeck) via `create_company → seed_platforms`. The global UNIQUE index on
+`platforms.name` was dropped (names repeat across companies); the platforms
+routes + tier routes are all scoped by `company_id`. Backfill:
+`scripts/scope_platforms.py`.
 
 ## 5. Tenancy enforcement (the core mechanism)
 

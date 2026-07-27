@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
-from app.core.dependencies import require_admin_or_above, require_any
+from app.core.dependencies import require_admin_or_above, require_any, get_active_company
 from app.models.platform import Platform, PlatformTier
 from app.schemas.platform import (
     PlatformCreate, PlatformUpdate, PlatformResponse,
@@ -17,11 +17,13 @@ router = APIRouter(prefix="/platforms", tags=["Platforms"])
 @router.get("/", response_model=list[PlatformResponse])
 async def list_platforms(
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_any),
 ):
     result = await db.execute(
         select(Platform)
         .options(selectinload(Platform.tiers))
+        .where(Platform.company_id == company.id)
         .order_by(Platform.name)
     )
     return result.scalars().all()
@@ -31,13 +33,17 @@ async def list_platforms(
 async def create_platform(
     payload: PlatformCreate,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_admin_or_above),
 ):
-    existing = await db.execute(select(Platform).where(Platform.name == payload.name))
+    existing = await db.execute(
+        select(Platform).where(Platform.name == payload.name, Platform.company_id == company.id)
+    )
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Platform already exists")
 
     platform = Platform(
+        company_id=company.id,
         name=payload.name,
         cr_charge=payload.cr_charge,
         cr_percentage=payload.cr_percentage,
@@ -49,6 +55,7 @@ async def create_platform(
 
     for tier in payload.tiers:
         db.add(PlatformTier(
+            company_id=company.id,
             platform_id=platform.id,
             tier_name=tier.tier_name,
             fee=tier.fee,
@@ -70,12 +77,13 @@ async def create_platform(
 async def get_platform(
     platform_id: int,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_any),
 ):
     result = await db.execute(
         select(Platform)
         .options(selectinload(Platform.tiers))
-        .where(Platform.id == platform_id)
+        .where(Platform.id == platform_id, Platform.company_id == company.id)
     )
     platform = result.scalar_one_or_none()
     if not platform:
@@ -88,12 +96,13 @@ async def update_platform(
     platform_id: int,
     payload: PlatformUpdate,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_admin_or_above),
 ):
     result = await db.execute(
         select(Platform)
         .options(selectinload(Platform.tiers))
-        .where(Platform.id == platform_id)
+        .where(Platform.id == platform_id, Platform.company_id == company.id)
     )
     platform = result.scalar_one_or_none()
     if not platform:
@@ -111,9 +120,12 @@ async def update_platform(
 async def delete_platform(
     platform_id: int,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_admin_or_above),
 ):
-    result = await db.execute(select(Platform).where(Platform.id == platform_id))
+    result = await db.execute(
+        select(Platform).where(Platform.id == platform_id, Platform.company_id == company.id)
+    )
     platform = result.scalar_one_or_none()
     if not platform:
         raise HTTPException(status_code=404, detail="Platform not found")
@@ -122,18 +134,29 @@ async def delete_platform(
 
 
 # ── Tier sub-routes ───────────────────────────────────────
+async def _owned_platform(db, platform_id, company_id):
+    """Return the platform if it belongs to the company, else raise 404."""
+    result = await db.execute(
+        select(Platform).where(Platform.id == platform_id, Platform.company_id == company_id)
+    )
+    platform = result.scalar_one_or_none()
+    if not platform:
+        raise HTTPException(status_code=404, detail="Platform not found")
+    return platform
+
+
 @router.post("/{platform_id}/tiers", response_model=PlatformTierResponse, status_code=201)
 async def add_tier(
     platform_id: int,
     payload: PlatformTierCreate,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_admin_or_above),
 ):
-    result = await db.execute(select(Platform).where(Platform.id == platform_id))
-    if not result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="Platform not found")
+    await _owned_platform(db, platform_id, company.id)
 
     tier = PlatformTier(
+        company_id=company.id,
         platform_id=platform_id,
         tier_name=payload.tier_name,
         fee=payload.fee,
@@ -151,8 +174,10 @@ async def update_tier(
     tier_id: int,
     payload: PlatformTierCreate,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_admin_or_above),
 ):
+    await _owned_platform(db, platform_id, company.id)
     result = await db.execute(
         select(PlatformTier).where(
             PlatformTier.id == tier_id,
@@ -176,8 +201,10 @@ async def delete_tier(
     platform_id: int,
     tier_id: int,
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_admin_or_above),
 ):
+    await _owned_platform(db, platform_id, company.id)
     result = await db.execute(
         select(PlatformTier).where(
             PlatformTier.id == tier_id,

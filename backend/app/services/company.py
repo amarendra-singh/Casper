@@ -6,8 +6,32 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.company import Company, CompanyMembership, CompanyModule, CompanyRole, MODULE_KEYS
+from app.models.platform import Platform
 from app.models.user import User, UserRole
 from app.core.security import hash_password
+
+
+# Standard Indian marketplace platforms every new company starts with, so it can
+# price SKUs and upload settlements immediately. Fee config is per-company and
+# editable in Settings afterwards. (TestPlatform is intentionally not seeded.)
+STANDARD_PLATFORMS = [
+    {"name": "Flipkart", "cr_charge": 50.0,  "cr_percentage": 5.0,  "default_ad_pct": 2.0,  "default_profit_pct": 25.0},
+    {"name": "Meesho",   "cr_charge": 0.0,   "cr_percentage": 0.0,  "default_ad_pct": 2.0,  "default_profit_pct": 25.0},
+    {"name": "Snapdeal", "cr_charge": 0.0,   "cr_percentage": 0.0,  "default_ad_pct": 2.0,  "default_profit_pct": 25.0},
+    {"name": "ShopDeck", "cr_charge": 100.0, "cr_percentage": 20.0, "default_ad_pct": 10.0, "default_profit_pct": 20.0},
+]
+
+
+async def seed_platforms(db: AsyncSession, company_id: int) -> None:
+    """Create any missing standard platforms for a company (idempotent by name)."""
+    existing = {
+        n for (n,) in (await db.execute(
+            select(Platform.name).where(Platform.company_id == company_id)
+        )).all()
+    }
+    for p in STANDARD_PLATFORMS:
+        if p["name"] not in existing:
+            db.add(Platform(company_id=company_id, **p))
 
 
 def slugify(name: str) -> str:
@@ -32,6 +56,7 @@ async def create_company(db: AsyncSession, owner_id: int, name: str,
     db.add(CompanyMembership(company_id=co.id, user_id=owner_id, role=CompanyRole.owner))
     for mk in MODULE_KEYS:
         db.add(CompanyModule(company_id=co.id, module_key=mk, enabled=True))
+    await seed_platforms(db, co.id)   # give the new company its own platform set
     return co
 
 
