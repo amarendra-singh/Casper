@@ -20,5 +20,8 @@ pydantic>=2.0.0
 # File parsing
 openpyxl==3.1.2
 
-# SQLite async
+# SQLite async (local/dev)
 aiosqlite==0.20.0
+
+# Postgres async (production, e.g. Vercel + Neon/Supabase)
+asyncpg==0.29.0
