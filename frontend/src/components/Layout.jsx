@@ -20,6 +20,7 @@ const IcTag     = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColo
 const IcPnl     = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="16" height="14" rx="2"/><path d="M6 8h5M6 11h8M6 14h4"/><path d="M14 6l1.5 1.5L14 9"/></svg>
 const IcCalc    = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="12" height="16" rx="2"/><path d="M7 6h6M7 10h.01M10 10h.01M13 10h.01M7 13h.01M10 13h.01M13 13v3"/></svg>
 const IcLedger  = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 3h9a2 2 0 0 1 2 2v12a1 1 0 0 1-1 1H5a2 2 0 0 1-2-2V4a1 1 0 0 1 1-1z"/><path d="M3 7h12M8 3v14"/></svg>
+const IcInvoice = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 2h10v16l-2.5-1.5L10 18l-2.5-1.5L5 18V2z"/><path d="M8 7h4M8 10h4"/></svg>
 
 // ── Nav data ──────────────────────────────────────────────────────────────
 const RAIL_NAV = [
@@ -45,6 +46,7 @@ const WORKSPACE = [
     { to: '/pricing/intro',  label: 'Overview' },
   ]},
   { to: '/calculator', label: 'Profit Calculator', Icon: IcCalc, module: 'calculator', end: true },
+  { to: '/billing', label: 'Billing & Invoices', Icon: IcInvoice, module: 'billing', end: true },
   { to: '/ledger', label: 'Expense Ledger', Icon: IcLedger, module: 'ledger', end: true },
   { to: '/users', label: 'Users', Icon: IcUsers, module: 'users', end: true },
   { to: '/settings', label: 'Settings',  Icon: IcSettings, subItems: [
