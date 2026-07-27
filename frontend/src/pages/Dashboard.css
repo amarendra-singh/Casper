@@ -1555,3 +1555,57 @@ body:has(.pulse)::before {
   border-top: 1px solid var(--rule);
   line-height: 1.5;
 }
+
+/* ── First-run onboarding (empty company) ─────────────────────────────── */
+.onboard {
+  margin-bottom: 18px;
+  padding: 22px 22px 20px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+}
+.onboard-title { font-size: 18px; font-weight: 700; color: var(--ink); margin: 0; }
+.onboard-sub   { font-size: 13px; color: var(--muted); margin: 4px 0 0; }
+.onboard-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+@media (max-width: 860px) { .onboard-steps { grid-template-columns: 1fr; } }
+.onboard-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: border-color .18s, background .18s, transform .18s;
+}
+.onboard-step:hover  { border-color: var(--pink); background: var(--surface-3); transform: translateY(-1px); }
+.onboard-step:focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; }
+.onboard-step-icon {
+  flex: 0 0 auto;
+  width: 38px; height: 38px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--pink-soft, rgba(236,45,110,.12));
+  color: var(--pink);
+}
+.onboard-step-body  { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.onboard-step-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--ink); }
+.onboard-step-n {
+  flex: 0 0 auto;
+  width: 18px; height: 18px;
+  display: grid; place-items: center;
+  font-size: 11px; font-weight: 700;
+  border-radius: 50%;
+  background: var(--pink); color: #fff;
+}
+.onboard-step-desc  { font-size: 12px; color: var(--muted); line-height: 1.45; }
+.onboard-step-arrow { flex: 0 0 auto; color: var(--muted-2); transition: transform .18s, color .18s; }
+.onboard-step:hover .onboard-step-arrow { transform: translateX(3px); color: var(--pink); }

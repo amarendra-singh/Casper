@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { getSkus, getPnlDashboard } from '../api/client'
 import api from '../api/client'
+import { useCompany } from '../context/CompanyContext'
 import './Dashboard.css'
 
 // ── Platform display config ────────────────────────────────────────────────
@@ -275,6 +276,7 @@ export default function Dashboard() {
   const [skuFilter, setSkuFilter] = useState('All')
   const [skuPage,   setSkuPage]   = useState(0)
   const navigate = useNavigate()
+  const { activeCompany } = useCompany()
 
   // Smooth-scroll the subnav to a section (offset handled via CSS scroll-margin-top)
   const goToSection = (id) => {
@@ -335,6 +337,8 @@ export default function Dashboard() {
   const netUnits   = platforms.reduce((s, p) => s + (p.net_units   ?? 0), 0)
   const marginPct  = totalGross > 0 ? (totalEarn / totalGross) * 100 : 0
   const skuCount   = skus.length
+  // A brand-new company has no catalogue and no uploaded P&L — show onboarding.
+  const isEmpty    = skuCount === 0 && platforms.length === 0
 
   // ── SKU Intelligence rows (real data from /dashboard/sku-intelligence) ──────
   const SKU_STATUS = {
@@ -552,6 +556,37 @@ export default function Dashboard() {
           </button>
         </div>
       </section>
+
+      {/* ── First-run onboarding (empty company) ──────────────────────── */}
+      {isEmpty && (
+        <section className="onboard" aria-label="Get started">
+          <div className="onboard-head">
+            <h2 className="onboard-title">Welcome to {activeCompany?.name || 'your workspace'}</h2>
+            <p className="onboard-sub">No data yet. Three steps to a live dashboard:</p>
+          </div>
+          <div className="onboard-steps">
+            {[
+              { n: 1, to: '/skus', title: 'Add your SKUs', desc: 'Enter products and their true costs — the foundation for every margin.',
+                icon: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></> },
+              { n: 2, to: '/pricing', title: 'Set target pricing', desc: 'Break-even and target price compute automatically from your costs.',
+                icon: <><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></> },
+              { n: 3, to: '/pnl/flipkart', title: 'Upload a P&L report', desc: 'Import a settlement export to unlock profitability and fraud signals.',
+                icon: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></> },
+            ].map(s => (
+              <button key={s.n} className="onboard-step" onClick={() => navigate(s.to)}>
+                <span className="onboard-step-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">{s.icon}</svg>
+                </span>
+                <span className="onboard-step-body">
+                  <span className="onboard-step-title"><span className="onboard-step-n">{s.n}</span>{s.title}</span>
+                  <span className="onboard-step-desc">{s.desc}</span>
+                </span>
+                <svg className="onboard-step-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Channel filter chips ──────────────────────────────────────── */}
       <div className="filter-row">
