@@ -11,10 +11,8 @@ const IcLayers  = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColo
 const IcChart   = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17V7m4 10V3m4 14v-6m4 6v-4"/></svg>
 const IcDoc     = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6l-3-4z"/><path d="M13 2v4h4M7 9h6M7 12h6M7 15h4"/></svg>
 const IcEdit    = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2.5a2.12 2.12 0 0 1 3 3L6 17l-4 1 1-4 11.5-11.5z"/></svg>
-const IcHelp    = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="10" r="8"/><path d="M7.5 7.5a2.5 2.5 0 0 1 5 .83c0 1.67-2.5 2.5-2.5 2.5M10 14.5h.01"/></svg>
 const IcSettings= () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="10" r="2.5"/><path d="M10 2v1.5M10 16.5V18M2 10h1.5M16.5 10H18M4.22 4.22l1.06 1.06M14.72 14.72l1.06 1.06M4.22 15.78l1.06-1.06M14.72 5.28l1.06-1.06"/></svg>
 const IcSearch  = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="9" r="6"/><path d="M17 17l-3.5-3.5"/></svg>
-const IcMenu    = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
 const IcPlus    = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 4v12M4 10h12"/></svg>
 const IcChevron = () => <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4l4 4-4 4"/></svg>
 const IcUsers   = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M13 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM3 17a7 7 0 0 1 14 0"/></svg>
@@ -24,11 +22,11 @@ const IcCalc    = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColo
 
 // ── Nav data ──────────────────────────────────────────────────────────────
 const RAIL_NAV = [
-  { to: '/',        title: 'Dashboard', Icon: IcHome,   end: true },
-  { to: '/skus',    title: 'SKUs',      Icon: IcLayers },
-  { to: '/pricing', title: 'Pricing',   Icon: IcTag },
-  { to: null,       title: 'Analytics', Icon: IcChart },
-  { to: null,       title: 'Reports',   Icon: IcDoc,   badge: 7 },
+  { to: '/',           title: 'Dashboard', Icon: IcHome,  end: true },
+  { to: '/skus',       title: 'SKUs',      Icon: IcLayers },
+  { to: '/pricing',    title: 'Pricing',   Icon: IcTag },
+  { to: '/fraud',      title: 'Fraud',     Icon: IcChart },
+  { to: '/pnl/flipkart', title: 'P&L reports', Icon: IcDoc },
 ]
 
 const WORKSPACE = [
@@ -137,7 +135,7 @@ export default function Layout() {
           {RAIL_NAV.map((item, i) => (
             <button key={i}
               className={`rail-btn${isRailActive(item) ? ' active' : ''}`}
-              title={item.title}
+              title={item.title} aria-label={item.title}
               onClick={() => item.to ? navigate(item.to) : null}
             >
               <item.Icon />
@@ -149,14 +147,12 @@ export default function Layout() {
         <div className="rail-spacer" />
 
         <div className="rail-bottom">
-          <button className="rail-btn" title="Help" style={{ position:'relative' }}>
-            <IcHelp />
-            <span className="rail-dot" />
-          </button>
-          <button className="rail-btn" title="Settings" onClick={() => navigate('/settings')}>
+          <button className="rail-btn" title="Settings" aria-label="Settings" onClick={() => navigate('/settings')}>
             <IcSettings />
           </button>
-          <div className="rail-avatar" title={user?.name} onClick={handleLogout} />
+          <div className="rail-avatar" role="button" tabIndex={0}
+            title={`${user?.name || 'Account'} · account`} aria-label="Account settings"
+            onClick={() => navigate('/account')} onKeyDown={onKey(() => navigate('/account'))} />
         </div>
       </aside>
 
@@ -419,9 +415,11 @@ export default function Layout() {
           </div>
 
           <div className="topbar-right">
-            <button className="tb-btn" title="Menu"><IcMenu /></button>
-            <div className="tb-avatar-grad" title={user?.name} />
-            <button className="tb-plus" title="New" onClick={() => navigate('/pricing')}><IcPlus /></button>
+            <div className="tb-avatar-grad" role="button" tabIndex={0}
+              title={user?.name} aria-label="Account settings"
+              onClick={() => navigate('/account')} onKeyDown={onKey(() => navigate('/account'))} />
+            <button className="tb-plus" title="New pricing" aria-label="New pricing"
+              onClick={() => navigate('/pricing')}><IcPlus /></button>
           </div>
         </div>
 
