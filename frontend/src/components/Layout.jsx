@@ -56,14 +56,16 @@ const REPORTS_MY     = ['Sales Report','Profitability','Platform Compare']
 const REPORTS_SHARED = ['Weekly Summary','Deal Duration']
 
 const ALL_SEARCH = [
-  { label: 'Dashboard',           sub: 'Workspace', to: '/' },
-  { label: 'SKUs',                sub: 'Workspace', to: '/skus' },
-  { label: 'Pricing',             sub: 'Workspace', to: '/pricing' },
-  { label: 'Platform Performance',sub: 'Analytics', to: null },
-  { label: 'Revenue',             sub: 'Analytics', to: null },
-  { label: 'Sales Report',        sub: 'Reports',   to: null },
-  { label: 'Profitability',       sub: 'Reports',   to: null },
-  { label: 'Settings',            sub: 'Settings',  to: '/settings' },
+  { label: 'Dashboard',         sub: 'Workspace', to: '/' },
+  { label: 'Manage SKUs',       sub: 'Workspace', to: '/skus' },
+  { label: 'Vendors',           sub: 'Workspace', to: '/vendors' },
+  { label: 'Pricing',           sub: 'Workspace', to: '/pricing' },
+  { label: 'Profit Calculator', sub: 'Workspace', to: '/calculator' },
+  { label: 'Fraud Detection',   sub: 'Analytics', to: '/fraud' },
+  { label: 'P&L reports',       sub: 'Reports',   to: '/pnl/flipkart' },
+  { label: 'Team',              sub: 'Company',   to: '/users' },
+  { label: 'Platforms & Tiers', sub: 'Settings',  to: '/settings' },
+  { label: 'Account',           sub: 'Settings',  to: '/account' },
 ]
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -301,10 +303,7 @@ export default function Layout() {
           <div className="nav-sec">
             <div className="sec-hdr" onClick={() => togSec('reports')}>
               <span className="sec-lbl">Reports</span>
-              <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                <span className="rp-badge">7</span>
-                <span className={`sec-chev ${open.reports ? '' : 'closed'}`}>▾</span>
-              </div>
+              <span className={`sec-chev ${open.reports ? '' : 'closed'}`}>▾</span>
             </div>
             {open.reports && <>
               <div className="tree-group-hdr" onClick={() => togTree('my')}>
@@ -316,6 +315,7 @@ export default function Layout() {
                   {REPORTS_MY.map(label => (
                     <div key={label} className="tree-item">
                       <div className="tree-dot" />{label}
+                      <span className="soon-pill">Soon</span>
                     </div>
                   ))}
                 </div>
@@ -329,6 +329,7 @@ export default function Layout() {
                   {REPORTS_SHARED.map(label => (
                     <div key={label} className="tree-item">
                       <div className="tree-dot" />{label}
+                      <span className="soon-pill">Soon</span>
                     </div>
                   ))}
                 </div>
