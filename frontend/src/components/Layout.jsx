@@ -82,6 +82,8 @@ export default function Layout() {
   const [treeOpen,  setTreeOpen]  = useState({ my:true, shared:false })
   const { companies, activeCompany, setActive, createCompany, modules } = useCompany()
   const company = activeCompany || { name: 'Select company', color: 'var(--muted-2)' }
+  // Enter/Space activation for role="button" divs (keyboard a11y).
+  const onKey = fn => e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn() } }
   const [showCo,    setShowCo]    = useState(false)
   const [query,     setQuery]     = useState('')
   const [searchRes, setSearchRes] = useState([])
@@ -169,29 +171,43 @@ export default function Layout() {
 
         {/* Company switcher */}
         <div className="co-wrap" ref={coRef}>
-          <div className="co-btn" onClick={() => setShowCo(p => !p)}>
+          <div className="co-btn" role="button" tabIndex={0}
+            aria-haspopup="menu" aria-expanded={showCo}
+            aria-label={`Current company: ${company.name}. Switch company`}
+            onClick={() => setShowCo(p => !p)} onKeyDown={onKey(() => setShowCo(p => !p))}>
             <div className="co-dot" style={{ background: company.color }} />
             <span className="co-name">{company.name}</span>
             <span className="co-chev">▾</span>
           </div>
           {showCo && (
-            <div className="co-dd">
-              {companies.map(c => (
-                <div key={c.id} className="co-row"
-                  onClick={() => { setShowCo(false); if (c.id !== activeCompany?.id) setActive(c.id) }}>
-                  <div className="co-rdot" style={{ background: c.color }} />
-                  <div>
-                    <div className="co-rname">{c.name}</div>
-                    <div className="co-rsub">{c.role}{c.id === activeCompany?.id ? ' · active' : ''}</div>
+            <div className="co-dd" role="menu">
+              {companies.map(c => {
+                const pick = () => { setShowCo(false); if (c.id !== activeCompany?.id) setActive(c.id) }
+                return (
+                  <div key={c.id} className="co-row" role="menuitem" tabIndex={0}
+                    aria-label={`${c.name}, ${c.role}${c.id === activeCompany?.id ? ', active' : ''}`}
+                    onClick={pick} onKeyDown={onKey(pick)}>
+                    <div className="co-rdot" style={{ background: c.color }} />
+                    <div>
+                      <div className="co-rname">{c.name}</div>
+                      <div className="co-rsub">{c.role}{c.id === activeCompany?.id ? ' · active' : ''}</div>
+                    </div>
                   </div>
-                </div>
-              ))}
-              <div className="co-add" onClick={async () => {
-                const name = window.prompt('New company name')
-                if (!name?.trim()) return
-                try { const co = await createCompany(name.trim()); setShowCo(false); setActive(co.id) }
-                catch (e) { alert(e.response?.data?.detail || 'Could not create company') }
-              }}>
+                )
+              })}
+              <div className="co-add" role="menuitem" tabIndex={0} aria-label="Add new company"
+                onClick={async () => {
+                  const name = window.prompt('New company name')
+                  if (!name?.trim()) return
+                  try { const co = await createCompany(name.trim()); setShowCo(false); setActive(co.id) }
+                  catch (e) { alert(e.response?.data?.detail || 'Could not create company') }
+                }}
+                onKeyDown={onKey(() => {
+                  const name = window.prompt('New company name')
+                  if (!name?.trim()) return
+                  createCompany(name.trim()).then(co => { setShowCo(false); setActive(co.id) })
+                    .catch(e => alert(e.response?.data?.detail || 'Could not create company'))
+                })}>
                 <span className="co-add-plus">+</span>
                 <span className="co-add-label">Add new company</span>
               </div>

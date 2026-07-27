@@ -35,23 +35,23 @@ export default function Register() {
 
         <form onSubmit={handleSubmit} className="login-form">
           <div className="input-group">
-            <label>Your name</label>
-            <input className="input" placeholder="Priya Sharma"
+            <label htmlFor="reg-name">Your name</label>
+            <input id="reg-name" className="input" placeholder="Priya Sharma"
               value={form.name} onChange={e => set('name', e.target.value)} required autoFocus />
           </div>
           <div className="input-group">
-            <label>Email</label>
-            <input className="input" type="email" placeholder="you@example.com"
+            <label htmlFor="reg-email">Email</label>
+            <input id="reg-email" className="input" type="email" placeholder="you@example.com"
               value={form.email} onChange={e => set('email', e.target.value)} required />
           </div>
           <div className="input-group">
-            <label>Password</label>
-            <input className="input" type="password" placeholder="••••••••"
+            <label htmlFor="reg-password">Password</label>
+            <input id="reg-password" className="input" type="password" placeholder="••••••••"
               value={form.password} onChange={e => set('password', e.target.value)} required minLength={6} />
           </div>
           <div className="input-group">
-            <label>Company name</label>
-            <input className="input" placeholder="Shringar House Jewellery"
+            <label htmlFor="reg-company">Company name</label>
+            <input id="reg-company" className="input" placeholder="Shringar House Jewellery"
               value={form.company_name} onChange={e => set('company_name', e.target.value)} required />
           </div>
           {error && <div className="login-error">{error}</div>}
