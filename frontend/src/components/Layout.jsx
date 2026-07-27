@@ -369,7 +369,10 @@ export default function Layout() {
               <div className="nf-role">{user?.role?.replace('_', ' ')}</div>
             </div>
             <div className="nf-actions">
-              <button className="nf-btn" onClick={handleLogout} title="Logout">⎋</button>
+              <button className="nf-btn" onClick={() => navigate('/account')} title="Account" aria-label="Account settings">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+              </button>
+              <button className="nf-btn" onClick={handleLogout} title="Logout" aria-label="Logout">⎋</button>
             </div>
           </div>
         </div>

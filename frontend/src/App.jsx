@@ -29,6 +29,7 @@ const PnLReport = lazy(() => import('./pages/PnL/PnLReport'))
 const Settings = lazy(() => import('./pages/Settings'))
 const ProfitCalculator = lazy(() => import('./pages/ProfitCalculator'))
 const Users = lazy(() => import('./pages/Users'))
+const Account = lazy(() => import('./pages/Account'))
 const FraudDashboard = lazy(() => import('./pages/Fraud/FraudDashboard'))
 const FraudPlatformPage = lazy(() => import('./pages/Fraud/FraudPlatformPage'))
 const PnLIntro = lazy(() => import('./pages/intros/PnLIntro'))
@@ -94,6 +95,7 @@ function AppRoutes() {
         <Route path="fraud" element={<RequireModule module="fraud"><FraudDashboard /></RequireModule>} />
         <Route path="fraud/platform/:platformId" element={<RequireModule module="fraud"><FraudPlatformPage /></RequireModule>} />
         <Route path="settings" element={<Settings />} />
+        <Route path="account" element={<Account />} />
         <Route path="users" element={<RequireModule module="users"><Users /></RequireModule>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
