@@ -416,14 +416,6 @@ export default function Dashboard() {
   }
 
   // Demo sparks per platform (used when real data < 4 months)
-  const SPARK_DEMO = {
-    flipkart: [62, 68, 65, 76, 70, 84, 79, 91, 86, 95],
-    meesho:   [38, 44, 41, 52, 56, 50, 62, 59, 68, 72],
-    snapdeal: [28, 33, 30, 40, 37, 44, 42, 50, 46, 54],
-    amazon:   [55, 60, 67, 63, 72, 68, 76, 82, 79, 88],
-    shopdeck: [22, 30, 27, 36, 32, 41, 38, 46, 43, 50],
-  }
-
   // Channel filter
   const visible = selChan === 'all' ? platforms : platforms.filter(p => p.name?.toLowerCase() === selChan)
 
@@ -436,10 +428,10 @@ export default function Dashboard() {
   const hasRevData = totalRev > 0
   // chip: { text, cls } — only show when we have real data
   const KPI_DEFS = [
-    { label: 'Net revenue',         val: fmtL(totalRev),            sub: null,  chip: hasRevData ? { text:'▲ 12.4%', cls:'up'  } : null, hint: hasRevData ? 'vs prev. 30d'            : 'no reports yet' },
-    { label: 'GMV',                 val: fmtL(totalGross),          sub: null,  chip: hasRevData ? { text:'▲ 8.7%',  cls:'up'  } : null, hint: hasRevData ? `${fmt(totalUnits)} ords`  : 'upload P&L'      },
-    { label: 'Contribution margin', val: hasRevData ? `${marginPct.toFixed(1)}` : '—', sub: hasRevData ? '%' : null, chip: hasRevData ? { text:'▲ 0.9pp', cls:'up' } : null, hint: hasRevData ? `${fmtK(totalEarn)} net` : 'no data yet' },
-    { label: 'Orders',              val: hasRevData ? fmt(netUnits) : '—',      sub: null,  chip: hasRevData ? { text:'▲ 4.1%', cls:'up' } : null, hint: hasRevData ? `AOV ₹${totalUnits > 0 ? Math.round(totalRev/totalUnits) : 0}` : 'no orders yet' },
+    { label: 'Net revenue',         val: fmtL(totalRev),            sub: null,  chip: null, hint: hasRevData ? 'settled · last 30d'      : 'no reports yet' },
+    { label: 'GMV',                 val: fmtL(totalGross),          sub: null,  chip: null, hint: hasRevData ? `${fmt(totalUnits)} ords`  : 'upload P&L'      },
+    { label: 'Contribution margin', val: hasRevData ? `${marginPct.toFixed(1)}` : '—', sub: hasRevData ? '%' : null, chip: null, hint: hasRevData ? `${fmtK(totalEarn)} net` : 'no data yet' },
+    { label: 'Orders',              val: hasRevData ? fmt(netUnits) : '—',      sub: null,  chip: null, hint: hasRevData ? `AOV ₹${totalUnits > 0 ? Math.round(totalRev/totalUnits) : 0}` : 'no orders yet' },
     { label: 'RTO rate',            val: '—',                       sub: null,  chip: null, hint: 'no logistics data' },
     { label: 'Return rate',         val: returnRatePct ? `${returnRatePct}` : '—', sub: returnRatePct ? '%' : null, chip: criticalActors > 0 ? { text:`${criticalActors} critical`, cls:'down' } : null, hint: returnRatePct ? `${totalActorOrders} orders tracked` : 'upload FK orders' },
   ]
@@ -602,19 +594,20 @@ export default function Dashboard() {
             </span>
           ))}
         </div>
-        <span className="hint mono">view = consolidated · {platforms.length} cos · {selChan === 'all' ? 'all channels' : selChan} · 30d</span>
+        <span className="hint mono">view = consolidated · {platforms.length} channels · {selChan === 'all' ? 'all channels' : selChan} · 30d</span>
       </div>
 
       {/* ── AI Insights ───────────────────────────────────────────────── */}
       <section className="insights" id="sec-insights">
         {insights.length === 0 ? (
-          /* Loading skeleton — same layout, muted content */
+          /* Honest empty state — no data to surface yet (not a spinner: the page
+             already waited for the fetch before rendering). */
           <>
-            <article className="insight hero" style={{ opacity: 0.45 }}>
-              <div className="ins-head"><span className="tag"><span className="d" />Analyzing data…</span></div>
-              <h2 className="ins-title">Loading real-time insights</h2>
-              <p className="ins-body">Scanning fraud actors, return patterns and platform health…</p>
-              <div className="ins-foot"><span>—</span><span className="go">—</span></div>
+            <article className="insight hero" style={{ opacity: 0.7 }}>
+              <div className="ins-head"><span className="tag"><span className="d" />No insights yet</span></div>
+              <h2 className="ins-title">Insights will appear here</h2>
+              <p className="ins-body">Upload a P&amp;L report or order data and Casper surfaces margin, settlement leakage and fraud signals automatically.</p>
+              <div className="ins-foot"><span>Awaiting data</span><span className="go" /></div>
             </article>
           </>
         ) : (
@@ -690,8 +683,8 @@ export default function Dashboard() {
       <section>
         <div className="sec-head" style={{ marginBottom:12 }}>
           <div>
-            <h2>Companies <span className="ct">{platforms.length} active</span></h2>
-            <div className="sub">Standalone P&amp;L per legal entity · consolidated above</div>
+            <h2>Channels <span className="ct">{platforms.length} active</span></h2>
+            <div className="sub">Per-channel P&amp;L · consolidated above</div>
           </div>
         </div>
 
@@ -700,10 +693,12 @@ export default function Dashboard() {
           {/* Aggregate dark card */}
           <article className="co-card aggregate">
             <div className="top">
-              <span className="av" style={{ background:'linear-gradient(135deg,#FFD27A,#EC2D6E 50%,#7A5BFF)' }}>SH</span>
+              <span className="av" style={{ background:'linear-gradient(135deg,#FFD27A,#EC2D6E 50%,#7A5BFF)' }}>
+                {(activeCompany?.name || 'Co').split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+              </span>
               <div>
-                <div className="nm">Shringar House · Consolidated</div>
-                <div className="sub">3 companies · 5 channels</div>
+                <div className="nm">{activeCompany?.name || 'Consolidated'} · Consolidated</div>
+                <div className="sub">{platforms.length} channel{platforms.length !== 1 ? 's' : ''}</div>
               </div>
             </div>
             <div className="big">
@@ -722,7 +717,7 @@ export default function Dashboard() {
             const c      = cfg(p.name)
             const key    = p.name?.toLowerCase()
             const real   = sparkFor(p.name).filter(v => v > 0)
-            const vals   = real.length >= 4 ? real : (SPARK_DEMO[key] || [])
+            const vals   = real.length >= 4 ? real : []   // real spark data only — no demo fallback
             const { d, area } = smoothPath(vals)
             const margin = p.gross_sales > 0 ? ((p.net_earnings ?? 0) / p.gross_sales * 100).toFixed(1) + '%' : '—'
             return (
