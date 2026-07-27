@@ -45,7 +45,7 @@ const WORKSPACE = [
     { to: '/pricing/intro',  label: 'Overview' },
   ]},
   { to: '/calculator', label: 'Profit Calculator', Icon: IcCalc, module: 'calculator', end: true },
-  { to: '/ledger', label: 'Billing & Ledger', Icon: IcLedger, module: 'ledger', end: true },
+  { to: '/ledger', label: 'Expense Ledger', Icon: IcLedger, module: 'ledger', end: true },
   { to: '/users', label: 'Users', Icon: IcUsers, module: 'users', end: true },
   { to: '/settings', label: 'Settings',  Icon: IcSettings, subItems: [
     { to: '/settings',       label: 'Platforms & Tiers', end: true },

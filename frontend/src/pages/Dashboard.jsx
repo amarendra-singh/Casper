@@ -109,8 +109,8 @@ function SettlementRecon({ recon }) {
         <div className="rc-watch">
           <div className="rc-whd">Top under-settled SKUs <span>vs expected</span></div>
           {(recon.underpaid ?? []).length === 0 && <div className="si-empty">No under-settled SKUs — platforms paid in full. ✓</div>}
-          {(recon.underpaid ?? []).map(u => (
-            <div key={u.sku + u.platform} className="rc-wrow">
+          {(recon.underpaid ?? []).map((u, i) => (
+            <div key={`${u.sku}-${u.platform}-${i}`} className="rc-wrow">
               <span className="rc-wsku" title={`${u.sku} · ${u.platform}`}>{u.sku}</span>
               <span className="rc-wpu">{u.actual_per_unit} / {u.expected_per_unit}</span>
               <span className="rc-wgap">−₹{fmt(Math.abs(Math.round(u.gap_total)))}</span>
