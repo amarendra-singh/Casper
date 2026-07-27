@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import * as XLSX from 'xlsx'
+// xlsx (~430 kB) is lazy-loaded inside the import/export handlers so it stays
+// out of the initial SKUs bundle — only fetched when the user actually uses it.
 import {
   getVendors, getCategories, getPlatforms,
   getMiscTotal, getSettings,
@@ -557,7 +558,8 @@ export default function SKUs() {
   ]
   const TMPL_SAMPLE = ['Varni','FH','y','N6-WHITE','Jewellery Set',299,0,0,0,0,10,'',5,'',20,'',5]
 
-  const downloadXLSX = () => {
+  const downloadXLSX = async () => {
+    const XLSX = await import('xlsx')
     const ws = XLSX.utils.aoa_to_sheet([TMPL_HEADERS, TMPL_SAMPLE])
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'SKU Template')
@@ -581,7 +583,8 @@ export default function SKUs() {
     const file = e.target.files[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = ev => {
+    reader.onload = async ev => {
+      const XLSX = await import('xlsx')
       const wb  = XLSX.read(ev.target.result, { type: 'array' })
       const ws  = wb.Sheets[wb.SheetNames[0]]
       const raw = XLSX.utils.sheet_to_json(ws, { defval: '' })
