@@ -8,7 +8,7 @@ from app.core.config import settings
 from app.core.database import engine
 from app.core.logging_config import setup_logging, app_logger
 from app.middleware.logging_middleware import LoggingMiddleware
-from app.routes import entries, auth, users, platforms, vendors, categories, misc_items, global_settings, hsn_codes, companies
+from app.routes import entries, auth, users, platforms, vendors, categories, misc_items, global_settings, hsn_codes, companies, ledger
 from app.routes.skus import sku_router, pricing_router
 from app.routes import pnl
 from app.routes import fraud
@@ -67,6 +67,7 @@ def create_app() -> FastAPI:
     app.include_router(fraud.router, prefix=prefix)
     app.include_router(dashboard.router, prefix=prefix)
     app.include_router(companies.router, prefix=prefix)
+    app.include_router(ledger.router, prefix=prefix)
 
     app_logger.info(f"Routes registered under {prefix}")
 

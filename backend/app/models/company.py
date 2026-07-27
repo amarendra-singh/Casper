@@ -20,7 +20,7 @@ class CompanyRole(str, enum.Enum):
 
 
 # Modules a company can have; all enabled by default on creation.
-MODULE_KEYS = ["skus", "pricing", "pnl", "fraud", "calculator", "users", "settings"]
+MODULE_KEYS = ["skus", "pricing", "pnl", "fraud", "ledger", "calculator", "users", "settings"]
 
 
 class Company(Base):

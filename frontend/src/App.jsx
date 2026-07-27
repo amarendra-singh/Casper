@@ -30,6 +30,7 @@ const Settings = lazy(() => import('./pages/Settings'))
 const ProfitCalculator = lazy(() => import('./pages/ProfitCalculator'))
 const Users = lazy(() => import('./pages/Users'))
 const Account = lazy(() => import('./pages/Account'))
+const Ledger = lazy(() => import('./pages/Ledger'))
 const FraudDashboard = lazy(() => import('./pages/Fraud/FraudDashboard'))
 const FraudPlatformPage = lazy(() => import('./pages/Fraud/FraudPlatformPage'))
 const PnLIntro = lazy(() => import('./pages/intros/PnLIntro'))
@@ -84,6 +85,7 @@ function AppRoutes() {
         <Route path="skus/intro" element={<RequireModule module="skus"><SKUsIntro /></RequireModule>} />
         <Route path="skus" element={<RequireModule module="skus"><SKUs /></RequireModule>} />
         <Route path="calculator" element={<RequireModule module="calculator"><ProfitCalculator /></RequireModule>} />
+        <Route path="ledger" element={<RequireModule module="ledger"><Ledger /></RequireModule>} />
         <Route path="vendors/intro" element={<RequireModule module="skus"><VendorsIntro /></RequireModule>} />
         <Route path="vendors" element={<RequireModule module="skus"><Vendors /></RequireModule>} />
         <Route path="pricing/intro" element={<RequireModule module="pricing"><PricingIntro /></RequireModule>} />

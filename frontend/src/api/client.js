@@ -130,4 +130,11 @@ export const getPnlPlatformsWithReports = ()           => api.get('/pnl/platform
 export const getPnlDashboard            = ()           => api.get('/pnl/dashboard').then(r => r.data)
 export const uploadPnlReport            = (formData)   => api.post('/pnl/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
 
+// Billing / expense ledger
+export const getLedger        = (params) => api.get('/ledger/', { params }).then(r => r.data)
+export const getLedgerSummary = (params) => api.get('/ledger/summary', { params }).then(r => r.data)
+export const createLedgerEntry= (data)   => api.post('/ledger/', data).then(r => r.data)
+export const updateLedgerEntry= (id, data) => api.patch(`/ledger/${id}`, data).then(r => r.data)
+export const deleteLedgerEntry= (id)     => api.delete(`/ledger/${id}`).then(r => r.data)
+
 export default api
