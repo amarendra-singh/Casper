@@ -141,6 +141,21 @@ select.input { cursor: pointer; }
   padding: 16px;
 }
 
+/* ── Stat cards (reusable KPI row) ── */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.stat {
+  position: relative; overflow: hidden;
+  background: var(--canvas); border: 1px solid var(--rule);
+  border-radius: var(--r-card); box-shadow: var(--shadow-card); padding: 14px 16px;
+}
+.stat::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--pink); opacity: .0; transition: opacity .18s; }
+.stat.accent::before { opacity: 1; }
+.stat.pos::before { background: var(--green-deep); opacity: 1; }
+.stat.neg::before { background: var(--pink); opacity: 1; }
+.stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
+.stat-value { font-size: 22px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.15; margin-top: 6px; }
+.stat-sub   { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
 /* ── Badges ── */
 .badge {
   display: inline-flex; align-items: center;
@@ -154,22 +169,31 @@ select.input { cursor: pointer; }
 .badge-amber  { background: var(--amber-dim);  color: var(--amber-text); }
 .badge-gold   { background: var(--gold-dim);   color: var(--accent); }
 
-/* ── Table ── */
-.table-wrap { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; }
-th {
+/* ── Table (premium data-density) ── */
+.table-wrap {
+  overflow: auto; max-height: 100%;
+  border: 1px solid var(--rule); border-radius: var(--r-card);
+  background: var(--canvas);
+}
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+thead th {
+  position: sticky; top: 0; z-index: 1;
   padding: 9px 12px; text-align: left;
-  font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.055em;
   text-transform: uppercase; color: var(--muted);
-  border-bottom: 1px solid var(--rule);
+  background: var(--shell); border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
 }
-td {
-  padding: 11px 12px; border-bottom: 1px solid var(--rule);
-  font-size: 12px; color: var(--text-2);
+tbody td {
+  padding: 8px 12px; border-bottom: 1px solid var(--rule);
+  font-size: 12.5px; color: var(--ink);
 }
-tr:last-child td { border-bottom: none; }
-tr:hover td { background: var(--shell); color: var(--ink); }
-.mono { font-family: var(--font-mono); font-size: 11px; }
+tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--shell) 40%, transparent); }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: var(--pink-wash); }
+/* numeric columns: right-aligned, tabular */
+th.num, td.num, .col-num { text-align: right; font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--font-mono); font-size: 11.5px; font-variant-numeric: tabular-nums; }
 
 /* ── Modal ── */
 .overlay {
