@@ -226,3 +226,42 @@ tr:hover td { background: var(--shell); color: var(--ink); }
 @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: translateY(0) } }
 @keyframes spin    { to { transform: rotate(360deg) } }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   GLOBAL REFINEMENT LAYER (2026-07 site-wide polish)
+   Applies to every page: consistent focus rings, brand selection, motion
+   safety, refined depth + interaction feedback. Additive — no page overrides.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Brand text selection */
+::selection { background: var(--pink-soft); color: var(--pink); }
+
+/* One accessible, on-brand focus ring for every interactive element that
+   doesn't already define its own. Keyboard-only (focus-visible) so mouse
+   clicks stay clean. */
+:where(a, button, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid var(--pink);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+/* Smooth, consistent interaction feedback on the shared primitives */
+.btn:active { transform: translateY(1px); }
+.btn-accent { box-shadow: 0 6px 16px -6px rgba(236,45,110,.5); }
+.card { transition: box-shadow .18s ease, transform .18s ease, border-color .18s ease; }
+
+/* Slightly richer, more modern elevation scale */
+:root {
+  --shadow-card:  0 1px 2px rgba(20,20,30,.04), 0 10px 28px -14px rgba(20,20,30,.10);
+  --shadow-shell: 0 1px 2px rgba(20,20,30,.05), 0 40px 80px -36px rgba(20,20,30,.22);
+}
+
+/* Respect reduced-motion — disable non-essential animation/transition */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
