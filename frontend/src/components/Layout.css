@@ -184,10 +184,11 @@
 }
 .nav-item:hover { background: rgba(0,0,0,.04); color: var(--ink); }
 .nav-item.active {
-  color: var(--pink); font-weight: 600;
-  background: var(--pink-soft);
-  box-shadow: inset 2px 0 0 var(--pink);
+  color: #fff; font-weight: 600;
+  background: linear-gradient(135deg, var(--pink) 0%, #F23A77 100%);
+  box-shadow: 0 5px 14px -5px rgba(236,45,110,.55);
 }
+.nav-item.active .nav-icon { opacity: 1; color: #fff; }
 .nav-sub-item {
   padding-left: 28px; font-size: 12px; gap: 6px;
   position: relative;
