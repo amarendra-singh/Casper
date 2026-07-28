@@ -75,6 +75,13 @@ export default function Users() {
         )}
       </header>
 
+      <div className="stat-grid" style={{ marginBottom: 16 }}>
+        <div className="stat accent"><div className="stat-label">Members</div><div className="stat-value">{members.length}</div></div>
+        <div className="stat"><div className="stat-label">Owners</div><div className="stat-value">{members.filter(m => m.role === 'owner').length}</div></div>
+        <div className="stat"><div className="stat-label">Admins</div><div className="stat-value">{members.filter(m => m.role === 'admin').length}</div></div>
+        <div className="stat"><div className="stat-label">Viewers</div><div className="stat-value">{members.filter(m => m.role === 'viewer').length}</div></div>
+      </div>
+
       {error && <div className="usr-error" role="alert">{error}</div>}
 
       {canManage && showAdd && (
