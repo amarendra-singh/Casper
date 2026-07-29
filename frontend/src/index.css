@@ -326,6 +326,17 @@ th.num, td.num, .col-num { text-align: right; font-variant-numeric: tabular-nums
   --shadow-shell: 0 1px 2px rgba(20,20,30,.05), 0 40px 80px -36px rgba(20,20,30,.22);
 }
 
+/* Consistent, bold page titles across every page (html:is() outspecifies the
+   per-page title classes so they unify without editing each file). */
+html :is(.page-title, .lg-title, .vnd-title, .usr-title, .pcalc-title, .st-title,
+         .acc-title, .st-header .st-title, .fraud-title) {
+  font-size: 27px; font-weight: 700; letter-spacing: -0.025em;
+  color: var(--ink); line-height: 1.1;
+}
+html :is(.page-subtitle, .lg-sub, .vnd-sub, .usr-sub, .acc-sub, .st-sub) {
+  font-size: 13px; color: var(--muted);
+}
+
 /* Respect reduced-motion — disable non-essential animation/transition */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
