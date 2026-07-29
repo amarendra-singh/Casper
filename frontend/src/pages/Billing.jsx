@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import api, { getSkus } from '../api/client'
+import { useCompany } from '../context/CompanyContext'
 import './Ledger.css'
 import './Billing.css'
 
@@ -45,6 +46,8 @@ export default function Billing() {
   const [draft, setDraft]       = useState(blankDraft())
   const [busy, setBusy]         = useState(false)
   const [error, setError]       = useState('')
+  const [printInv, setPrintInv] = useState(null)
+  const { activeCompany } = useCompany()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -236,6 +239,7 @@ export default function Billing() {
                       <td className="num mono">{fmtP(inv.balance)}</td>
                       <td><span className="bl-status" style={{ color: STATUS_COLOR[inv.status], background: `${STATUS_COLOR[inv.status]}1a` }}>{cap(inv.status)}</span></td>
                       <td className="lg-actions">
+                        <button className="bl-view" onClick={() => setPrintInv(inv)} title="View / download PDF" aria-label="View invoice PDF">⎙</button>
                         {inv.status !== 'paid' && inv.status !== 'cancelled' && <button className="bl-paid" onClick={() => markPaid(inv)} title="Mark paid">✓</button>}
                         <button className="lg-edit" onClick={() => openEdit(inv)} aria-label="Edit invoice">✎</button>
                         <button className="lg-del" onClick={() => remove(inv)} aria-label="Delete invoice">✕</button>
@@ -247,6 +251,64 @@ export default function Billing() {
             </div>
           )}
         </>
+      )}
+
+      {/* Professional printable / PDF invoice */}
+      {printInv && (
+        <div className="bl-doc-overlay" onClick={e => { if (e.target === e.currentTarget) setPrintInv(null) }}>
+          <div className="bl-doc-bar bl-noprint">
+            <button className="lg-save" onClick={() => window.print()}>⬇ Download / Print PDF</button>
+            <button className="lg-cancel" onClick={() => setPrintInv(null)}>Close</button>
+          </div>
+          <div className="bl-doc" id="invoice-print">
+            <div className="bl-doc-head">
+              <div>
+                <div className="bl-doc-co">{activeCompany?.name || 'Company'}</div>
+                <div className="bl-doc-tag">TAX INVOICE</div>
+              </div>
+              <div className="bl-doc-numbox">
+                <div className="bl-doc-num">{printInv.number}</div>
+                <span className="bl-status" style={{ color: STATUS_COLOR[printInv.status], background: `${STATUS_COLOR[printInv.status]}1a` }}>{cap(printInv.status)}</span>
+              </div>
+            </div>
+
+            <div className="bl-doc-meta">
+              <div className="bl-doc-billto">
+                <span>Bill To</span>
+                <b>{printInv.customer_name}</b>
+                {printInv.customer_gstin && <div>GSTIN: {printInv.customer_gstin}</div>}
+              </div>
+              <div className="bl-doc-dates">
+                <div><span>Invoice date</span> {printInv.invoice_date}</div>
+                <div><span>Due date</span> {printInv.due_date || '—'}</div>
+              </div>
+            </div>
+
+            <table className="bl-doc-table">
+              <thead><tr><th>#</th><th>Description</th><th className="num">Qty</th><th className="num">Unit ₹</th><th className="num">Amount</th></tr></thead>
+              <tbody>
+                {printInv.lines.map((l, i) => (
+                  <tr key={l.id}>
+                    <td>{i + 1}</td><td>{l.description}</td>
+                    <td className="num">{l.quantity}</td><td className="num">{fmtP(l.unit_price)}</td><td className="num">{fmtP(l.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="bl-doc-totals">
+              <div><span>Subtotal</span><b>{fmtP(printInv.subtotal)}</b></div>
+              <div><span>GST ({printInv.gst_pct}%)</span><b>{fmtP(printInv.tax_amount)}</b></div>
+              <div className="bl-doc-grand"><span>Total</span><b>{fmtP(printInv.total)}</b></div>
+              <div><span>Amount paid</span><b>{fmtP(printInv.amount_paid)}</b></div>
+              <div className="bl-doc-due"><span>Balance due</span><b>{fmtP(printInv.balance)}</b></div>
+            </div>
+
+            {printInv.bank_name && <div className="bl-doc-note"><span>Payable to</span> {printInv.bank_name}</div>}
+            {printInv.notes && <div className="bl-doc-note"><span>Notes</span> {printInv.notes}</div>}
+            <div className="bl-doc-foot">Thank you for your business.</div>
+          </div>
+        </div>
       )}
     </div>
   )
