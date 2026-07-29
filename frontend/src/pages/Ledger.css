@@ -94,4 +94,16 @@
 .lg-edit:hover { color: var(--pink); border-color: var(--pink); }
 
 .lg-loading { display: flex; justify-content: center; padding: 48px; }
-.lg-empty { text-align: center; padding: 48px 16px; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.lg-empty {
+  text-align: center; padding: 56px 24px; color: var(--muted);
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  background: var(--surface); border: 1px dashed var(--rule); border-radius: var(--r-lg, 14px);
+}
+.lg-empty p { font-size: 15px; font-weight: 600; color: var(--ink); margin: 0; }
+.lg-empty::before {
+  content: ''; width: 52px; height: 52px; border-radius: 14px;
+  background: var(--pink-soft, rgba(236,45,110,.1));
+  background-image: linear-gradient(135deg, var(--pink-soft, rgba(236,45,110,.14)), transparent);
+  display: grid; place-items: center;
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
