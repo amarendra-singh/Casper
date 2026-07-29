@@ -47,6 +47,7 @@ export default function Billing() {
   const [busy, setBusy]         = useState(false)
   const [error, setError]       = useState('')
   const [printInv, setPrintInv] = useState(null)
+  const [search, setSearch]     = useState('')
   const { activeCompany } = useCompany()
 
   const load = useCallback(async () => {
@@ -70,6 +71,20 @@ export default function Billing() {
     [summary])
   const aging = summary.aging || {}
   const maxAge = Math.max(aging['0-30'] || 0, aging['31-60'] || 0, aging['60+'] || 0, 1)
+
+  const shown = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return q ? invoices.filter(i => `${i.number} ${i.customer_name}`.toLowerCase().includes(q)) : invoices
+  }, [invoices, search])
+
+  const exportCSV = () => {
+    const cols = ['number', 'invoice_date', 'due_date', 'customer_name', 'customer_gstin', 'status', 'subtotal', 'tax_amount', 'total', 'amount_paid', 'balance']
+    const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`
+    const csv = [cols.join(','), ...shown.map(i => cols.map(c => esc(i[c])).join(','))].join('\n')
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+    a.download = `casper_invoices_${today()}.csv`; a.click(); URL.revokeObjectURL(a.href)
+  }
 
   const setF = (k, v) => setDraft(d => ({ ...d, [k]: v }))
   const setLine = (i, k, v) => setDraft(d => ({ ...d, lines: d.lines.map((l, j) => j === i ? { ...l, [k]: v } : l) }))
@@ -171,12 +186,15 @@ export default function Billing() {
       ) : (
         <>
           <div className="lg-filters">
+            <input className="bl-search" placeholder="Search number or customer…" value={search}
+              onChange={e => setSearch(e.target.value)} aria-label="Search invoices" />
             <label>Status
               <select value={filter} onChange={e => setFilter(e.target.value)}>
                 <option value="">All</option>
                 {['draft', 'sent', 'paid', 'overdue', 'cancelled'].map(s => <option key={s} value={s}>{cap(s)}</option>)}
               </select>
             </label>
+            <button className="lg-btn-ghost" onClick={exportCSV} disabled={!shown.length} style={{ marginLeft: 'auto' }}>Export CSV</button>
           </div>
 
           {showForm && (
@@ -221,14 +239,14 @@ export default function Billing() {
             </div>
           )}
 
-          {invoices.length === 0 ? (
-            <div className="lg-empty"><p>No invoices{filter ? ` with status “${filter}”` : ''}.</p><button className="lg-add-btn" onClick={openAdd}>+ New invoice</button></div>
+          {shown.length === 0 ? (
+            <div className="lg-empty"><p>No invoices{search ? ' match your search' : filter ? ` with status “${filter}”` : ''}.</p><button className="lg-add-btn" onClick={openAdd}>+ New invoice</button></div>
           ) : (
             <div className="lg-table-wrap">
               <table className="lg-table">
                 <thead><tr><th>Number</th><th>Date</th><th>Due</th><th>Customer</th><th className="num">Total</th><th className="num">Paid</th><th className="num">Balance</th><th>Status</th><th></th></tr></thead>
                 <tbody>
-                  {invoices.map(inv => (
+                  {shown.map(inv => (
                     <tr key={inv.id}>
                       <td className="mono">{inv.number}</td>
                       <td className="mono">{inv.invoice_date}</td>
