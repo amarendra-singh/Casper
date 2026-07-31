@@ -361,7 +361,8 @@ body:has(.pulse)::before {
 /* big value */
 .co-card .big {
   display: flex; align-items: baseline; gap: 8px;
-  font-size: 26px; font-weight: 600; letter-spacing: -.025em;
+  font-family: var(--font-display);
+  font-size: 30px; font-weight: 500; letter-spacing: -.01em;
   line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums;
 }
 
@@ -489,11 +490,12 @@ body:has(.pulse)::before {
   display: flex; align-items: center; gap: 6px;
 }
 .k-val {
-  font-size: 26px; font-weight: 600; letter-spacing: -.025em; line-height: 1;
+  font-family: var(--font-display);
+  font-size: 30px; font-weight: 500; letter-spacing: -.015em; line-height: 1;
   color: var(--ink); display: flex; align-items: baseline; gap: 6px;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; font-feature-settings: "ss01";
 }
-.k-val .sub { font-size: 14px; color: var(--muted-2); font-weight: 500; }
+.k-val .sub { font-family: var(--font-ui); font-size: 13px; color: var(--muted-2); font-weight: 500; }
 .k-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
 .k-vs  { font-size: 11px; color: var(--muted-2); }
 .k-spark {
