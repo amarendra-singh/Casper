@@ -1008,6 +1008,9 @@ body:has(.pulse)::before {
   background: rgba(0,0,0,0.02); white-space: nowrap;
 }
 .si-th-r { text-align: right; }
+/* The SKU-intel table rows are real <tr>s — override the legacy grid .si-row
+   (line ~622) that was wrapping the 10 cells into 5 columns × 2 broken rows. */
+.sku-int-table .si-row { display: table-row; grid-template-columns: none; }
 .si-row { transition: background 0.1s; }
 .si-row:hover { background: rgba(0,0,0,0.025); }
 .si-row:not(:last-child) td { border-bottom: 1px solid var(--rule); }
