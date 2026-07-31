@@ -2,7 +2,6 @@ import { Routes, Route, Navigate, Link } from 'react-router-dom'
 import { Component, lazy, Suspense } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { CompanyProvider, useCompany } from './context/CompanyContext'
-import { ThemeProvider } from './context/ThemeContext'
 
 class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null } }
@@ -111,15 +110,13 @@ function AppRoutes() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider>
-        <AuthProvider>
-          <CompanyProvider>
-            <Suspense fallback={<RouteLoader />}>
-              <AppRoutes />
-            </Suspense>
-          </CompanyProvider>
-        </AuthProvider>
-      </ThemeProvider>
+      <AuthProvider>
+        <CompanyProvider>
+          <Suspense fallback={<RouteLoader />}>
+            <AppRoutes />
+          </Suspense>
+        </CompanyProvider>
+      </AuthProvider>
     </ErrorBoundary>
   )
 }

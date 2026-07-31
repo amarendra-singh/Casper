@@ -42,39 +42,6 @@
   -webkit-font-smoothing: antialiased;
 }
 
-/* ══════════════════════════════════════════════════════════════════════════
-   DARK THEME overrides for the Dashboard's bespoke light surfaces.
-   Only active under [data-theme="dark"] — the light theme is untouched.
-   ══════════════════════════════════════════════════════════════════════════ */
-:root[data-theme="dark"] .pulse {
-  --card-bg: var(--canvas);
-}
-:root[data-theme="dark"] .pulse :is(
-  .pulse-subnav, .sn-tab, .view-toggle, .vt-btn, .p-pill, .filter-row, .channels,
-  .ch-chip, .insight, .co-card, .kpi-strip, .kpi, .metrics-ribbon, .card, .perf-toggle,
-  .pf-row, .sku-int-head, .sku-int-tabs, .sku-int-tab, .si-row, .rc-kpi, .rc-platforms,
-  .rc-prow, .rc-bar, .rc-feeflag, .rc-watch, .rc-wrow, .pp-stat, .pipe-queue, .pq-row,
-  .pq-act, .funnel-track, .fees-track, .cret-row, .by-channel, .reports-wrap, table, thead th
-) {
-  background-color: var(--canvas) !important;
-  border-color: var(--rule) !important;
-}
-:root[data-theme="dark"] .pulse :is(.sn-tab.active, .vt-btn.active, .sku-int-tab.active) {
-  background-color: var(--surface-2) !important;
-}
-/* neutral text → light; keep status/accent colors that set their own color */
-:root[data-theme="dark"] .pulse :is(
-  h1, h2, h3, h4, .pulse-h1, .si-name, .co-name, .nm, .ins-title, .kpi-val, .rc-wsku,
-  .pp-val, .pq-pat, .sec-head h2, td, th, .big
-) { color: var(--ink) !important; }
-:root[data-theme="dark"] .pulse :is(
-  .sub, .ct, .hint, .pulse-meta, .ins-body, .kpi-label, .kpi-hint, .si-sub, .l, .mn .l,
-  .sku-int-title, .rc-wmeta, .pp-lbl, thead th
-) { color: var(--muted) !important; }
-/* light wash insight cards → subtle translucent tints on dark */
-:root[data-theme="dark"] .pulse .insight { box-shadow: none; }
-:root[data-theme="dark"] .pulse tbody tr:hover td { background: var(--surface-2) !important; }
-
 /* ── Background — override canvas when dashboard is active ──────────────── */
 /* Matches design: radial pink/purple/clay glows on #EFEAE0, fixed attachment */
 body:has(.pulse) .canvas {
@@ -82,7 +49,7 @@ body:has(.pulse) .canvas {
     radial-gradient(900px 540px at 88% -10%, rgba(236,45,110,.10),  transparent 55%),
     radial-gradient(700px 540px at -10%  8%, rgba(122,91,255,.08),  transparent 55%),
     radial-gradient(600px 400px at 50% 100%, rgba(198,106,63,.06),  transparent 55%),
-    var(--canvas);
+    #EFEAE0;
   background-attachment: fixed, fixed, fixed, fixed;
 }
 

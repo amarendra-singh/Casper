@@ -69,10 +69,6 @@ export default function Vendors() {
 
   if (loading) return <div className="vnd-loading"><div className="loader" /></div>
 
-  const activeCount = vendors.filter(v => v.is_active).length
-  const inUseCount  = vendors.filter(v => (skuCounts[v.id] || 0) > 0).length
-  const mappedSkus  = Object.values(skuCounts).reduce((a, b) => a + b, 0)
-
   return (
     <div className="vnd-page">
       <div className="vnd-header">
@@ -83,13 +79,6 @@ export default function Vendors() {
         <button className="btn btn-accent" onClick={() => { setShowAdd(true); setError('') }}>
           + Add Vendor
         </button>
-      </div>
-
-      <div className="stat-grid" style={{ marginBottom: 18 }}>
-        <div className="stat v-pink"><div className="stat-label">Vendors</div><div className="stat-value">{vendors.length}</div></div>
-        <div className="stat v-lime"><div className="stat-label">Active</div><div className="stat-value">{activeCount}</div></div>
-        <div className="stat v-violet"><div className="stat-label">In use</div><div className="stat-value">{inUseCount}</div><div className="stat-sub">have SKUs</div></div>
-        <div className="stat v-sun"><div className="stat-label">Mapped SKUs</div><div className="stat-value">{mappedSkus}</div></div>
       </div>
 
       {error && <div className="vnd-error">{error} <button onClick={() => setError('')}>✕</button></div>}

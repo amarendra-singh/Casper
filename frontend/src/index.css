@@ -58,29 +58,13 @@
   --font-display: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono:    'JetBrains Mono', monospace;
 
-  /* ── Vibrant palette (Vibrant-Modern redesign) ── */
-  --violet:  #7A5BFF;
-  --teal:    #14C4C4;
-  --coral:   #FF6B6B;
-  --sun:     #FFB020;
-  --sky:     #3B9EFF;
-  --lime:    #2FCB7E;
-  /* Signature gradients */
-  --grad-pink:   linear-gradient(135deg, #FF6AA0 0%, #EC2D6E 100%);
-  --grad-violet: linear-gradient(135deg, #A48BFF 0%, #6D4BFF 100%);
-  --grad-teal:   linear-gradient(135deg, #3FE0D2 0%, #12A6B8 100%);
-  --grad-sun:    linear-gradient(135deg, #FFCF4D 0%, #FF8A3C 100%);
-  --grad-sky:    linear-gradient(135deg, #62BBFF 0%, #2E7BF0 100%);
-  --grad-lime:   linear-gradient(135deg, #4FE39A 0%, #17A45E 100%);
-  --grad-brand:  linear-gradient(120deg, #FFB020 0%, #EC2D6E 48%, #7A5BFF 100%);
-
-  /* ── Radii (rounder, friendlier) ── */
-  --r-shell:     26px;
-  --r-card:      20px;
+  /* ── Radii ── */
+  --r-shell:     24px;
+  --r-card:      16px;
   --r-pill:      999px;
   --radius:      var(--r-card);
-  --radius-sm:   13px;
-  --radius-xs:   8px;
+  --radius-sm:   10px;
+  --radius-xs:   6px;
   --radius-pill: var(--r-pill);
 
   /* ── Shadows ── */
@@ -90,52 +74,6 @@
   --shadow:       0 2px 8px rgba(0,0,0,0.07), 0 4px 20px rgba(0,0,0,0.04);
   --shadow-lg:    var(--shadow-shell);
 }
-
-/* ══════════════════════════════════════════════════════════════════════════
-   DARK THEME — redefines the semantic tokens; every var()-driven surface flips.
-   Toggled by data-theme="dark" on <html> (ThemeContext, persisted).
-   ══════════════════════════════════════════════════════════════════════════ */
-:root[data-theme="dark"] {
-  --page:        #08080A;
-  --shell:       #121216;   /* sidebar / secondary surface */
-  --canvas:      #17171B;   /* content cards */
-  --ink:         #F4F4F6;   /* primary text */
-  --ink-2:       #E6E6EA;
-  --muted:       #8B8B93;   /* subdued text */
-  --muted-2:     #6A6A72;
-  --rule:        #2A2A30;   /* borders/dividers */
-  --chip:        #202027;
-
-  --surface:     var(--canvas);
-  --surface-2:   #1E1E24;
-  --surface-3:   #24242B;
-  --border:      var(--rule);
-  --border-2:    #33333B;
-  --text:        var(--ink);
-  --text-2:      #B4B4BC;
-  --text-3:      var(--muted);
-
-  /* accent unchanged (pink pops on dark); soft tints go translucent */
-  --pink-soft:   rgba(236,45,110,.18);
-  --pink-wash:   rgba(236,45,110,.10);
-  --accent-dim:  var(--pink-soft);
-  --gold-dim:    rgba(236,45,110,.18);
-
-  /* semantic dims → translucent so they read on dark */
-  --green-dim:   rgba(61,214,140,.16);
-  --green-text:  #4ADE9A;
-  --red-dim:     rgba(220,38,38,.18);
-  --red-text:    #F87171;
-  --amber-dim:   rgba(217,119,6,.18);
-  --amber-text:  #FBBF24;
-  --emerald-soft: rgba(31,169,104,.18);
-  --danger-soft:  rgba(220,38,38,.16);
-
-  --shadow-card:  0 1px 0 rgba(0,0,0,.3), 0 10px 28px -14px rgba(0,0,0,.6);
-  --shadow-shell: 0 1px 0 rgba(0,0,0,.3), 0 40px 80px -36px rgba(0,0,0,.7);
-  color-scheme: dark;
-}
-:root[data-theme="dark"] ::selection { background: rgba(236,45,110,.3); color: #fff; }
 
 html, body, #root {
   height: 100%;
@@ -161,10 +99,10 @@ html, body, #root {
   cursor: pointer; border: none; transition: all 0.15s;
   letter-spacing: 0.01em; white-space: nowrap;
 }
-.btn-primary { background: linear-gradient(180deg, var(--ink-2), var(--ink)); color: #fff; }
-.btn-primary:hover { background: var(--ink); box-shadow: 0 6px 16px -8px rgba(0,0,0,.5); }
-.btn-accent  { background: linear-gradient(135deg, var(--pink), #F23A77); color: #fff; box-shadow: 0 6px 16px -5px rgba(236,45,110,.5); }
-.btn-accent:hover  { filter: brightness(1.05); box-shadow: 0 8px 20px -5px rgba(236,45,110,.6); transform: translateY(-1px); }
+.btn-primary { background: var(--ink); color: #fff; }
+.btn-primary:hover { background: var(--ink-2); }
+.btn-accent  { background: var(--pink); color: #fff; box-shadow: 0 6px 14px -4px rgba(236,45,110,.45); }
+.btn-accent:hover  { background: var(--pink-2); }
 .btn-ghost {
   background: var(--canvas); color: var(--text-2);
   border: 1px solid var(--border-2);
@@ -203,31 +141,6 @@ select.input { cursor: pointer; }
   padding: 16px;
 }
 
-/* ── Vibrant stat tiles (colorful gradient KPI cards) ── */
-.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
-.stat {
-  position: relative; overflow: hidden;
-  border: none; border-radius: 20px; padding: 18px 18px 16px;
-  color: #fff; background: var(--grad-pink);
-  box-shadow: 0 12px 26px -12px rgba(236,45,110,.55);
-}
-/* glossy highlight */
-.stat::after {
-  content: ''; position: absolute; inset: 0;
-  background: radial-gradient(120% 80% at 85% -20%, rgba(255,255,255,.28), transparent 60%);
-  pointer-events: none;
-}
-.stat.accent, .stat.v-pink   { background: var(--grad-pink);   box-shadow: 0 12px 26px -12px rgba(236,45,110,.55); }
-.stat.pos,    .stat.v-lime   { background: var(--grad-lime);   box-shadow: 0 12px 26px -12px rgba(23,164,94,.5); }
-.stat.neg,    .stat.v-coral  { background: var(--grad-sun);    box-shadow: 0 12px 26px -12px rgba(255,138,60,.5); }
-.stat.v-violet { background: var(--grad-violet); box-shadow: 0 12px 26px -12px rgba(109,75,255,.5); }
-.stat.v-teal   { background: var(--grad-teal);   box-shadow: 0 12px 26px -12px rgba(18,166,184,.5); }
-.stat.v-sun    { background: var(--grad-sun);    box-shadow: 0 12px 26px -12px rgba(255,138,60,.5); }
-.stat.v-sky    { background: var(--grad-sky);    box-shadow: 0 12px 26px -12px rgba(46,123,240,.5); }
-.stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: rgba(255,255,255,.85); position: relative; }
-.stat-value { font-size: 26px; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; line-height: 1.1; margin-top: 8px; letter-spacing: -.02em; position: relative; }
-.stat-sub   { font-size: 11px; color: rgba(255,255,255,.8); margin-top: 4px; position: relative; }
-
 /* ── Badges ── */
 .badge {
   display: inline-flex; align-items: center;
@@ -241,31 +154,22 @@ select.input { cursor: pointer; }
 .badge-amber  { background: var(--amber-dim);  color: var(--amber-text); }
 .badge-gold   { background: var(--gold-dim);   color: var(--accent); }
 
-/* ── Table (premium data-density) ── */
-.table-wrap {
-  overflow: auto; max-height: 100%;
-  border: 1px solid var(--rule); border-radius: var(--r-card);
-  background: var(--canvas);
-}
-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-thead th {
-  position: sticky; top: 0; z-index: 1;
+/* ── Table ── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th {
   padding: 9px 12px; text-align: left;
-  font-size: 10.5px; font-weight: 700; letter-spacing: 0.055em;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
   text-transform: uppercase; color: var(--muted);
-  background: var(--shell); border-bottom: 1px solid var(--rule);
-  white-space: nowrap;
+  border-bottom: 1px solid var(--rule);
 }
-tbody td {
-  padding: 8px 12px; border-bottom: 1px solid var(--rule);
-  font-size: 12.5px; color: var(--ink);
+td {
+  padding: 11px 12px; border-bottom: 1px solid var(--rule);
+  font-size: 12px; color: var(--text-2);
 }
-tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--shell) 40%, transparent); }
-tbody tr:last-child td { border-bottom: none; }
-tbody tr:hover td { background: var(--pink-wash); }
-/* numeric columns: right-aligned, tabular */
-th.num, td.num, .col-num { text-align: right; font-variant-numeric: tabular-nums; }
-.mono { font-family: var(--font-mono); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--shell); color: var(--ink); }
+.mono { font-family: var(--font-mono); font-size: 11px; }
 
 /* ── Modal ── */
 .overlay {
@@ -322,53 +226,3 @@ th.num, td.num, .col-num { text-align: right; font-variant-numeric: tabular-nums
 @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: translateY(0) } }
 @keyframes spin    { to { transform: rotate(360deg) } }
-
-/* ══════════════════════════════════════════════════════════════════════════
-   GLOBAL REFINEMENT LAYER (2026-07 site-wide polish)
-   Applies to every page: consistent focus rings, brand selection, motion
-   safety, refined depth + interaction feedback. Additive — no page overrides.
-   ══════════════════════════════════════════════════════════════════════════ */
-
-/* Brand text selection */
-::selection { background: var(--pink-soft); color: var(--pink); }
-
-/* One accessible, on-brand focus ring for every interactive element that
-   doesn't already define its own. Keyboard-only (focus-visible) so mouse
-   clicks stay clean. */
-:where(a, button, input, select, textarea, [role="button"], [tabindex]):focus-visible {
-  outline: 2px solid var(--pink);
-  outline-offset: 2px;
-  border-radius: var(--radius-xs);
-}
-
-/* Smooth, consistent interaction feedback on the shared primitives */
-.btn:active { transform: translateY(1px); }
-.card { transition: box-shadow .18s ease, transform .18s ease, border-color .18s ease; }
-.card:hover { box-shadow: var(--shadow-shell); transform: translateY(-2px); }
-
-/* Slightly richer, more modern elevation scale */
-:root {
-  --shadow-card:  0 1px 2px rgba(20,20,30,.04), 0 10px 28px -14px rgba(20,20,30,.10);
-  --shadow-shell: 0 1px 2px rgba(20,20,30,.05), 0 40px 80px -36px rgba(20,20,30,.22);
-}
-
-/* Consistent, bold page titles across every page (html:is() outspecifies the
-   per-page title classes so they unify without editing each file). */
-html :is(.page-title, .lg-title, .vnd-title, .usr-title, .pcalc-title, .st-title,
-         .acc-title, .st-header .st-title, .fraud-title) {
-  font-size: 27px; font-weight: 700; letter-spacing: -0.025em;
-  color: var(--ink); line-height: 1.1;
-}
-html :is(.page-subtitle, .lg-sub, .vnd-sub, .usr-sub, .acc-sub, .st-sub) {
-  font-size: 13px; color: var(--muted);
-}
-
-/* Respect reduced-motion — disable non-essential animation/transition */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: .001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: .001ms !important;
-    scroll-behavior: auto !important;
-  }
-}
