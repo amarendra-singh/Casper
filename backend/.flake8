@@ -1,0 +1,6 @@
+[flake8]
+max-line-length = 100
+exclude = .git,__pycache__,env,alembic/versions
+ignore = E203, W503  # Black-compatible formatting rules
+per-file-ignores =
+    __init__.py: F401
