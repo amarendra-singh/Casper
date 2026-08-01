@@ -196,6 +196,49 @@ async def upload_pnl(
     return result
 
 
+# ── ShopDeck customer-fraud upload ──────────────────────────────────────────────
+
+@router.post("/shopdeck-customers")
+async def upload_shopdeck_customers(
+    file: UploadFile = File(...),
+    persist: bool = Form(default=True),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_any),
+    company=Depends(get_active_company),
+):
+    """
+    Upload a ShopDeck customer export (CSV) → score customers by RTO/cancel
+    behaviour. If persist=True, flagged customers are upserted into this
+    company's actor_risk_profiles so they surface in the Fraud Action Pipeline.
+    """
+    from app.services.shopdeck_customers import (
+        parse_customer_csv, build_customer_fraud, ingest_customer_fraud,
+    )
+    raw = await file.read()
+    if len(raw) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                            detail="File too large")
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = raw.decode("latin-1")
+
+    customers = parse_customer_csv(text)
+    if not customers:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="No customer rows found in CSV")
+
+    result = build_customer_fraud(customers)
+    ingested = 0
+    if persist:
+        ingested = await ingest_customer_fraud(db, customers, company.id)
+    pnl_logger.info(
+        f"ShopDeck customers — parsed={len(customers)} ingested={ingested} "
+        f"company={company.id} user={current_user.id}"
+    )
+    return {"parsed": len(customers), "ingested": ingested, **result}
+
+
 # ── List reports ──────────────────────────────────────────────────────────────
 
 @router.get("/reports", response_model=list[PnlReportSummary])

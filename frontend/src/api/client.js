@@ -129,6 +129,7 @@ export const deletePnlReport            = (id)         => api.delete(`/pnl/repor
 export const getPnlPlatformsWithReports = ()           => api.get('/pnl/platforms-with-reports').then(r => r.data)
 export const getPnlDashboard            = ()           => api.get('/pnl/dashboard').then(r => r.data)
 export const uploadPnlReport            = (formData)   => api.post('/pnl/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
+export const uploadShopdeckCustomers    = (formData)   => api.post('/pnl/shopdeck-customers', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
 
 // Billing / expense ledger
 export const getLedger        = (params) => api.get('/ledger/', { params }).then(r => r.data)

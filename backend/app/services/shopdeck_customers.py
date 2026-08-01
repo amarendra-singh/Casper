@@ -146,13 +146,16 @@ def build_customer_fraud(customers: list[dict]) -> dict:
 
 # ── Persistence: surface customers in the Fraud Action Pipeline ─────────────────
 
-def _actor_key(phone: str, name: str) -> str:
+def _actor_key(phone: str, name: str, company_id: int) -> str:
+    # Namespace by company_id: actor_key is globally unique, so two companies
+    # with the same customer phone must not collide (tenancy isolation).
     raw = (phone or name or "unknown").strip().lower()
-    return "shopdeck:" + hashlib.sha1(raw.encode()).hexdigest()[:16]
+    digest = hashlib.sha1(raw.encode()).hexdigest()[:16]
+    return f"shopdeck:{company_id}:{digest}"
 
 
-async def ingest_customer_fraud(db, customers: list[dict]) -> int:
-    """Upsert scored customers into actor_risk_profiles (idempotent by key)."""
+async def ingest_customer_fraud(db, customers: list[dict], company_id: int) -> int:
+    """Upsert scored customers into actor_risk_profiles for one company (idempotent by key)."""
     from sqlalchemy import select
     from app.models.fraud import ActorRiskProfile
 
@@ -161,9 +164,12 @@ async def ingest_customer_fraud(db, customers: list[dict]) -> int:
         s = score_customer(c)
         if s["action"] == "OK":
             continue
-        key = _actor_key(s["phone"], s["name"])
+        key = _actor_key(s["phone"], s["name"], company_id)
         existing = await db.scalar(
-            select(ActorRiskProfile).where(ActorRiskProfile.actor_key == key)
+            select(ActorRiskProfile).where(
+                ActorRiskProfile.actor_key == key,
+                ActorRiskProfile.company_id == company_id,
+            )
         )
         fields = dict(
             total_orders=s["orders"],
@@ -179,7 +185,7 @@ async def ingest_customer_fraud(db, customers: list[dict]) -> int:
             for k, v in fields.items():
                 setattr(existing, k, v)
         else:
-            db.add(ActorRiskProfile(actor_key=key, **fields))
+            db.add(ActorRiskProfile(actor_key=key, company_id=company_id, **fields))
         count += 1
     await db.commit()
     return count

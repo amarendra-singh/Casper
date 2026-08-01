@@ -718,7 +718,13 @@ async def compute_actor_risk_profiles(db: AsyncSession, company_id: int) -> None
     import hashlib
     from app.models.fraud import ActorRiskProfile
 
-    await db.execute(delete(ActorRiskProfile).where(ActorRiskProfile.company_id == company_id))
+    # Rebuild only the state+reason actors this function owns. ShopDeck customer
+    # actors (actor_key "shopdeck:*") are ingested from uploads, not derived from
+    # order events — preserve them across P&L recomputes.
+    await db.execute(delete(ActorRiskProfile).where(
+        ActorRiskProfile.company_id == company_id,
+        ~ActorRiskProfile.actor_key.like("shopdeck:%"),
+    ))
 
     q = select(
         OrderEvent.customer_state_name,

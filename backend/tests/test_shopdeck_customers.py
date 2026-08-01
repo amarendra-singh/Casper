@@ -80,7 +80,9 @@ def test_build_summary():
 
 
 def test_actor_key_stable_and_namespaced():
-    k1 = _actor_key("999", "Refuser")
-    k2 = _actor_key("999", "Refuser")
+    k1 = _actor_key("999", "Refuser", 1)
+    k2 = _actor_key("999", "Refuser", 1)
     assert k1 == k2
-    assert k1.startswith("shopdeck:")
+    assert k1.startswith("shopdeck:1:")
+    # Same customer, different company → different key (tenancy isolation).
+    assert _actor_key("999", "Refuser", 2) != k1

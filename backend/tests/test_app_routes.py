@@ -26,6 +26,7 @@ def test_core_routers_mounted():
         "/api/v1/auth/login",
         "/api/v1/skus/",
         "/api/v1/pnl/upload",
+        "/api/v1/pnl/shopdeck-customers",
         "/api/v1/fraud/actors",
         "/api/v1/dashboard/metrics",
     ]:

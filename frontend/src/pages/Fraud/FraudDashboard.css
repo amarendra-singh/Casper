@@ -24,6 +24,22 @@
 .fd-subtitle {
   font-size: 0.82rem; color: var(--muted-3); margin: 0;
 }
+.fd-actions {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  justify-content: flex-end; flex-shrink: 0;
+}
+.fd-upload-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border-2, #d9d6d2);
+  background: var(--canvas, #fff); color: var(--ink, #0e0e10);
+  font-size: 0.8rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+.fd-upload-btn:hover:not(:disabled) { background: var(--shell, #f4f2ef); border-color: var(--pink, #ec2d6e); }
+.fd-upload-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.fd-upload-msg { font-size: 0.78rem; font-weight: 500; max-width: 260px; }
+.fd-upload-msg.ok  { color: var(--green-deep, #16a34a); }
+.fd-upload-msg.err { color: var(--red, #dc2626); }
 .fd-last-updated {
   font-size: 0.78rem; color: var(--muted-3);
   background: var(--surface-2); padding: 4px 10px; border-radius: 6px;
