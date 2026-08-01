@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { getSkus, getPnlDashboard } from '../api/client'
 import api from '../api/client'
-import IndiaMapCard from '../components/IndiaMapCard'
+import { useCompany } from '../context/CompanyContext'
 import './Dashboard.css'
 
 // ── Platform display config ────────────────────────────────────────────────
@@ -17,6 +18,23 @@ const PLAT_CFG = {
 const cfg = n => PLAT_CFG[n?.toLowerCase()] ?? PLAT_CFG.default
 // Ordered platform list (F/a/m/S/Sd — matches design)
 const PLAT_KEYS = ['flipkart', 'amazon', 'meesho', 'snapdeal', 'shopdeck']
+// Subnav tabs → dashboard section ids (real in-page scroll navigation)
+const SUBNAV = [
+  { id: 'sec-overview', label: 'Overview' },
+  { id: 'sec-catalog',  label: 'Catalog' },
+  { id: 'sec-orders',   label: 'Orders' },
+  { id: 'sec-returns',  label: 'Returns & RTO' },
+  { id: 'sec-finance',  label: 'Finance' },
+  { id: 'sec-insights', label: 'Insights' },
+]
+// Order-funnel bar colour per stage (real /dashboard/operations labels)
+const FUNNEL_CLS = {
+  'Dispatched': 'bar-gray',
+  'RTO (logistics)': 'bar-red',
+  'Customer returns': 'bar-amber',
+  'Cancelled': 'bar-black',
+  'Net delivered': 'bar-green',
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 const fmt    = n => (n ?? 0).toLocaleString('en-IN')
@@ -25,6 +43,145 @@ const fmtL   = n => `₹${((n ?? 0) / 100000).toFixed(1)}L`
 const fmtLParts = n => [`₹${((n ?? 0) / 100000).toFixed(1)}`, 'L']
 const fmtK   = n => (n ?? 0) >= 100000 ? fmtL(n) : `₹${Math.round((n ?? 0) / 1000)}k`
 const pct    = (a, b) => b > 0 ? ((a / b) * 100).toFixed(1) + '%' : '—'
+
+// Download an array of objects as a CSV file
+function downloadCSV(filename, rows) {
+  if (!rows?.length) return
+  const cols = Object.keys(rows[0])
+  const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`
+  const body = rows.map(r => cols.map(c => esc(r[c])).join(',')).join('\n')
+  const blob = new Blob([cols.join(',') + '\n' + body], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${filename}_${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+// ── Settlement reconciliation — real data from /dashboard/reconciliation ─────
+function SettlementRecon({ recon }) {
+  if (!recon?.summary || (recon.summary.bank_settlement <= 0 && recon.summary.underpaid_skus <= 0)) return null
+  const sm = recon.summary
+  return (
+    <section className="recon">
+      <div className="sec-head">
+        <div>
+          <h2>Settlement reconciliation <span className="ct">cash &amp; leakage</span></h2>
+          <div className="sub">What&apos;s settled, what&apos;s pending, and where the platform under-paid vs your expected settlement.</div>
+        </div>
+      </div>
+      <div className="rc-top st-gap">
+        <div className="rc-kpi">
+          <span className="k">Settled</span>
+          <span className="v">{fmtL(sm.settled)}</span>
+          <span className="s">{sm.settled_pct != null ? `${sm.settled_pct}% of ${fmtL(sm.bank_settlement)}` : '—'}</span>
+        </div>
+        <div className="rc-kpi">
+          <span className="k">Pending</span>
+          <span className="v amber">{fmtL(Math.max(sm.pending, 0))}</span>
+          <span className="s">awaiting platform payout</span>
+        </div>
+        <div className="rc-kpi">
+          <span className="k">Fee load</span>
+          <span className="v">{sm.fee_load_pct != null ? `${sm.fee_load_pct}%` : '—'}</span>
+          <span className="s">{fmtL(sm.total_fees)} of gross</span>
+        </div>
+        <div className="rc-kpi flag">
+          <span className="k">Recoverable</span>
+          <span className="v neg">{fmtL(sm.recoverable)}</span>
+          <span className="s">{sm.underpaid_skus} SKUs under-settled</span>
+        </div>
+      </div>
+      <div className="rc-grid">
+        <div className="rc-platforms">
+          {(recon.platforms ?? []).map(p => (
+            <div key={p.platform} className="rc-prow">
+              <span className="rc-pname">
+                <PlatMk name={p.platform} size={22} /> {p.platform}
+                {p.fee_flag && <span className="rc-feeflag">⚠ {p.fee_load_pct}% fees</span>}
+              </span>
+              <div className="rc-bar"><i style={{ width: `${p.settled_pct ?? 0}%` }} /></div>
+              <span className="rc-pval">{p.settled_pct != null ? `${p.settled_pct}%` : '—'}</span>
+            </div>
+          ))}
+        </div>
+        <div className="rc-watch">
+          <div className="rc-whd">Top under-settled SKUs <span>vs expected</span></div>
+          {(recon.underpaid ?? []).length === 0 && <div className="si-empty">No under-settled SKUs — platforms paid in full. ✓</div>}
+          {(recon.underpaid ?? []).map((u, i) => (
+            <div key={`${u.sku}-${u.platform}-${i}`} className="rc-wrow">
+              <span className="rc-wsku" title={`${u.sku} · ${u.platform}`}>{u.sku}</span>
+              <span className="rc-wpu">{u.actual_per_unit} / {u.expected_per_unit}</span>
+              <span className="rc-wgap">−₹{fmt(Math.abs(Math.round(u.gap_total)))}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ── Fraud action pipeline — real data from /dashboard/action-pipeline ────────
+function FraudPipeline({ pipeline }) {
+  if (!pipeline?.summary?.total_actors) return null
+  const sm = pipeline.summary
+  const actCls = a => a === 'BLOCK' ? 'block' : a === 'DISPUTE' ? 'dispute' : 'watch'
+
+  const exportBlocklist = () => {
+    const head = 'actor_key,state,reason,score,orders\n'
+    const body = (pipeline.blocklist ?? []).map(b =>
+      `${b.actor_key},${b.state ?? ''},${b.reason},${b.score},${b.orders}`).join('\n')
+    const blob = new Blob([head + body], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url; link.download = `blocklist_${new Date().toISOString().slice(0, 10)}.csv`
+    link.click(); URL.revokeObjectURL(url)
+  }
+
+  return (
+    <section className="pipe">
+      <div className="sec-head">
+        <div>
+          <h2>Fraud action pipeline <span className="ct">{sm.total_actors} actors</span></h2>
+          <div className="sub">Prioritised by recoverable impact. Block repeat refusers, dispute fraud-signal returns.</div>
+        </div>
+        {sm.block > 0 && (
+          <button className="pipe-export" onClick={exportBlocklist}>
+            ↓ Export blocklist ({sm.block})
+          </button>
+        )}
+      </div>
+
+      <div className="pipe-stats st-gap">
+        <div className="pp-stat block"><span className="n">{sm.block}</span><span className="k">Block</span></div>
+        <div className="pp-stat dispute"><span className="n">{sm.dispute}</span><span className="k">Dispute</span></div>
+        <div className="pp-stat watch"><span className="n">{sm.watch}</span><span className="k">Watch</span></div>
+        <div className="pp-stat"><span className="n">{sm.repeat_offenders}</span><span className="k">Repeat refusers</span></div>
+        <div className="pp-stat recover"><span className="n">{fmtL(sm.est_recovery)}</span><span className="k">Est. recoverable</span></div>
+      </div>
+
+      <div className="pipe-queue st-gap-sm">
+        <div className="pq-row pq-hd">
+          <span>Action</span><span>Actor</span><span>Pattern</span><span>Orders · returns</span><span>Score</span><span>Recommended claim</span>
+        </div>
+        {(pipeline.queue ?? []).slice(0, 8).map(q => (
+          <div key={q.actor_key} className="pq-row">
+            <span className={`pq-act ${actCls(q.action)}`}>{q.action}</span>
+            <span className="pq-actor">
+              {q.actor_key?.slice(0, 10)}…
+              {q.repeat_offender && <i className="pq-repeat" title="Repeat refuser">↻</i>}
+            </span>
+            <span className="pq-pat">{q.reason}{q.state ? ` · ${q.state}` : ''}</span>
+            <span className="pq-num">{fmt(q.orders)} · {fmt(q.returns)}{q.return_pct != null ? ` (${q.return_pct}%)` : ''}</span>
+            <span className={`pq-score s${q.score >= 85 ? '3' : q.score >= 50 ? '2' : '1'}`}>{q.score}</span>
+            <span className="pq-claim" title={q.template}>{q.template}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
 
 // Static AI insights
 // titleChip: { text, cls } renders an inline delta-chip INSIDE the title (matches design)
@@ -77,13 +234,6 @@ function PlatMk({ name, size = 34 }) {
   )
 }
 
-function DeltaChip({ val, invert }) {
-  if (val == null) return null
-  const up = val >= 0
-  const good = invert ? !up : up
-  return <span className={`delta-chip ${good ? 'up' : 'down'}`}>{up ? '▲' : '▼'} {Math.abs(val).toFixed(1)}%</span>
-}
-
 // ── Chart tooltip ─────────────────────────────────────────────────────────
 const WEEK_MON = { W1:'Mar',W2:'Mar',W3:'Apr',W4:'Apr',W5:'May',W6:'May',W7:'Jun',W8:'Jun',W9:'Jul',W10:'Jul',W11:'Aug',W12:'Aug' }
 function ChartTooltip({ active, payload, label }) {
@@ -113,11 +263,43 @@ export default function Dashboard() {
   const [actors,    setActors]    = useState([])
   const [insights,  setInsights]  = useState([])
   const [metrics,   setMetrics]   = useState([])
+  const [skuIntel,  setSkuIntel]  = useState(null)
+  const [recon,     setRecon]     = useState(null)
+  const [pipeline,  setPipeline]  = useState(null)
+  const [ops,       setOps]       = useState(null)
   const [loading,   setLoading]   = useState(true)
   const [selChan,   setSelChan]   = useState('all')
   const [activeKpi, setActiveKpi] = useState(2)  // margin active by default
   const [viewMode,  setViewMode]  = useState('consolidated') // consolidated | per-company
   const [perfMetric,setPerfMetric]= useState('Revenue')
+  const [activeSec, setActiveSec] = useState('sec-overview')
+  const [skuFilter, setSkuFilter] = useState('All')
+  const [skuPage,   setSkuPage]   = useState(0)
+  const navigate = useNavigate()
+  const { activeCompany } = useCompany()
+
+  // Smooth-scroll the subnav to a section (offset handled via CSS scroll-margin-top)
+  const goToSection = (id) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  // Scrollspy — highlight the subnav tab for whichever section is in view
+  useEffect(() => {
+    const els = SUBNAV.map(s => document.getElementById(s.id)).filter(Boolean)
+    if (!els.length) return
+    const obs = new IntersectionObserver(
+      entries => {
+        // Thin trigger band just below the nav — the section spanning it is "current".
+        // If several intersect, the one with the largest top is the most recently entered.
+        const visible = entries.filter(e => e.isIntersecting)
+          .sort((a, b) => b.boundingClientRect.top - a.boundingClientRect.top)
+        if (visible[0]) setActiveSec(visible[0].target.id)
+      },
+      { rootMargin: '-72px 0px -88% 0px', threshold: 0 }
+    )
+    els.forEach(el => obs.observe(el))
+    return () => obs.disconnect()
+  })
 
   useEffect(() => {
     Promise.all([
@@ -126,9 +308,14 @@ export default function Dashboard() {
       api.get('/fraud/actors').then(r => r.data?.actors ?? []).catch(() => []),
       api.get('/dashboard/insights').then(r => r.data?.insights ?? []).catch(() => []),
       api.get('/dashboard/metrics').then(r => r.data?.metrics ?? []).catch(() => []),
+      api.get('/dashboard/sku-intelligence').then(r => r.data ?? null).catch(() => null),
+      api.get('/dashboard/reconciliation').then(r => r.data ?? null).catch(() => null),
+      api.get('/dashboard/action-pipeline').then(r => r.data ?? null).catch(() => null),
+      api.get('/dashboard/operations').then(r => r.data ?? null).catch(() => null),
     ])
-      .then(([d, s, a, ins, met]) => {
-        setDash(d); setSkus(s ?? []); setActors(a); setInsights(ins); setMetrics(met)
+      .then(([d, s, a, ins, met, intel, rec, pipe, opsData]) => {
+        setDash(d); setSkus(s ?? []); setActors(a); setInsights(ins); setMetrics(met); setSkuIntel(intel)
+        setRecon(rec); setPipeline(pipe); setOps(opsData)
       })
       .finally(() => setLoading(false))
   }, [])
@@ -150,6 +337,52 @@ export default function Dashboard() {
   const netUnits   = platforms.reduce((s, p) => s + (p.net_units   ?? 0), 0)
   const marginPct  = totalGross > 0 ? (totalEarn / totalGross) * 100 : 0
   const skuCount   = skus.length
+  // A brand-new company has no catalogue and no uploaded P&L — show onboarding.
+  const isEmpty    = skuCount === 0 && platforms.length === 0
+
+  // ── SKU Intelligence rows (real data from /dashboard/sku-intelligence) ──────
+  const SKU_STATUS = {
+    profit:  { label: 'Performing',  cls: 'badge-green' },
+    thin:    { label: 'Thin margin', cls: 'badge-amber' },
+    loss:    { label: 'Below cost',  cls: 'badge-red'   },
+    no_cost: { label: 'No data',     cls: 'badge-muted' },
+  }
+  const SKU_CHIPS = ['sku-chip-teal','sku-chip-blue','sku-chip-purple','sku-chip-orange','sku-chip-clay','sku-chip-ink']
+  const fmtRev = (n) => n >= 100000 ? `₹${(n/100000).toFixed(1)}L`
+                     : n >= 1000   ? `₹${(n/1000).toFixed(1)}K`
+                     : `₹${Math.round(n || 0)}`
+  // Filter + paginate the real SKU-intelligence rows
+  const SKU_PAGE = 7
+  const allSkuRows = skuIntel?.all_skus ?? []
+  const SKU_FILTERS = {
+    'All':         () => true,
+    'Heroes':      r => r.status === 'profit',
+    'Below cost':  r => r.status === 'loss',
+    'High return': r => (r.return_rate ?? 0) > 30,
+  }
+  const filteredSkus = allSkuRows.filter(SKU_FILTERS[skuFilter] || SKU_FILTERS.All)
+  const skuPageCount = Math.max(1, Math.ceil(filteredSkus.length / SKU_PAGE))
+  const skuPageSafe  = Math.min(skuPage, skuPageCount - 1)
+  const skuRows = filteredSkus.slice(skuPageSafe * SKU_PAGE, skuPageSafe * SKU_PAGE + SKU_PAGE).map(r => {
+    const stat = SKU_STATUS[r.status] || SKU_STATUS.no_cost
+    const segs = String(r.sku || '').split('-').filter(Boolean)
+    const code = (segs[segs.length - 1] || r.sku || '').slice(0, 3).toUpperCase()
+    const idx = (code.charCodeAt(0) + code.charCodeAt(code.length - 1)) % SKU_CHIPS.length
+    const ret = Math.round((r.return_rate ?? 0) * 10) / 10
+    return {
+      code, codeCls: SKU_CHIPS[idx],
+      name: r.sku, sub: `${r.sku} · Jewellery`,
+      co: 'Shringar', coCls: 'co-nova',
+      plats: (r.platforms || []).map(p => String(p).toLowerCase()),
+      price: '—', priceOn: '',
+      units: r.net_units,
+      rev: fmtRev(r.payout),
+      rto: ret, rtoBar: Math.min(100, ret * 2),
+      ret, margin: r.margin_pct ?? 0,
+      marginCls: (r.margin_pct ?? 0) > 0 ? 'mg-green' : '',
+      status: stat.label, statusCls: stat.cls,
+    }
+  })
 
   // monthly → chart rows
   const months   = dash?.monthly ? [...new Set(dash.monthly.map(m => m.month))].sort() : []
@@ -183,14 +416,6 @@ export default function Dashboard() {
   }
 
   // Demo sparks per platform (used when real data < 4 months)
-  const SPARK_DEMO = {
-    flipkart: [62, 68, 65, 76, 70, 84, 79, 91, 86, 95],
-    meesho:   [38, 44, 41, 52, 56, 50, 62, 59, 68, 72],
-    snapdeal: [28, 33, 30, 40, 37, 44, 42, 50, 46, 54],
-    amazon:   [55, 60, 67, 63, 72, 68, 76, 82, 79, 88],
-    shopdeck: [22, 30, 27, 36, 32, 41, 38, 46, 43, 50],
-  }
-
   // Channel filter
   const visible = selChan === 'all' ? platforms : platforms.filter(p => p.name?.toLowerCase() === selChan)
 
@@ -203,10 +428,10 @@ export default function Dashboard() {
   const hasRevData = totalRev > 0
   // chip: { text, cls } — only show when we have real data
   const KPI_DEFS = [
-    { label: 'Net revenue',         val: fmtL(totalRev),            sub: null,  chip: hasRevData ? { text:'▲ 12.4%', cls:'up'  } : null, hint: hasRevData ? 'vs prev. 30d'            : 'no reports yet' },
-    { label: 'GMV',                 val: fmtL(totalGross),          sub: null,  chip: hasRevData ? { text:'▲ 8.7%',  cls:'up'  } : null, hint: hasRevData ? `${fmt(totalUnits)} ords`  : 'upload P&L'      },
-    { label: 'Contribution margin', val: hasRevData ? `${marginPct.toFixed(1)}` : '—', sub: hasRevData ? '%' : null, chip: hasRevData ? { text:'▲ 0.9pp', cls:'up' } : null, hint: hasRevData ? `${fmtK(totalEarn)} net` : 'no data yet' },
-    { label: 'Orders',              val: hasRevData ? fmt(netUnits) : '—',      sub: null,  chip: hasRevData ? { text:'▲ 4.1%', cls:'up' } : null, hint: hasRevData ? `AOV ₹${totalUnits > 0 ? Math.round(totalRev/totalUnits) : 0}` : 'no orders yet' },
+    { label: 'Net revenue',         val: fmtL(totalRev),            sub: null,  chip: null, hint: hasRevData ? 'settled · last 30d'      : 'no reports yet' },
+    { label: 'GMV',                 val: fmtL(totalGross),          sub: null,  chip: null, hint: hasRevData ? `${fmt(totalUnits)} ords`  : 'upload P&L'      },
+    { label: 'Contribution margin', val: hasRevData ? `${marginPct.toFixed(1)}` : '—', sub: hasRevData ? '%' : null, chip: null, hint: hasRevData ? `${fmtK(totalEarn)} net` : 'no data yet' },
+    { label: 'Orders',              val: hasRevData ? fmt(netUnits) : '—',      sub: null,  chip: null, hint: hasRevData ? `AOV ₹${totalUnits > 0 ? Math.round(totalRev/totalUnits) : 0}` : 'no orders yet' },
     { label: 'RTO rate',            val: '—',                       sub: null,  chip: null, hint: 'no logistics data' },
     { label: 'Return rate',         val: returnRatePct ? `${returnRatePct}` : '—', sub: returnRatePct ? '%' : null, chip: criticalActors > 0 ? { text:`${criticalActors} critical`, cls:'down' } : null, hint: returnRatePct ? `${totalActorOrders} orders tracked` : 'upload FK orders' },
   ]
@@ -248,36 +473,38 @@ export default function Dashboard() {
     <div className="pulse">
 
       {/* ── Subnav — Overview/Catalog/Orders/Returns/Finance/Insights ─── */}
-      <nav className="pulse-subnav">
-        {[
-          { label:'Overview',      count:null,   active:true  },
-          { label:'Catalog',       count:skuCount             },
-          { label:'Orders',        count:fmt(netUnits)        },
-          { label:'Returns & RTO', count:null                 },
-          { label:'Finance',       count:null                 },
-          { label:'Insights',      count:INSIGHTS.length      },
-        ].map(tab => (
-          <button key={tab.label} className={`sn-tab${tab.active?' active':''}`}>
-            {tab.label === 'Overview' && (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight:4 }}>
-                <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-                <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-              </svg>
-            )}
-            {tab.label}
-            {tab.count != null && <span className="ct">{tab.count}</span>}
-          </button>
-        ))}
+      <nav className="pulse-subnav" aria-label="Dashboard sections">
+        {SUBNAV.map(tab => {
+          const count = tab.id === 'sec-catalog' ? skuCount
+            : tab.id === 'sec-orders' ? fmt(netUnits)
+            : tab.id === 'sec-insights' ? INSIGHTS.length
+            : null
+          const active = activeSec === tab.id
+          return (
+            <button key={tab.id} className={`sn-tab${active ? ' active' : ''}`}
+              aria-current={active ? 'true' : undefined}
+              onClick={() => goToSection(tab.id)}>
+              {tab.id === 'sec-overview' && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight:4 }}>
+                  <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                  <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+                </svg>
+              )}
+              {tab.label}
+              {count != null && <span className="ct">{count}</span>}
+            </button>
+          )
+        })}
         <div className="sn-right">
-          <button className="sn-customize">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M4.93 19.07l1.41-1.41M19.07 19.07l-1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
-            Customize
+          <button className="sn-customize" onClick={() => navigate('/skus')}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Manage SKUs
           </button>
         </div>
       </nav>
 
       {/* ── Page head ────────────────────────────────────────────────── */}
-      <section className="page-head">
+      <section className="page-head" id="sec-overview">
         <div className="title-block">
           <h1 className="pulse-h1">Multichannel <em>pulse</em></h1>
           <div className="pulse-meta">
@@ -309,12 +536,49 @@ export default function Dashboard() {
             Last 30 days
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
-          <button className="p-pill dark">
+          <button className="p-pill dark" onClick={() => downloadCSV('casper_sku_intelligence',
+            allSkuRows.map(r => ({
+              sku: r.sku, platforms: (r.platforms || []).join(' '),
+              net_units: r.net_units, payout: r.payout, cost: r.cost,
+              net_profit: r.net_profit, margin_pct: r.margin_pct,
+              return_rate: r.return_rate, status: r.status,
+            })))}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg>
             Export
           </button>
         </div>
       </section>
+
+      {/* ── First-run onboarding (empty company) ──────────────────────── */}
+      {isEmpty && (
+        <section className="onboard" aria-label="Get started">
+          <div className="onboard-head">
+            <h2 className="onboard-title">Welcome to {activeCompany?.name || 'your workspace'}</h2>
+            <p className="onboard-sub">No data yet. Three steps to a live dashboard:</p>
+          </div>
+          <div className="onboard-steps">
+            {[
+              { n: 1, to: '/skus', title: 'Add your SKUs', desc: 'Enter products and their true costs — the foundation for every margin.',
+                icon: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></> },
+              { n: 2, to: '/pricing', title: 'Set target pricing', desc: 'Break-even and target price compute automatically from your costs.',
+                icon: <><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></> },
+              { n: 3, to: '/pnl/flipkart', title: 'Upload a P&L report', desc: 'Import a settlement export to unlock profitability and fraud signals.',
+                icon: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></> },
+            ].map(s => (
+              <button key={s.n} className="onboard-step" onClick={() => navigate(s.to)}>
+                <span className="onboard-step-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">{s.icon}</svg>
+                </span>
+                <span className="onboard-step-body">
+                  <span className="onboard-step-title"><span className="onboard-step-n">{s.n}</span>{s.title}</span>
+                  <span className="onboard-step-desc">{s.desc}</span>
+                </span>
+                <svg className="onboard-step-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Channel filter chips ──────────────────────────────────────── */}
       <div className="filter-row">
@@ -330,19 +594,20 @@ export default function Dashboard() {
             </span>
           ))}
         </div>
-        <span className="hint mono">view = consolidated · {platforms.length} cos · {selChan === 'all' ? 'all channels' : selChan} · 30d</span>
+        <span className="hint mono">view = consolidated · {platforms.length} channels · {selChan === 'all' ? 'all channels' : selChan} · 30d</span>
       </div>
 
       {/* ── AI Insights ───────────────────────────────────────────────── */}
-      <section className="insights">
+      <section className="insights" id="sec-insights">
         {insights.length === 0 ? (
-          /* Loading skeleton — same layout, muted content */
+          /* Honest empty state — no data to surface yet (not a spinner: the page
+             already waited for the fetch before rendering). */
           <>
-            <article className="insight hero" style={{ opacity: 0.45 }}>
-              <div className="ins-head"><span className="tag"><span className="d" />Analyzing data…</span></div>
-              <h3 className="ins-title">Loading real-time insights</h3>
-              <p className="ins-body">Scanning fraud actors, return patterns and platform health…</p>
-              <div className="ins-foot"><span>—</span><span className="go">—</span></div>
+            <article className="insight hero" style={{ opacity: 0.7 }}>
+              <div className="ins-head"><span className="tag"><span className="d" />No insights yet</span></div>
+              <h2 className="ins-title">Insights will appear here</h2>
+              <p className="ins-body">Upload a P&amp;L report or order data and Casper surfaces margin, settlement leakage and fraud signals automatically.</p>
+              <div className="ins-foot"><span>Awaiting data</span><span className="go" /></div>
             </article>
           </>
         ) : (
@@ -364,12 +629,12 @@ export default function Dashboard() {
                     </span>
                   </div>
                   {/* Hero supports split title: title1 + em + title2, or plain title */}
-                  <h3 className="ins-title">
+                  <h2 className="ins-title">
                     {ins.title1
                       ? <>{ins.title1}<em>{ins.title_em}</em>{ins.title2}</>
                       : ins.title
                     }
-                  </h3>
+                  </h2>
                   <p className="ins-body">{ins.body}</p>
                   {ins.chips?.length > 0 && (
                     <div className="reason-chips">
@@ -397,12 +662,12 @@ export default function Dashboard() {
                     <span className="d" />{ins.tag}
                   </span>
                 </div>
-                <h3 className="ins-title">
+                <h2 className="ins-title">
                   {ins.title}
                   {ins.title_chip && (
                     <> <span className={`delta-chip ${ins.title_chip.cls}`}>{ins.title_chip.text}</span></>
                   )}
-                </h3>
+                </h2>
                 <p className="ins-body">{ins.body}</p>
                 <div className="ins-foot">
                   <span>{ins.time}</span>
@@ -418,8 +683,8 @@ export default function Dashboard() {
       <section>
         <div className="sec-head" style={{ marginBottom:12 }}>
           <div>
-            <h2>Companies <span className="ct">{platforms.length} active</span></h2>
-            <div className="sub">Standalone P&amp;L per legal entity · consolidated above</div>
+            <h2>Channels <span className="ct">{platforms.length} active</span></h2>
+            <div className="sub">Per-channel P&amp;L · consolidated above</div>
           </div>
         </div>
 
@@ -428,10 +693,12 @@ export default function Dashboard() {
           {/* Aggregate dark card */}
           <article className="co-card aggregate">
             <div className="top">
-              <span className="av" style={{ background:'linear-gradient(135deg,#FFD27A,#EC2D6E 50%,#7A5BFF)' }}>SH</span>
+              <span className="av" style={{ background:'linear-gradient(135deg,#FFD27A,#EC2D6E 50%,#7A5BFF)' }}>
+                {(activeCompany?.name || 'Co').split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+              </span>
               <div>
-                <div className="nm">Shringar House · Consolidated</div>
-                <div className="sub">3 companies · 5 channels</div>
+                <div className="nm">{activeCompany?.name || 'Consolidated'} · Consolidated</div>
+                <div className="sub">{platforms.length} channel{platforms.length !== 1 ? 's' : ''}</div>
               </div>
             </div>
             <div className="big">
@@ -450,7 +717,7 @@ export default function Dashboard() {
             const c      = cfg(p.name)
             const key    = p.name?.toLowerCase()
             const real   = sparkFor(p.name).filter(v => v > 0)
-            const vals   = real.length >= 4 ? real : (SPARK_DEMO[key] || [])
+            const vals   = real.length >= 4 ? real : []   // real spark data only — no demo fallback
             const { d, area } = smoothPath(vals)
             const margin = p.gross_sales > 0 ? ((p.net_earnings ?? 0) / p.gross_sales * 100).toFixed(1) + '%' : '—'
             return (
@@ -689,99 +956,21 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* ── Geographic intelligence ──────────────────────────────────── */}
-      <section>
-        <div className="sec-head" style={{ marginBottom:14 }}>
-          <div>
-            <h2>Geographic intelligence <span className="ct">India · live</span></h2>
-            <div className="sub">State &amp; pincode heatmap across all channels. Switch the layer to reframe by metric.</div>
-          </div>
-          <div style={{ display:'flex', gap:8 }}>
-            <button className="p-pill">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-              India
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <button className="p-pill" style={{ color:'var(--emerald)', borderColor:'rgba(31,169,104,.3)' }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6z"/>
-                <path d="M19 17l.6 1.8L21 19l-1.4.6L19 21l-.6-1.4L17 19l1.4-.6z"/>
-              </svg>
-              Anomalies on
-            </button>
-          </div>
-        </div>
-        <IndiaMapCard />
-      </section>
-
-      {/* ── Pincode risk table ───────────────────────────────────────── */}
-      <section>
-        <div className="pc-table-wrap">
-          <table className="pc-table">
-            <thead>
-              <tr>
-                <th className="pc-th pc-th-rank">#</th>
-                <th className="pc-th">PINCODE</th>
-                <th className="pc-th">CITY · STATE</th>
-                <th className="pc-th pc-th-num">ORDERS</th>
-                <th className="pc-th pc-th-num">RTO%</th>
-                <th className="pc-th pc-th-num">RETURNS</th>
-                <th className="pc-th pc-th-num">FRAUD RISK</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                { rank:1, pin:'700091', city:'Kolkata · Salt Lake',     state:'West Bengal',  orders:412,  rto:28.4, ret:7.1,  fraud:1.2,  risk:'Critical' },
-                { rank:2, pin:'221005', city:'Varanasi · BHU',           state:'Uttar Pradesh',orders:218,  rto:24.8, ret:5.4,  fraud:0.9,  risk:'High'     },
-                { rank:3, pin:'800001', city:'Patna · Central',          state:'Bihar',        orders:184,  rto:21.2, ret:4.8,  fraud:0.4,  risk:'High'     },
-                { rank:4, pin:'110092', city:'Delhi · East Vinod Nagar', state:'Delhi NCT',    orders:562,  rto:14.6, ret:3.8,  fraud:0.3,  risk:'Watch'    },
-                { rank:5, pin:'400070', city:'Mumbai · Kurla West',      state:'Maharashtra',  orders:684,  rto:8.2,  ret:3.1,  fraud:0.1,  risk:'Healthy'  },
-                { rank:6, pin:'560037', city:'Bangalore · Marathahalli', state:'Karnataka',    orders:724,  rto:5.4,  ret:2.8,  fraud:0.04, risk:'Healthy'  },
-                { rank:7, pin:'500032', city:'Hyderabad · Gachibowli',   state:'Telangana',    orders:488,  rto:6.1,  ret:3.4,  fraud:0.08, risk:'Healthy'  },
-              ].map(r => {
-                const riskCls = { Critical:'risk-critical', High:'risk-high', Watch:'risk-watch', Healthy:'risk-healthy' }[r.risk]
-                const rtoCls  = r.rto > 20 ? 'rto-crit' : r.rto > 14 ? 'rto-high' : r.rto > 8 ? 'rto-warn' : 'rto-ok'
-                return (
-                  <tr key={r.pin} className="pc-row">
-                    <td className="pc-td pc-td-rank">{String(r.rank).padStart(2,'0')}</td>
-                    <td className="pc-td pc-td-pin">{r.pin}</td>
-                    <td className="pc-td">
-                      <div className="pc-city">{r.city}</div>
-                      <div className="pc-state">{r.state}</div>
-                    </td>
-                    <td className="pc-td pc-td-num">{fmt(r.orders)}</td>
-                    <td className={`pc-td pc-td-num ${rtoCls}`}>{r.rto}%</td>
-                    <td className="pc-td pc-td-num pc-ret">{r.ret}%</td>
-                    <td className="pc-td pc-td-num">
-                      <span className={`pc-fraud-val ${rtoCls}`}>{r.fraud}%</span>
-                      <span className={`pc-risk-badge ${riskCls}`}>● {r.risk}</span>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
       {/* ── SKU intelligence ─────────────────────────────────────────── */}
-      <section>
+      <section id="sec-catalog">
         <div className="sku-int-head">
           <div className="sku-int-left">
             <span className="sku-int-title">SKU intelligence</span>
-            <span className="ct">2,184 tracked</span>
+            <span className="ct">{fmt(skuIntel?.summary?.total_skus ?? 0)} tracked</span>
           </div>
           <div className="sku-int-right">
-            <button className="p-pill">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
-              Filters · 2
-            </button>
             <div className="sku-int-tabs">
-              {['All','Top sellers','High RTO','Stock-out risk','Price drift'].map((t,i) => (
-                <button key={t} className={`sku-int-tab${i===0?' active':''}`}>{t}</button>
+              {['All','Heroes','Below cost','High return'].map(t => (
+                <button key={t} className={`sku-int-tab${skuFilter===t?' active':''}`}
+                  onClick={() => { setSkuFilter(t); setSkuPage(0) }}>{t}</button>
               ))}
             </div>
-            <button className="sku-add-btn">+ Add SKU</button>
+            <button className="sku-add-btn" onClick={() => navigate('/skus')}>+ Add SKU</button>
           </div>
         </div>
 
@@ -802,21 +991,13 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {[
-                { code:'KTR', codeCls:'sku-chip-teal',   name:'Kurta · Block Print, XL',  sub:'KTR-024-XL · Apparel', co:'Nova',  coCls:'co-nova',  plats:['flipkart','amazon','meesho','snapdeal','shopdeck'], price:'₹649',   priceOn:'m',  units:482,   rev:'₹2.84L', rto:41, rtoBar:82, ret:9.1,  margin:14.2, marginCls:'',         status:'Returns spike', statusCls:'badge-red'    },
-                { code:'DNM', codeCls:'sku-chip-blue',   name:'Denim · Slim Fit, 32W',    sub:'DNM-SLM-32 · Apparel', co:'Nova',  coCls:'co-nova',  plats:['flipkart','amazon','meesho','snapdeal','shopdeck'], price:'₹1,199', priceOn:'F',  units:1204,  rev:'₹12.1L', rto:12, rtoBar:24, ret:3.4,  margin:26.8, marginCls:'mg-green', status:'Stock 3.4d',   statusCls:'badge-amber'  },
-                { code:'SNK', codeCls:'sku-chip-purple', name:'Sneaker · Court Mid, UK 9',sub:'SNK-CRT-9 · Footwear',  co:'Nova',  coCls:'co-nova',  plats:['flipkart','amazon','meesho','snapdeal'],            price:'₹2,499', priceOn:'a',  units:638,   rev:'₹11.9L', rto:7,  rtoBar:14, ret:4.9,  margin:31.4, marginCls:'mg-green', status:'Performing',   statusCls:'badge-green'  },
-                { code:'SRM', codeCls:'sku-chip-orange', name:'Serum · Vit-C 30ml',       sub:'BTY-SRM-30 · Beauty',   co:'Lumen', coCls:'co-lumen', plats:['flipkart','amazon','meesho','snapdeal'],            price:'₹789',   priceOn:'Sd', units:2118,  rev:'₹14.8L', rto:5,  rtoBar:10, ret:2.1,  margin:18.2, marginCls:'',         status:'Fee hike risk', statusCls:'badge-amber'  },
-                { code:'CKW', codeCls:'sku-chip-clay',   name:'Cookware · Pan 26cm',      sub:'HOM-PAN-26 · Home',     co:'Kanvas',coCls:'co-kanvas',plats:['flipkart','amazon','meesho','snapdeal','shopdeck'], price:'₹1,499', priceOn:'F',  units:874,   rev:'₹8.9L',  rto:9,  rtoBar:18, ret:3.0,  margin:22.4, marginCls:'',         status:'Steady',       statusCls:'badge-muted'  },
-                { code:'SCR', codeCls:'sku-chip-ink',    name:'Scarf · Cotton Linen',     sub:'ACC-SCR-001 · Accessories',co:'Nova', coCls:'co-nova',  plats:['flipkart','amazon','meesho','snapdeal'],             price:'₹349',   priceOn:'m',  units:1612,  rev:'₹4.2L',  rto:32, rtoBar:64, ret:6.8,  margin:9.4,  marginCls:'',         status:'High RTO',     statusCls:'badge-red'    },
-                { code:'WTC', codeCls:'sku-chip-teal',   name:'Watch · Minimal Black',    sub:'ACC-WTC-BLK · Accessories',co:'Kanvas',coCls:'co-kanvas',plats:['flipkart','amazon','meesho','snapdeal','shopdeck'], price:'₹1,899', priceOn:'Sd', units:421,   rev:'₹7.6L',  rto:7,  rtoBar:14, ret:3.2,  margin:34.1, marginCls:'mg-green', status:'Performing',   statusCls:'badge-green'  },
-              ].map(s => (
+              {skuRows.map(s => (
                 <tr key={s.code} className="si-row">
                   <td className="si-td">
                     <div className="si-sku-cell">
                       <span className={`si-code-chip ${s.codeCls}`}>{s.code}</span>
                       <div>
-                        <div className="si-name">{s.name}</div>
+                        <div className="si-name" title={s.name}>{s.name}</div>
                         <div className="si-sub-row">
                           {s.sub && <span className="si-sub">{s.sub}</span>}
                           {s.co && <span className={`si-co-tag ${s.coCls}`}>📦 {s.co}</span>}
@@ -858,7 +1039,8 @@ export default function Dashboard() {
                     <span className={`si-status-badge ${s.statusCls}`}>● {s.status}</span>
                   </td>
                   <td className="si-td si-td-act">
-                    <button className="si-more-btn">···</button>
+                    <button className="si-more-btn" title="Open in SKU manager"
+                      onClick={() => navigate('/skus')}>···</button>
                   </td>
                 </tr>
               ))}
@@ -866,31 +1048,40 @@ export default function Dashboard() {
           </table>
           {/* Pagination footer */}
           <div className="si-pagination">
-            <span className="si-pg-count">Showing 7 of 2,184 SKUs</span>
+            <span className="si-pg-count">Showing {skuRows.length} of {filteredSkus.length} SKUs{skuFilter !== 'All' ? ` · ${skuFilter}` : ''}</span>
             <div className="si-pg-nav">
-              <button className="si-pg-btn" disabled>‹</button>
-              <span className="si-pg-info">1 / 312</span>
-              <button className="si-pg-btn">›</button>
+              <button className="si-pg-btn" disabled={skuPageSafe === 0}
+                onClick={() => setSkuPage(p => Math.max(0, p - 1))}>‹</button>
+              <span className="si-pg-info">{skuPageSafe + 1} / {skuPageCount}</span>
+              <button className="si-pg-btn" disabled={skuPageSafe >= skuPageCount - 1}
+                onClick={() => setSkuPage(p => Math.min(skuPageCount - 1, p + 1))}>›</button>
             </div>
           </div>
         </div>
       </section>
 
+      {/* ── Settlement reconciliation (real /dashboard/reconciliation) ── */}
+      <div id="sec-finance"><SettlementRecon recon={recon} /></div>
+
+      {/* ── Fraud action pipeline (real /dashboard/action-pipeline) ───── */}
+      <div id="sec-returns"><FraudPipeline pipeline={pipeline} /></div>
+
       {/* ── Reports drill-down ──────────────────────────────────────── */}
-      <section className="reports-section">
+      <section className="reports-section" id="sec-orders">
         <div className="sec-head" style={{ marginBottom:16 }}>
           <div>
             <h2>Reports <span className="ct">drill-down</span></h2>
             <div className="sub">Breakdowns for orders, RTO, fees and returns across all channels.</div>
           </div>
           <div style={{ display:'flex', gap:8 }}>
-            <button className="p-pill">
+            <button className="p-pill" onClick={() => downloadCSV('casper_reports', [
+              ...(ops?.funnel ?? []).map(f => ({ section: 'funnel', label: f.label, value: f.value, pct: f.pct })),
+              ...(ops?.fees ?? []).map(f => ({ section: 'fees', label: f.label, value: f.value, pct: f.pct })),
+              ...(ops?.return_reasons ?? []).map(r => ({ section: 'return_reason', label: r.reason, value: r.count, pct: r.pct })),
+              ...(ops?.returns_by_channel ?? []).map(c => ({ section: 'channel', label: c.platform, value: c.returns, pct: c.rto })),
+            ])}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               CSV
-            </button>
-            <button className="p-pill">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              Schedule
             </button>
           </div>
         </div>
@@ -904,35 +1095,30 @@ export default function Dashboard() {
             <div className="card rpt-card">
               <div className="rpt-tabs">
                 {[
-                  { label:'Orders', count:'8,632', active:true },
-                  { label:'RTO',    count:'1,018' },
-                  { label:'Returns',count:'412'   },
-                  { label:'Cancellations', count:'198' },
+                  { label:'Dispatched', count:ops?.summary?.dispatched, active:true },
+                  { label:'RTO',        count:ops?.summary?.rto_units },
+                  { label:'Returns',    count:ops?.summary?.return_units },
+                  { label:'Net',        count:ops?.summary?.net_delivered },
                 ].map(t => (
-                  <button key={t.label} className={`rpt-tab${t.active?' active':''}`}>
-                    {t.label} <span className="rpt-tab-ct">{t.count}</span>
-                  </button>
+                  <div key={t.label} className={`rpt-tab${t.active?' active':''}`}>
+                    {t.label} <span className="rpt-tab-ct">{fmt(t.count ?? 0)}</span>
+                  </div>
                 ))}
               </div>
               <div className="funnel-rows">
-                {[
-                  { label:'Orders placed',    val:8632, pct:100,  cls:'bar-gray'  },
-                  { label:'Confirmed',        val:8322, pct:96.4, cls:'bar-black' },
-                  { label:'Shipped',          val:8004, pct:92.7, cls:'bar-green' },
-                  { label:'Delivered',        val:6786, pct:78.6, cls:'bar-teal'  },
-                  { label:'RTO',              val:1018, pct:11.8, cls:'bar-red'   },
-                  { label:'Customer returns', val:412,  pct:4.8,  cls:'bar-amber' },
-                  { label:'Net delivered',    val:6374, pct:73.8, cls:'bar-pink'  },
-                ].map(r => (
-                  <div key={r.label} className="funnel-row">
-                    <span className="funnel-label">{r.label}</span>
-                    <div className="funnel-track">
-                      <div className={`funnel-bar ${r.cls}`} style={{ width:`${r.pct}%` }} />
+                {(ops?.funnel ?? []).map(r => {
+                  const cls = FUNNEL_CLS[r.label] ?? 'bar-gray'
+                  return (
+                    <div key={r.label} className="funnel-row">
+                      <span className="funnel-label">{r.label}</span>
+                      <div className="funnel-track">
+                        <div className={`funnel-bar ${cls}`} style={{ width:`${r.pct}%` }} />
+                      </div>
+                      <span className="funnel-val">{fmt(r.value)}</span>
+                      <span className="funnel-pct">{r.pct}%</span>
                     </div>
-                    <span className="funnel-val">{r.val.toLocaleString('en-IN')}</span>
-                    <span className="funnel-pct">{r.pct}%</span>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
 
@@ -941,35 +1127,28 @@ export default function Dashboard() {
               <div className="fees-head">
                 <div>
                   <div className="fees-title">Fees &amp; charges breakdown</div>
-                  <div className="fees-sub">From GMV to bank settlement · last 30d</div>
+                  <div className="fees-sub">GMV → bank settlement · all platforms</div>
                 </div>
-                <div className="fees-tabs">
-                  {['All','Flipkart','Amazon','Meesho'].map((t,i) => (
-                    <button key={t} className={`fees-tab${i===0?' active':''}`}>{t}</button>
-                  ))}
-                </div>
+                <span className="cret-rate">{pct(ops?.summary?.settlement, ops?.summary?.gmv)}</span>
               </div>
               <div className="fees-rows">
-                {[
-                  { dot:'pos', label:'Gross sales (GMV)',     val:'₹52,14,820',  pct:100, cls:'bar-black' },
-                  { dot:'neg', label:'Commission',            val:'−₹12,51,560', pct:24,  cls:'bar-red'   },
-                  { dot:'neg', label:'Closing / fixed fee',   val:'−₹3,12,890',  pct:6,   cls:'bar-red'   },
-                  { dot:'neg', label:'Shipping & logistics',  val:'−₹6,25,780',  pct:12,  cls:'bar-red'   },
-                  { dot:'neg', label:'Storage (FBA / FBF)',   val:'−₹2,08,590',  pct:4,   cls:'bar-red'   },
-                  { dot:'neg', label:'RTO charges',           val:'−₹2,60,740',  pct:5,   cls:'bar-red'   },
-                  { dot:'neg', label:'Ads & promotion',       val:'−₹4,17,180',  pct:8,   cls:'bar-red'   },
-                  { dot:'neg', label:'GST & TCS',             val:'−₹1,56,440',  pct:3,   cls:'bar-red'   },
-                  { dot:'pos', label:'Net settlement',        val:'₹19,81,640',  pct:38,  cls:'bar-green', bold:true },
-                ].map(r => (
-                  <div key={r.label} className={`fees-row${r.bold?' fees-row-bold':''}`}>
-                    <span className={`fees-dot fees-dot-${r.dot}`} />
-                    <span className="fees-label">{r.label}</span>
-                    <div className="fees-track">
-                      <div className={`fees-bar ${r.cls}`} style={{ width:`${r.pct}%` }} />
+                {(ops?.fees ?? []).map(r => {
+                  const isNeg = r.kind === 'neg'
+                  const isSettle = r.kind === 'settle'
+                  const cls = isSettle ? 'bar-green' : isNeg ? 'bar-red' : 'bar-black'
+                  const dot = isNeg ? 'neg' : 'pos'
+                  const valTxt = `${isNeg ? '−' : ''}₹${fmt(Math.round(r.value))}`
+                  return (
+                    <div key={r.label} className={`fees-row${isSettle ? ' fees-row-bold' : ''}`}>
+                      <span className={`fees-dot fees-dot-${dot}`} />
+                      <span className="fees-label">{r.label}</span>
+                      <div className="fees-track">
+                        <div className={`fees-bar ${cls}`} style={{ width:`${Math.min(r.pct, 100)}%` }} />
+                      </div>
+                      <span className={`fees-val${isSettle ? ' fees-val-settle' : isNeg ? ' fees-val-neg' : ''}`}>{valTxt}</span>
                     </div>
-                    <span className={`fees-val${r.bold?' fees-val-settle':r.dot==='neg'?' fees-val-neg':''}`}>{r.val}</span>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
 
@@ -978,50 +1157,44 @@ export default function Dashboard() {
           {/* ── Right column ── */}
           <div className="reports-right">
 
-            {/* RTO reasons donut */}
+            {/* Return reasons donut */}
             <div className="card rpt-card">
               <div className="rto-reasons-head">
                 <div>
-                  <div className="rto-r-title">RTO reasons</div>
-                  <div className="rto-r-sub">1,018 RTO events · 30d</div>
+                  <div className="rto-r-title">Return reasons</div>
+                  <div className="rto-r-sub">{fmt(ops?.summary?.return_units ?? 0)} return events · clustered</div>
                 </div>
-                <span className="rto-r-rate">11.8%</span>
+                <span className="rto-r-rate">{ops?.summary?.return_rate ?? 0}%</span>
               </div>
               <div className="rto-donut-wrap">
-                {/* SVG donut — r=35, C=219.91 */}
+                {/* SVG donut — r=35, C=219.91; segments computed from real clusters */}
                 <svg width="108" height="108" viewBox="0 0 108 108" style={{ flexShrink:0 }}>
                   <circle cx="54" cy="54" r="35" fill="none" stroke="#ECE6DA" strokeWidth="16"/>
                   <g transform="rotate(-90 54 54)">
-                    {/* Customer not available 38% = 83.57 */}
-                    <circle cx="54" cy="54" r="35" fill="none" stroke="#3B7CE8" strokeWidth="16"
-                      strokeDasharray="83.6 136.3" strokeDashoffset="0"/>
-                    {/* COD reject at door 24% = 52.78; offset=C-83.6=136.3 */}
-                    <circle cx="54" cy="54" r="35" fill="none" stroke="#F43397" strokeWidth="16"
-                      strokeDasharray="52.8 167.1" strokeDashoffset="136.3"/>
-                    {/* Address incomplete 16% = 35.19; offset=C-83.6-52.8=83.5 */}
-                    <circle cx="54" cy="54" r="35" fill="none" stroke="#FF9900" strokeWidth="16"
-                      strokeDasharray="35.2 184.7" strokeDashoffset="83.5"/>
-                    {/* Refused on delivery 12% = 26.39; offset=C-83.6-52.8-35.2=48.3 */}
-                    <circle cx="54" cy="54" r="35" fill="none" stroke="#C43BCC" strokeWidth="16"
-                      strokeDasharray="26.4 193.5" strokeDashoffset="48.3"/>
-                    {/* Other / unknown 10% = 21.99; offset=C-83.6-52.8-35.2-26.4=21.9 */}
-                    <circle cx="54" cy="54" r="35" fill="none" stroke="#A8A39A" strokeWidth="16"
-                      strokeDasharray="22.0 197.9" strokeDashoffset="21.9"/>
+                    {(() => {
+                      const C = 219.911
+                      let cum = 0
+                      return (ops?.return_reasons ?? []).map(s => {
+                        const dash = (s.pct / 100) * C
+                        const offset = ((C - cum) % C + C) % C
+                        cum += dash
+                        return (
+                          <circle key={s.reason} cx="54" cy="54" r="35" fill="none"
+                            stroke={s.color} strokeWidth="16"
+                            strokeDasharray={`${dash.toFixed(1)} ${(C - dash).toFixed(1)}`}
+                            strokeDashoffset={offset.toFixed(1)} />
+                        )
+                      })
+                    })()}
                   </g>
-                  <text x="54" y="49" textAnchor="middle" fontSize="13" fontWeight="700" fill="#1A1714" fontFamily="Geist,sans-serif">11.8%</text>
-                  <text x="54" y="62" textAnchor="middle" fontSize="8.5" fill="#A8A39A" fontFamily="Geist,sans-serif">RTO RATE</text>
+                  <text x="54" y="49" textAnchor="middle" fontSize="13" fontWeight="700" fill="#1A1714" fontFamily="Geist,sans-serif">{ops?.summary?.return_rate ?? 0}%</text>
+                  <text x="54" y="62" textAnchor="middle" fontSize="8.5" fill="#A8A39A" fontFamily="Geist,sans-serif">RETURN RATE</text>
                 </svg>
                 <div className="rto-legend">
-                  {[
-                    { color:'#3B7CE8', label:'Customer not available', count:387, pct:38 },
-                    { color:'#F43397', label:'COD reject at door',      count:244, pct:24 },
-                    { color:'#FF9900', label:'Address incomplete',       count:163, pct:16 },
-                    { color:'#C43BCC', label:'Refused on delivery',      count:122, pct:12 },
-                    { color:'#A8A39A', label:'Other / unknown',          count:102, pct:10 },
-                  ].map(l => (
-                    <div key={l.label} className="rto-leg-row">
+                  {(ops?.return_reasons ?? []).map(l => (
+                    <div key={l.reason} className="rto-leg-row">
                       <span className="rto-leg-dot" style={{ background:l.color }} />
-                      <span className="rto-leg-label">{l.label}</span>
+                      <span className="rto-leg-label">{l.reason}</span>
                       <span className="rto-leg-count">{l.count}</span>
                       <span className="rto-leg-pct">{l.pct}%</span>
                     </div>
@@ -1035,34 +1208,23 @@ export default function Dashboard() {
               <div className="cret-head">
                 <div>
                   <div className="cret-title">Customer returns by channel</div>
-                  <div className="cret-sub">412 returns · 30d</div>
+                  <div className="cret-sub">{fmt(ops?.summary?.return_units ?? 0)} customer returns · {fmt(ops?.summary?.rto_units ?? 0)} RTO</div>
                 </div>
-                <span className="cret-rate">4.8%</span>
+                <span className="cret-rate">{ops?.summary?.return_rate ?? 0}%</span>
               </div>
               <div className="cret-rows">
-                {[
-                  { mk:'flipkart', name:'Flipkart',  count:142, delta:-6,   flat:false, reasons:'Size · 41% · Quality · 22% · Wrong item · 14%' },
-                  { mk:'amazon',   name:'Amazon',    count:98,  delta:-2,   flat:false, reasons:'Quality · 38% · Damaged · 21% · Size · 18%'     },
-                  { mk:'meesho',   name:'Meesho',    count:114, delta:34,   flat:false, reasons:'Size · 62% · Quality · 18% · Color · 9%'        },
-                  { mk:'snapdeal', name:'Snapdeal',  count:42,  delta:null, flat:true,  reasons:'Quality · 34% · Damaged · 28%'                  },
-                  { mk:'shopdeck', name:'ShopDeck',  count:16,  delta:-12,  flat:false, reasons:'Color · 29% · Fit · 24%'                        },
-                ].map(r => {
-                  const c = cfg(r.mk)
+                {(ops?.returns_by_channel ?? []).map(r => {
+                  const c = cfg(r.platform)
                   return (
-                    <div key={r.mk} className="cret-row">
+                    <div key={r.platform} className="cret-row">
                       <span className="cret-av" style={{ background:c.color, color:c.textColor, fontStyle:c.italic?'italic':'normal' }}>{c.short}</span>
                       <div className="cret-info">
-                        <div className="cret-name">{r.name}</div>
-                        <div className="cret-reasons">{r.reasons}</div>
+                        <div className="cret-name">{r.platform}</div>
+                        <div className="cret-reasons">{fmt(r.returns)} customer returns · {fmt(r.rto)} RTO</div>
                       </div>
                       <div className="cret-stat">
-                        <span className="cret-count">{r.count}</span>
-                        {r.flat
-                          ? <span className="cret-flat">— flat</span>
-                          : <span className={`cret-delta ${r.delta > 0 ? 'cret-up' : 'cret-down'}`}>
-                              {r.delta > 0 ? '▲' : '▼'}{Math.abs(r.delta)}%
-                            </span>
-                        }
+                        <span className="cret-count">{fmt(r.total)}</span>
+                        <span className="cret-flat">total</span>
                       </div>
                     </div>
                   )

@@ -8,6 +8,7 @@ class Sku(Base):
     __tablename__ = "skus"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    company_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
     shringar_sku: Mapped[str] = mapped_column(String(150), unique=True, nullable=False, index=True)
     vendor_sku: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
     vendor_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("vendors.id", ondelete="RESTRICT"), nullable=True)
@@ -30,6 +31,7 @@ class SkuPricing(Base):
     __tablename__ = "sku_pricing"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    company_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
     sku_id: Mapped[int] = mapped_column(Integer, ForeignKey("skus.id", ondelete="CASCADE"), nullable=False)
     platform_id: Mapped[int] = mapped_column(Integer, ForeignKey("platforms.id", ondelete="RESTRICT"), nullable=False)
 
@@ -74,6 +76,7 @@ class SkuPlatformConfig(Base):
     __tablename__ = "sku_platform_config"
 
     id:             Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    company_id:     Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
     sku_pricing_id: Mapped[int] = mapped_column(Integer, ForeignKey("sku_pricing.id", ondelete="CASCADE"), nullable=False)
     platform_id:    Mapped[int] = mapped_column(Integer, ForeignKey("platforms.id", ondelete="RESTRICT"), nullable=False)
 

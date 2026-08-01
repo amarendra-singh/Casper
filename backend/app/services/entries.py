@@ -73,10 +73,10 @@ def calculate_pricing(
     }
 
 
-async def _upsert_sku(session: AsyncSession, row: EntryRowInput) -> Sku:
+async def _upsert_sku(session: AsyncSession, row: EntryRowInput, company_id: int) -> Sku:
     """Create or update the base Sku record (identity + metadata, no pricing)."""
     result = await session.execute(
-        select(Sku).where(Sku.shringar_sku == row.shringar_sku)
+        select(Sku).where(Sku.shringar_sku == row.shringar_sku, Sku.company_id == company_id)
     )
     sku = result.scalar_one_or_none()
 
@@ -90,6 +90,7 @@ async def _upsert_sku(session: AsyncSession, row: EntryRowInput) -> Sku:
         return sku
 
     sku = Sku(
+        company_id   = company_id,
         shringar_sku = row.shringar_sku,
         vendor_sku   = row.vendor_sku or '',
         series       = row.series,
@@ -165,6 +166,7 @@ async def _upsert_pricing(
     first/default platform). Per-platform AD lives in SkuPlatformConfig.
     """
     pricing_data = dict(
+        company_id        = sku.company_id,
         sku_id            = sku.id,
         platform_id       = platform.id,
         price             = inputs["price"],
@@ -232,6 +234,7 @@ async def _upsert_platform_configs(
             cfg.platform_sku_name = override.platform_sku_name or None
         else:
             session.add(SkuPlatformConfig(
+                company_id        = pricing.company_id,
                 sku_pricing_id    = pricing.id,
                 platform_id       = override.platform_id,
                 ad_pct            = override.ad_pct,
@@ -247,6 +250,7 @@ async def upsert_row(
     damage_default: float,
     profit_default: float,
     platforms: List[Platform],
+    company_id: int,
 ) -> EntryRowResult:
     """
     Upsert a single entry row in 4 phases:
@@ -256,7 +260,7 @@ async def upsert_row(
       4. Per-platform overrides (SkuPlatformConfig) → _upsert_platform_configs
     """
     try:
-        sku = await _upsert_sku(session, row)
+        sku = await _upsert_sku(session, row, company_id)
 
         pl0 = platforms[0] if platforms else None
 
@@ -286,6 +290,7 @@ async def upsert_row(
 async def upsert_batch(
     session: AsyncSession,
     rows: List[EntryRowInput],
+    company_id: int,
 ) -> Tuple[List[EntryRowResult], List[EntryRowResult]]:
     """
     Upsert a batch of entry rows in a single transaction.
@@ -307,6 +312,7 @@ async def upsert_batch(
             damage_default = damage_default,
             profit_default = profit_default,
             platforms      = platforms,
+            company_id     = company_id,
         )
         if result.success:
             saved.append(result)
@@ -316,14 +322,14 @@ async def upsert_batch(
     return saved, errors
 
 
-async def get_all_entries(session: AsyncSession) -> list:
+async def get_all_entries(session: AsyncSession, company_id: int) -> list:
     """
     Load all SKUs with their latest pricing and per-platform configs.
     Uses selectinload to eliminate N+1 queries (5 flat queries regardless of SKU count).
     """
     sku_result = await session.execute(
         select(Sku)
-        .where(Sku.is_active == True)
+        .where(Sku.is_active == True, Sku.company_id == company_id)
         .options(
             selectinload(Sku.vendor),
             selectinload(Sku.category),

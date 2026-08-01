@@ -1,14 +1,21 @@
 import axios from 'axios'
 
+// In dev this stays '/api/v1' (Vite proxies it to the backend). In production
+// (e.g. Cloudflare Pages, which is static-only) set VITE_API_BASE to the
+// deployed backend's absolute URL, e.g. https://api.example.com/api/v1
+export const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1'
+
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' }
 })
 
-// Attach JWT token to every request automatically
+// Attach JWT token + active company to every request automatically
 api.interceptors.request.use(cfg => {
   const token = localStorage.getItem('access_token')
   if (token) cfg.headers.Authorization = `Bearer ${token}`
+  const cid = localStorage.getItem('active_company_id')
+  if (cid) cfg.headers['X-Company-Id'] = cid
   return cfg
 })
 
@@ -22,7 +29,7 @@ api.interceptors.response.use(
       const refresh = localStorage.getItem('refresh_token')
       if (refresh) {
         try {
-          const { data } = await axios.post('/api/v1/auth/refresh', { refresh_token: refresh })
+          const { data } = await axios.post(`${API_BASE}/auth/refresh`, { refresh_token: refresh })
           localStorage.setItem('access_token', data.access_token)
           localStorage.setItem('refresh_token', data.refresh_token)
           original.headers.Authorization = `Bearer ${data.access_token}`
@@ -40,6 +47,20 @@ api.interceptors.response.use(
 
 // Auth
 export const login         = (email, password) => api.post('/auth/login', { email, password }).then(r => r.data)
+export const register      = (data)             => api.post('/auth/register', data).then(r => r.data)
+// Companies (multi-tenancy)
+export const getCompanies      = ()     => api.get('/companies/').then(r => r.data)
+export const createCompany     = (data) => api.post('/companies/', data).then(r => r.data)
+export const getCompanyContext = (id)   => api.get(`/companies/${id}/context`).then(r => r.data)
+export const updateCompanyModules = (id, modules) => api.patch(`/companies/${id}/modules`, { modules }).then(r => r.data)
+export const renameCompany     = (id, name)  => api.patch(`/companies/${id}`, { name }).then(r => r.data)
+export const archiveCompany    = (id)        => api.delete(`/companies/${id}`).then(r => r.data)
+export const leaveCompany      = (id)        => api.post(`/companies/${id}/leave`).then(r => r.data)
+// Company team members
+export const getMembers        = (id)        => api.get(`/companies/${id}/members`).then(r => r.data)
+export const inviteMember      = (id, data)  => api.post(`/companies/${id}/members`, data).then(r => r.data)
+export const updateMemberRole  = (id, uid, role) => api.patch(`/companies/${id}/members/${uid}`, { role }).then(r => r.data)
+export const removeMember      = (id, uid)   => api.delete(`/companies/${id}/members/${uid}`).then(r => r.data)
 export const getMe         = ()                => api.get('/auth/me').then(r => r.data)
 export const changePassword= (data)            => api.post('/auth/change-password', data).then(r => r.data)
 export const apiLogout     = ()                => api.post('/auth/logout').then(r => r.data)
@@ -108,5 +129,12 @@ export const deletePnlReport            = (id)         => api.delete(`/pnl/repor
 export const getPnlPlatformsWithReports = ()           => api.get('/pnl/platforms-with-reports').then(r => r.data)
 export const getPnlDashboard            = ()           => api.get('/pnl/dashboard').then(r => r.data)
 export const uploadPnlReport            = (formData)   => api.post('/pnl/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
+
+// Billing / expense ledger
+export const getLedger        = (params) => api.get('/ledger/', { params }).then(r => r.data)
+export const getLedgerSummary = (params) => api.get('/ledger/summary', { params }).then(r => r.data)
+export const createLedgerEntry= (data)   => api.post('/ledger/', data).then(r => r.data)
+export const updateLedgerEntry= (id, data) => api.patch(`/ledger/${id}`, data).then(r => r.data)
+export const deleteLedgerEntry= (id)     => api.delete(`/ledger/${id}`).then(r => r.data)
 
 export default api

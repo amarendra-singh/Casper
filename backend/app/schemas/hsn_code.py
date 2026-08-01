@@ -7,6 +7,11 @@ class HsnCodeCreate(BaseModel):
     gst_rate:    float
     category:    Optional[str] = None
 
+class HsnCodeUpdate(BaseModel):
+    description: Optional[str]   = None
+    gst_rate:    Optional[float] = None
+    category:    Optional[str]   = None
+
 class HsnCodeResponse(BaseModel):
     id:          int
     code:        str

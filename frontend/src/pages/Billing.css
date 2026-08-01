@@ -1,0 +1,77 @@
+/* Line-item editor */
+.bl-lines { margin-top: 16px; border-top: 1px solid var(--rule); padding-top: 14px; }
+.bl-lines-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.bl-lines-h span { font-size: 13px; font-weight: 650; color: var(--ink); }
+.bl-add-line { height: 28px; padding: 0 12px; font-size: 12px; font-weight: 600; color: var(--pink); background: var(--pink-soft, rgba(236,45,110,.1)); border: none; border-radius: var(--r-sm, 8px); cursor: pointer; }
+
+.bl-line { display: grid; grid-template-columns: 2.4fr 1.4fr 0.7fr 1fr 1fr 30px; gap: 8px; align-items: center; margin-bottom: 6px; }
+.bl-line-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: var(--muted); margin-bottom: 4px; }
+.bl-line-head .num, .bl-line .num { text-align: right; }
+.bl-line input, .bl-line select { height: 34px; padding: 0 9px; font-size: 13px; color: var(--ink); background: var(--surface-2); border: 1px solid var(--rule); border-radius: var(--r-sm, 8px); }
+.bl-line input.num { text-align: right; }
+.bl-line input:focus, .bl-line select:focus { outline: none; border-color: var(--pink); }
+.bl-line-amt { font-size: 13px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.bl-rm-line { width: 26px; height: 26px; border: 1px solid var(--rule); background: var(--surface-2); border-radius: var(--r-sm, 8px); cursor: pointer; color: var(--muted); font-size: 12px; }
+.bl-rm-line:hover:not(:disabled) { color: var(--danger, #dc2626); border-color: var(--danger, #dc2626); }
+.bl-rm-line:disabled { opacity: .4; cursor: default; }
+@media (max-width: 720px) { .bl-line, .bl-line-head { grid-template-columns: 1fr 1fr; } .bl-line-head { display: none; } }
+
+.bl-totals { margin-top: 12px; margin-left: auto; width: 260px; display: flex; flex-direction: column; gap: 6px; }
+.bl-totals > div { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+.bl-totals > div b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.bl-grand { padding-top: 6px; border-top: 1px solid var(--rule); font-size: 15px !important; }
+.bl-grand span, .bl-grand b { color: var(--ink) !important; font-weight: 700; }
+
+.bl-status { display: inline-block; padding: 2px 9px; border-radius: var(--r-pill, 999px); font-size: 11px; font-weight: 700; }
+.bl-paid { width: 26px; height: 26px; border: 1px solid var(--emerald, #1FA968); background: var(--emerald-soft, rgba(31,169,104,.12)); color: var(--emerald, #1FA968); border-radius: var(--r-sm, 8px); cursor: pointer; font-size: 12px; margin-left: 4px; }
+.bl-aging-note { font-size: 12px; color: var(--muted); margin-top: 14px; }
+.bl-search { height: 34px; min-width: 240px; padding: 0 12px; font-size: 13px; color: var(--ink); background: var(--surface-2); border: 1px solid var(--rule); border-radius: var(--r-sm, 8px); }
+.bl-search:focus { outline: none; border-color: var(--pink); }
+.bl-view { width: 26px; height: 26px; border: 1px solid var(--rule); background: var(--surface-2); border-radius: var(--r-sm, 8px); cursor: pointer; font-size: 13px; color: var(--muted); margin-left: 4px; }
+.bl-view:hover { color: var(--pink); border-color: var(--pink); }
+
+/* ── Printable / PDF invoice document ─────────────────────────────────── */
+.bl-doc-overlay {
+  position: fixed; inset: 0; z-index: 200; overflow: auto;
+  background: rgba(10,10,14,.55); backdrop-filter: blur(3px);
+  display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 24px;
+}
+.bl-doc-bar { display: flex; gap: 10px; }
+.bl-doc {
+  width: 760px; max-width: 100%; background: #fff; color: #14141a;
+  border-radius: 12px; box-shadow: 0 30px 80px -30px rgba(0,0,0,.6);
+  padding: 44px 48px; font-size: 13px;
+}
+.bl-doc-head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #14141a; padding-bottom: 18px; margin-bottom: 22px; }
+.bl-doc-co { font-size: 24px; font-weight: 800; letter-spacing: -.02em; color: #14141a; }
+.bl-doc-tag { font-size: 11px; font-weight: 700; letter-spacing: .18em; color: #EC2D6E; margin-top: 4px; }
+.bl-doc-numbox { text-align: right; }
+.bl-doc-num { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; margin-bottom: 6px; }
+.bl-doc-meta { display: flex; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+.bl-doc-meta span { display: block; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #8a8a90; margin-bottom: 3px; }
+.bl-doc-billto b { font-size: 15px; font-weight: 700; color: #14141a; }
+.bl-doc-billto div { font-size: 12px; color: #55555c; margin-top: 3px; }
+.bl-doc-dates { text-align: right; display: flex; flex-direction: column; gap: 10px; }
+.bl-doc-dates div { font-size: 13px; font-variant-numeric: tabular-nums; }
+.bl-doc-table { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
+.bl-doc-table th { text-align: left; padding: 9px 10px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #8a8a90; background: #f6f6f4; border-bottom: 1px solid #e6e6ea; }
+.bl-doc-table td { padding: 9px 10px; border-bottom: 1px solid #eee; font-size: 13px; color: #14141a; }
+.bl-doc-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.bl-doc-totals { margin-left: auto; width: 280px; display: flex; flex-direction: column; gap: 7px; }
+.bl-doc-totals > div { display: flex; justify-content: space-between; font-size: 13px; color: #55555c; }
+.bl-doc-totals b { color: #14141a; font-variant-numeric: tabular-nums; }
+.bl-doc-grand { padding-top: 8px; border-top: 1px solid #e6e6ea; font-size: 16px !important; }
+.bl-doc-grand span, .bl-doc-grand b { font-weight: 800; color: #14141a; }
+.bl-doc-due { padding-top: 8px; margin-top: 4px; border-top: 2px solid #14141a; font-size: 15px !important; }
+.bl-doc-due span, .bl-doc-due b { font-weight: 800; color: #EC2D6E; }
+.bl-doc-note { margin-top: 20px; font-size: 12px; color: #55555c; }
+.bl-doc-note span { font-weight: 700; color: #14141a; text-transform: uppercase; font-size: 10.5px; letter-spacing: .05em; margin-right: 6px; }
+.bl-doc-foot { margin-top: 28px; padding-top: 16px; border-top: 1px solid #eee; text-align: center; font-size: 12px; color: #8a8a90; }
+
+@media print {
+  body * { visibility: hidden !important; }
+  #invoice-print, #invoice-print * { visibility: visible !important; }
+  .bl-doc-overlay { position: static; background: none; padding: 0; backdrop-filter: none; }
+  .bl-noprint { display: none !important; }
+  #invoice-print { box-shadow: none; border-radius: 0; width: 100%; padding: 0; }
+}

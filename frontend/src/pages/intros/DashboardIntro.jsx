@@ -17,19 +17,21 @@ export default function DashboardIntro() {
           SKUs, Pricing, and uploaded P&L reports into a single summary so you can answer in 5 seconds:
           <em> "How is the business doing this month?"</em>
         </p>
-        <Callout variant="warn">
-          Several sections currently render <strong>dummy / placeholder data</strong> while we wire
-          them to live APIs. The header KPIs and platform donut will be the first to go live;
-          the bar chart and team panel are scheduled later.
+        <Callout variant="info">
+          Every section is driven by <strong>your own live data</strong>, scoped to the active company.
+          A brand-new company starts empty and fills in as you add SKUs, pricing, and upload P&L reports.
         </Callout>
       </IntroSection>
 
       <IntroSection title="Sections on the page">
         <ul>
-          <li><strong>Header KPIs</strong> — Gross Sales, Net Sales, Units Sold, Net Margin %. Pulled from the latest P&L report.</li>
-          <li><strong>Platform donut</strong> — revenue split across active platforms (Flipkart / Meesho / etc.).</li>
-          <li><strong>Sales-over-time bar chart</strong> — month-by-month revenue trend.</li>
-          <li><strong>Recent activity / team panel</strong> — who edited what, latest uploads.</li>
+          <li><strong>Metrics ribbon</strong> — sell-through, customer-return, RTO, fraud-signal rate, settlement rate, avg net margin, and top fraud signals.</li>
+          <li><strong>Insight cards</strong> — the few things that need attention right now, auto-surfaced from your data.</li>
+          <li><strong>Channel performance</strong> — margin and volume per platform over recent weeks.</li>
+          <li><strong>SKU intelligence</strong> — per-SKU profitability, return/RTO rates, and status vs. break-even.</li>
+          <li><strong>Settlement reconciliation</strong> — settled vs. expected payout and where cash is leaking.</li>
+          <li><strong>Fraud action pipeline</strong> — flagged actors and recommended actions.</li>
+          <li><strong>Reports</strong> — order funnel, fee waterfall, and return-reason drill-down.</li>
         </ul>
       </IntroSection>
 
@@ -50,8 +52,8 @@ export default function DashboardIntro() {
           { label: 'Report header',  value: 'frontend/src/components/dashboard/ReportHeader.jsx', code: true },
           { label: 'Chart library',  value: 'recharts',                                code: true },
           { label: 'Styling base',   value: 'TailwindCSS v4 + custom CSS variables',   code: true },
-          { label: 'Data sources',   value: '/api/v1/pnl/reports, /api/v1/platforms, /api/v1/skus', code: true },
-          { label: 'Status',         value: 'Some sections use dummy data — being migrated to live APIs', code: false },
+          { label: 'Data sources',   value: '/api/v1/dashboard/{metrics,insights,sku-intelligence,reconciliation,action-pipeline,operations}', code: true },
+          { label: 'Status',         value: 'All sections live — company-scoped, no placeholder data', code: false },
         ]}
       />
 

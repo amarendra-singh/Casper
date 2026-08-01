@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_active_company
 from app.models.user import User
 from app.models.fraud import FraudAlert
 from app.services.fraud import (
@@ -41,9 +41,10 @@ router = APIRouter(prefix="/fraud", tags=["Fraud Detection"])
 async def fraud_overview(
     _current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
 ):
     """Verdict card + top alerts + platform health summary."""
-    return await get_fraud_overview(db)
+    return await get_fraud_overview(db, company.id)
 
 
 # ── Per-platform view ─────────────────────────────────────────────────────────
@@ -53,9 +54,10 @@ async def platform_fraud_view(
     platform_id: int,
     _current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
 ):
     """Per-platform risk table, alert list, tier summary."""
-    result = await get_platform_fraud_view(db, platform_id)
+    result = await get_platform_fraud_view(db, platform_id, company.id)
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     return result
@@ -69,13 +71,14 @@ async def list_alerts(
     severity: str | None = Query(default=None),
     _current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
 ):
     """
     List unresolved alerts with optional filters.
     ?platform_id=1 → filter by platform
     ?severity=CRITICAL → filter by severity level
     """
-    q = select(FraudAlert).where(FraudAlert.is_resolved == False)
+    q = select(FraudAlert).where(FraudAlert.is_resolved == False, FraudAlert.company_id == company.id)
     if platform_id:
         q = q.where(FraudAlert.platform_id == platform_id)
     if severity:
@@ -113,9 +116,10 @@ async def list_alerts(
 async def settlement_gaps(
     _current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
 ):
     """Settlement gap analysis across all P&L reports."""
-    return await get_settlement_gaps(db)
+    return await get_settlement_gaps(db, company.id)
 
 
 # ── Resolve an alert ──────────────────────────────────────────────────────────
@@ -125,10 +129,11 @@ async def resolve_alert(
     alert_id: int,
     _current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
 ):
     """Mark a fraud alert as resolved."""
     alert = await db.get(FraudAlert, alert_id)
-    if not alert:
+    if not alert or alert.company_id != company.id:
         raise HTTPException(status_code=404, detail="Alert not found")
     alert.is_resolved = True
     await db.commit()
@@ -141,18 +146,20 @@ async def resolve_alert(
 async def fraud_dashboard(
     _current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
 ):
     """Full fraud detection dashboard (SKU table, temporal, cross-platform)."""
-    return await get_fraud_dashboard(db)
+    return await get_fraud_dashboard(db, company.id)
 
 
 @router.get("/sku-risk")
 async def sku_risk_table(
     _current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
 ):
     """SKU risk scores only (lightweight)."""
-    data = await get_fraud_dashboard(db)
+    data = await get_fraud_dashboard(db, company.id)
     return {
         "tier_summary":   data["tier_summary"],
         "sku_risk_table": data["sku_risk_table"],
@@ -163,9 +170,10 @@ async def sku_risk_table(
 async def temporal_trend(
     _current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
 ):
     """Weekly loss rate trend."""
-    data = await get_fraud_dashboard(db)
+    data = await get_fraud_dashboard(db, company.id)
     return {"weekly_loss_trend": data["weekly_loss_trend"]}
 
 
@@ -174,6 +182,7 @@ async def backfill_fraud_for_report(
     report_id: int,
     _current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
 ):
     """
     Reprocess an existing uploaded report for advanced fraud intelligence.
@@ -191,33 +200,37 @@ async def backfill_fraud_for_report(
 async def actor_overview(
     _current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
 ):
     """Summary stats for the Actor Intelligence tab."""
-    return await get_actor_overview(db)
+    return await get_actor_overview(db, company.id)
 
 
 @router.get("/actors")
 async def actor_risk_table(
     _current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
 ):
     """Actor risk profiles sorted by fraud score."""
-    return {"actors": await get_actor_risk_table(db)}
+    return {"actors": await get_actor_risk_table(db, company.id)}
 
 
 @router.get("/return-reasons")
 async def return_reason_intelligence(
     _current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
 ):
     """Return reason breakdown and fraud signal intelligence."""
-    return await get_return_reason_intelligence(db)
+    return await get_return_reason_intelligence(db, company.id)
 
 
 @router.get("/states")
 async def state_risk_intelligence(
     _current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
 ):
     """State-level fraud heatmap data."""
-    return {"states": await get_state_risk_intelligence(db)}
+    return {"states": await get_state_risk_intelligence(db, company.id)}

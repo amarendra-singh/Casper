@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import * as XLSX from 'xlsx'
+// xlsx (~430 kB) is lazy-loaded inside the import/export handlers so it stays
+// out of the initial SKUs bundle — only fetched when the user actually uses it.
 import {
   getVendors, getCategories, getPlatforms,
   getMiscTotal, getSettings,
@@ -35,7 +36,7 @@ const GST_OPTIONS = [
   { value: 'footwear', label: 'Footwear'},
 ]
 
-function resolveGst(gstType, price) {
+export function resolveGst(gstType, price) {
   const p = parseFloat(price) || 0
   if (gstType === 'apparel' || gstType === 'footwear') {
     return p <= 2500 ? 5 : 18
@@ -161,7 +162,7 @@ function backendRowToFrontend(r) {
 }
 
 // ─── Base compute (no AD — AD is per-platform) ────────────────────────────────
-function compute(row, miscDef, profDef, platforms) {
+export function compute(row, miscDef, profDef, platforms) {
   const p      = parseFloat(row.price)  || 0
   const pkg    = parseFloat(row.pkg)    || 0
   const log    = parseFloat(row.log)    || 0
@@ -174,7 +175,7 @@ function compute(row, miscDef, profDef, platforms) {
     crAmt = parseFloat(row.crAmt) || 0
     crPct = crCharge > 0 ? (crAmt / crCharge) * 100 : 0
   } else {
-    crPct = row.crPct !== '' ? parseFloat(row.crPct) : 10
+    crPct = row.crPct !== '' ? parseFloat(row.crPct) : 20
     crAmt = crCharge * crPct / 100
   }
 
@@ -204,7 +205,9 @@ function compute(row, miscDef, profDef, platforms) {
   }
   const profAmtGst = beGst * profPct / 100
 
-  const bsNoGst = +((be + profAmt).toFixed(2))
+  // Target Pre-GST is rounded to a whole rupee (logic.md §3 worked example);
+  // GST is then computed on that integer base.
+  const bsNoGst = Math.round(be + profAmt)
   const gstAmt  = +((bsNoGst * gstRate / 100).toFixed(2))
   const finalBS = +((bsNoGst + gstAmt).toFixed(2))
 
@@ -219,7 +222,7 @@ function compute(row, miscDef, profDef, platforms) {
 }
 
 // ─── Per-platform compute (uses platform-specific AD and CR) ─────────────────
-function computePlatform(row, pl, base, miscDef) {
+export function computePlatform(row, pl, base, miscDef) {
   if (!row.price) return { bs: null, adPct: 0, adAmt: 0, tierIdx: row.tiers[pl.id] ?? 0 }
 
   const price  = parseFloat(row.price)  || 0
@@ -261,7 +264,7 @@ function computePlatform(row, pl, base, miscDef) {
   const tierAmt = tier?.fee_pct != null
     ? baseAfterGst * tier.fee_pct / 100
     : (tier?.fee || 0)
-  const bs      = baseAfterGst + tierAmt
+  const bs      = +((baseAfterGst + tierAmt).toFixed(2))
 
   return {
     adPct:   +adPct.toFixed(2),
@@ -555,7 +558,8 @@ export default function SKUs() {
   ]
   const TMPL_SAMPLE = ['Varni','FH','y','N6-WHITE','Jewellery Set',299,0,0,0,0,10,'',5,'',20,'',5]
 
-  const downloadXLSX = () => {
+  const downloadXLSX = async () => {
+    const XLSX = await import('xlsx')
     const ws = XLSX.utils.aoa_to_sheet([TMPL_HEADERS, TMPL_SAMPLE])
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'SKU Template')
@@ -579,7 +583,8 @@ export default function SKUs() {
     const file = e.target.files[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = ev => {
+    reader.onload = async ev => {
+      const XLSX = await import('xlsx')
       const wb  = XLSX.read(ev.target.result, { type: 'array' })
       const ws  = wb.Sheets[wb.SheetNames[0]]
       const raw = XLSX.utils.sheet_to_json(ws, { defval: '' })
@@ -741,12 +746,12 @@ export default function SKUs() {
       <div className="e-bar">
         <div className="e-bar-item">
           <label>Global Profit %</label>
-          <input type="number" value={profDef} min={0} max={100}
+          <input type="number" value={profDef} min={0} max={100} aria-label="Global profit percent"
             onChange={e => setProfDef(parseFloat(e.target.value)||20)} />
         </div>
         <div className="e-bar-item">
           <label>Default Misc ₹</label>
-          <input type="number" value={miscDef} min={0}
+          <input type="number" value={miscDef} min={0} aria-label="Default misc cost in rupees"
             onChange={e => setMiscDef(parseFloat(e.target.value)||0)} />
         </div>
         <div className="e-bar-sep"/>
@@ -1070,6 +1075,7 @@ export default function SKUs() {
                     <td className="ec w-gst sh-tax">
                       <select
                         className="ec-input gst-select"
+                        aria-label="GST rate"
                         value={row.gstType || '5'}
                         onChange={e => {
                           const newType = e.target.value
@@ -1150,7 +1156,7 @@ export default function SKUs() {
                         </div>
                       </td>,
                       <td key={`${pl.id}-tier`} className="ec ec-plat w-plat-tier">
-                        <select className="plat-tier-s" value={plc.tierIdx}
+                        <select className="plat-tier-s" aria-label="Platform tier" value={plc.tierIdx}
                           onChange={e => {
                             const v = e.target.value
                             if (v === '__add__') {
@@ -1275,7 +1281,7 @@ export default function SKUs() {
                         disabled={row.profPct !== ''}
                         onChange={e => { updImportRow(i,'profAmt',e.target.value); updImportRow(i,'profPct','') }} /></td>
                       <td>
-                        <select className="imp-inp" value={row.gst}
+                        <select className="imp-inp" aria-label="GST rate" value={row.gst}
                           onChange={e => updImportRow(i,'gst',e.target.value)}>
                           {[0,5,12,18,28].map(g => <option key={g} value={g}>{g}%</option>)}
                         </select>
@@ -1463,7 +1469,7 @@ function MobileCard({ row, calc:c, vendorOpts, catOpts, miscDef, profDef,
               <input className="m-input mono right" readOnly value={row.price?`₹${c.bsNoGst}`:''} placeholder="—"/>
             </div>
             <div className="m-field"><label>GST Type</label>
-              <select className="m-input" value={row.gstType || '5'}
+              <select className="m-input" aria-label="GST rate" value={row.gstType || '5'}
                 onChange={e => {
                   const newType = e.target.value
                   const newGst  = resolveGst(newType, row.price)
@@ -1504,7 +1510,7 @@ function MobileCard({ row, calc:c, vendorOpts, catOpts, miscDef, profDef,
                         value={override.adAmt ?? ''} placeholder={`₹${plc.adAmt}`}
                         onChange={e => onPlatOverride(row.id, pl.id, 'adAmt', e.target.value)}/>
                     </div>
-                    <select className="m-plat-tier" value={plc.tierIdx}
+                    <select className="m-plat-tier" aria-label="Platform tier" value={plc.tierIdx}
                       onChange={e=>onTier(row.id,pl.id,parseInt(e.target.value))}>
                       {pl.tiers?.map((t,i)=>(
                         <option key={i} value={i}>{t.tier_name}</option>

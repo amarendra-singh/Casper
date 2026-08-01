@@ -1,4 +1,5 @@
 from app.models.user import User
+from app.models.company import Company, CompanyMembership, CompanyModule
 from app.models.platform import Platform, PlatformTier
 from app.models.vendor import Vendor
 from app.models.category import Category

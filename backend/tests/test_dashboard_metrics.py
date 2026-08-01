@@ -6,7 +6,8 @@ from app.routes.dashboard import _build_metrics_cells
 def _cells(**kwargs):
     """Call with only the args you care about; defaults fill the rest."""
     defaults = dict(
-        gross_u=0, net_u=0, ret_u=0,
+        gross_u=0, net_u=0,
+        sku_gross=0, rvp_u=0, rto_u=0,
         settle=0.0, gross_s=0.0, avg_margin=0.0,
         fraud_cnt=0, total_ord=0,
         crit_count=0, crit_vel=None, top_score=None,
@@ -33,20 +34,50 @@ def test_sell_through_no_data():
     assert a01["meter"] == 0
 
 
-# ── Return rate (a02) ─────────────────────────────────────────────────────────
+# ── Customer return (a02) ─────────────────────────────────────────────────────
 
-def test_return_rate_computed():
-    cells = _cells(gross_u=78, ret_u=24)
+def test_customer_return_computed():
+    cells = _cells(sku_gross=78, rvp_u=24)
     a02 = next(c for c in cells if c["idx"] == "a02")
     assert a02["val"] == "30.8"
     assert a02["unit"] == "%"
     assert a02["trend_cls"] == "down"   # > 20% is bad
 
 
-def test_return_rate_low_is_good():
-    cells = _cells(gross_u=100, ret_u=5)
+def test_customer_return_low_is_good():
+    cells = _cells(sku_gross=100, rvp_u=5)
     a02 = next(c for c in cells if c["idx"] == "a02")
     assert a02["trend_cls"] == "up"
+
+
+def test_customer_return_no_data():
+    cells = _cells(sku_gross=0, rvp_u=0)
+    a02 = next(c for c in cells if c["idx"] == "a02")
+    assert a02["val"] == "—"
+    assert a02["unit"] == ""
+
+
+# ── RTO rate (a09) ────────────────────────────────────────────────────────────
+
+def test_rto_computed():
+    cells = _cells(sku_gross=630, rto_u=50)
+    a09 = next(c for c in cells if c["idx"] == "a09")
+    assert a09["val"] == "7.9"
+    assert a09["unit"] == "%"
+    assert a09["trend_cls"] == "up"    # < 10% is acceptable
+
+
+def test_rto_high_is_bad():
+    cells = _cells(sku_gross=100, rto_u=15)
+    a09 = next(c for c in cells if c["idx"] == "a09")
+    assert a09["trend_cls"] == "down"  # > 10% is bad
+
+
+def test_rto_no_data():
+    cells = _cells(sku_gross=0, rto_u=0)
+    a09 = next(c for c in cells if c["idx"] == "a09")
+    assert a09["val"] == "—"
+    assert a09["unit"] == ""
 
 
 # ── Fraud signal rate (a03) ───────────────────────────────────────────────────
@@ -150,10 +181,10 @@ def test_top_score_none():
     assert a08["unit"] == ""
 
 
-# ── Always returns 8 cells ────────────────────────────────────────────────────
+# ── Always returns 9 cells ────────────────────────────────────────────────────
 
-def test_always_8_cells():
+def test_always_9_cells():
     cells = _cells()
-    assert len(cells) == 8
+    assert len(cells) == 9
     idxs = [c["idx"] for c in cells]
-    assert idxs == ["a01","a02","a03","a04","a05","a06","a07","a08"]
+    assert idxs == ["a01", "a02", "a09", "a03", "a04", "a05", "a06", "a07", "a08"]

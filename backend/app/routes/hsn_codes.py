@@ -4,7 +4,7 @@ from sqlalchemy import select, or_
 from app.core.database import get_db
 from app.core.dependencies import require_any, require_admin_or_above
 from app.models.hsn_code import HsnCode
-from app.schemas.hsn_code import HsnCodeCreate, HsnCodeResponse
+from app.schemas.hsn_code import HsnCodeCreate, HsnCodeUpdate, HsnCodeResponse
 from typing import List
 
 router = APIRouter(prefix="/hsn", tags=["HSN Codes"])
@@ -64,3 +64,37 @@ async def get_hsn(
     if not hsn:
         raise HTTPException(404, "HSN code not found")
     return hsn
+
+@router.patch("/{code}", response_model=HsnCodeResponse)
+async def update_hsn(
+    code: str,
+    data: HsnCodeUpdate,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_admin_or_above)
+):
+    result = await db.execute(select(HsnCode).where(HsnCode.code == code))
+    hsn = result.scalar_one_or_none()
+    if not hsn:
+        raise HTTPException(404, "HSN code not found")
+    if not hsn.is_custom:
+        raise HTTPException(400, "Standard HSN codes cannot be edited — only custom ones")
+    for field, value in data.model_dump(exclude_none=True).items():
+        setattr(hsn, field, value)
+    await db.commit()
+    await db.refresh(hsn)
+    return hsn
+
+@router.delete("/{code}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_hsn(
+    code: str,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_admin_or_above)
+):
+    result = await db.execute(select(HsnCode).where(HsnCode.code == code))
+    hsn = result.scalar_one_or_none()
+    if not hsn:
+        raise HTTPException(404, "HSN code not found")
+    if not hsn.is_custom:
+        raise HTTPException(400, "Standard HSN codes cannot be deleted — only custom ones")
+    await db.delete(hsn)
+    await db.commit()

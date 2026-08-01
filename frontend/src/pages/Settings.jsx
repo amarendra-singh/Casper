@@ -1,7 +1,122 @@
 import { useState, useEffect } from 'react'
 import { getPlatforms, updatePlatform, createPlatform } from '../api/client'
 import api from '../api/client'
+import { useCompany } from '../context/CompanyContext'
 import './Settings.css'
+
+const MODULE_META = [
+  { key: 'skus',       label: 'SKUs & Catalog' },
+  { key: 'pricing',    label: 'Pricing' },
+  { key: 'pnl',        label: 'P&L' },
+  { key: 'fraud',      label: 'Fraud Detection' },
+  { key: 'calculator', label: 'Profit Calculator' },
+  { key: 'users',      label: 'Users & Team' },
+]
+
+function CompanyModules() {
+  const { modules, role, updateModules, activeCompany } = useCompany()
+  const [busy, setBusy] = useState(null)
+  const isOwner = role === 'owner'
+
+  const toggle = async key => {
+    if (!isOwner) return
+    setBusy(key)
+    try { await updateModules({ [key]: !(modules[key] !== false) }) } catch {}
+    finally { setBusy(null) }
+  }
+
+  return (
+    <div className="st-add-card" style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 12 }}>
+        <div className="st-title" style={{ fontSize: 16 }}>Modules</div>
+        <p className="st-sub" style={{ margin: '2px 0 0' }}>
+          Turn features on or off for <b>{activeCompany?.name || 'this company'}</b>
+        </p>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 10 }}>
+        {MODULE_META.map(m => {
+          const on = modules[m.key] !== false
+          return (
+            <div key={m.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '10px 14px', border: '1px solid var(--rule,#E4DFD5)', borderRadius: 10,
+              background: 'var(--surface-2,#F7F3EC)' }}>
+              <span style={{ fontSize: 14, fontWeight: 500 }}>{m.label}</span>
+              <button onClick={() => toggle(m.key)} disabled={!isOwner || busy === m.key}
+                aria-label={`Toggle ${m.label}`}
+                style={{ width: 38, height: 22, borderRadius: 11, border: 'none', position: 'relative',
+                  cursor: isOwner ? 'pointer' : 'default', padding: 0, transition: 'background .18s',
+                  background: on ? '#1FA968' : 'var(--muted-2,#C7C1B6)', opacity: isOwner ? 1 : .6 }}>
+                <span style={{ position: 'absolute', top: 3, left: 3, width: 16, height: 16, borderRadius: '50%',
+                  background: '#fff', transition: 'transform .18s', transform: on ? 'translateX(16px)' : 'none' }} />
+              </button>
+            </div>
+          )
+        })}
+      </div>
+      {!isOwner && <p className="st-sub" style={{ margin: '10px 0 0' }}>Only the company owner can change modules.</p>}
+    </div>
+  )
+}
+
+function CompanyManage() {
+  const { activeCompany, companies, role, renameCompany, archiveCompany, leaveCompany } = useCompany()
+  const isOwner = role === 'owner'
+  const id = activeCompany?.id
+  const canRemove = companies.length > 1   // never let the user remove their only company
+  const [name, setName] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err,  setErr]  = useState('')
+  useEffect(() => { setName(activeCompany?.name || '') }, [activeCompany?.id, activeCompany?.name])
+
+  const doRename = async () => {
+    const n = name.trim()
+    if (!n || n === activeCompany?.name) return
+    setBusy(true); setErr('')
+    try { await renameCompany(id, n) } catch (e) { setErr(e?.response?.data?.detail || 'Rename failed') }
+    finally { setBusy(false) }
+  }
+  const doArchive = async () => {
+    if (!confirm(`Archive "${activeCompany?.name}"? It's hidden from the switcher but its data is kept.`)) return
+    setBusy(true); setErr('')
+    try { await archiveCompany(id) } catch (e) { setErr(e?.response?.data?.detail || 'Archive failed'); setBusy(false) }
+  }
+  const doLeave = async () => {
+    if (!confirm(`Leave "${activeCompany?.name}"? You'll lose access unless re-invited.`)) return
+    setBusy(true); setErr('')
+    try { await leaveCompany(id) } catch (e) { setErr(e?.response?.data?.detail || 'Leave failed'); setBusy(false) }
+  }
+
+  return (
+    <div className="st-add-card" style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 12 }}>
+        <div className="st-title" style={{ fontSize: 16 }}>Company</div>
+        <p className="st-sub" style={{ margin: '2px 0 0' }}>
+          Rename or remove <b>{activeCompany?.name || 'this company'}</b>
+        </p>
+      </div>
+      {isOwner ? (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input className="st-input" style={{ maxWidth: 280 }} value={name}
+            onChange={e => setName(e.target.value)} aria-label="Company name" />
+          <button className="st-save-btn" onClick={doRename}
+            disabled={busy || !name.trim() || name.trim() === activeCompany?.name}>Rename</button>
+          <button className="st-cancel-btn" onClick={doArchive} disabled={busy || !canRemove}
+            title={canRemove ? '' : 'You must keep at least one company'}
+            style={{ marginLeft: 'auto', color: '#dc2626', borderColor: 'rgba(220,38,38,.35)' }}>
+            Archive company
+          </button>
+        </div>
+      ) : (
+        <button className="st-cancel-btn" onClick={doLeave} disabled={busy || !canRemove}
+          style={{ color: '#dc2626', borderColor: 'rgba(220,38,38,.35)' }}>
+          Leave company
+        </button>
+      )}
+      {err && <p className="st-sub" style={{ margin: '10px 0 0', color: '#dc2626' }}>{err}</p>}
+      {!canRemove && <p className="st-sub" style={{ margin: '10px 0 0' }}>You must belong to at least one company.</p>}
+    </div>
+  )
+}
 
 const TIER_DEFAULTS = { tier_name: '', fee: '', fee_pct: '', mode: 'amt' /* 'amt' = ₹, 'pct' = % */ }
 
@@ -343,6 +458,10 @@ export default function Settings() {
         </div>
         <button className="st-add-btn" onClick={() => setShowAdd(p => !p)}>+ Add Platform</button>
       </div>
+
+      {/* Per-company management + module enablement */}
+      <CompanyManage />
+      <CompanyModules />
 
       {/* Add Platform form */}
       {showAdd && (

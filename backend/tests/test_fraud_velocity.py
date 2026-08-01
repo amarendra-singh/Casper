@@ -101,6 +101,22 @@ def test_composite_score_max_capped_at_100():
     assert score == 100.0
 
 
+def test_composite_score_settlement_gap_isolated():
+    """Settlement gap is its own 0-15 component (was a dead band before C2 wiring)."""
+    # 10% underpayment -> 0.10 * 100 = 10 points
+    score = _composite_fraud_score(
+        z_score=0.0, velocity_fraud_pct=0.0, cod_abuse=False,
+        settlement_gap_pct=0.10, fee_overcharge_pct=0.0,
+    )
+    assert score == 10.0
+    # >= 15% underpayment caps the component at 15
+    capped = _composite_fraud_score(
+        z_score=0.0, velocity_fraud_pct=0.0, cod_abuse=False,
+        settlement_gap_pct=0.20, fee_overcharge_pct=0.0,
+    )
+    assert capped == 15.0
+
+
 def test_velocity_stats_normal():
     """2-day and 4-day returns: avg=3.0, fraud_count=1 (only 2-day qualifies <=3)."""
     stats = _velocity_stats([2, 4])

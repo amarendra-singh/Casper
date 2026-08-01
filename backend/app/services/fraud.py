@@ -555,6 +555,7 @@ async def store_order_events(
     events: list[dict],
     report_id: Optional[int],
     platform_id: int,
+    company_id: int,
 ) -> int:
     """Persist order events. Returns count stored."""
     if not events:
@@ -565,6 +566,7 @@ async def store_order_events(
     for ev in events:
         pricing_id = sku_lookup.get(ev["sku_platform_name"].upper())
         obj = OrderEvent(
+            company_id=company_id,
             report_id=report_id,
             platform_id=platform_id,
             sku_pricing_id=pricing_id,
@@ -595,14 +597,14 @@ async def store_order_events(
 
 # ── Actor intelligence computation ────────────────────────────────────────────
 
-async def compute_return_reason_clusters(db: AsyncSession) -> None:
+async def compute_return_reason_clusters(db: AsyncSession, company_id: int) -> None:
     """
-    Aggregate return reasons across all order_events into ReturnReasonCluster.
-    Fully replaces table on each call.
+    Aggregate return reasons across this company's order_events into
+    ReturnReasonCluster. Replaces the company's rows on each call.
     """
     from app.models.fraud import ReturnReasonCluster
 
-    await db.execute(delete(ReturnReasonCluster))
+    await db.execute(delete(ReturnReasonCluster).where(ReturnReasonCluster.company_id == company_id))
 
     q = select(
         OrderEvent.platform_id,
@@ -611,7 +613,8 @@ async def compute_return_reason_clusters(db: AsyncSession) -> None:
         OrderEvent.fraud_signal_type,
         func.count(OrderEvent.id).label("order_count"),
     ).where(
-        OrderEvent.return_reason.isnot(None)
+        OrderEvent.return_reason.isnot(None),
+        OrderEvent.company_id == company_id,
     ).group_by(
         OrderEvent.platform_id,
         OrderEvent.return_reason,
@@ -624,6 +627,7 @@ async def compute_return_reason_clusters(db: AsyncSession) -> None:
     now = datetime.utcnow()
     for row in rows:
         cluster = ReturnReasonCluster(
+            company_id        = company_id,
             platform_id       = row.platform_id,
             return_reason     = row.return_reason,
             return_sub_reason = row.return_sub_reason,
@@ -636,7 +640,7 @@ async def compute_return_reason_clusters(db: AsyncSession) -> None:
     await db.commit()
 
 
-async def compute_state_risk_profiles(db: AsyncSession) -> None:
+async def compute_state_risk_profiles(db: AsyncSession, company_id: int) -> None:
     """
     Build state-level fraud heatmap from Snapdeal Customer State data.
     fraud_rate = fraud_orders / total_orders.
@@ -645,7 +649,7 @@ async def compute_state_risk_profiles(db: AsyncSession) -> None:
     """
     from app.models.fraud import StateRiskProfile
 
-    await db.execute(delete(StateRiskProfile))
+    await db.execute(delete(StateRiskProfile).where(StateRiskProfile.company_id == company_id))
 
     q = select(
         OrderEvent.customer_state_code,
@@ -656,7 +660,8 @@ async def compute_state_risk_profiles(db: AsyncSession) -> None:
         ).label("fraud_orders"),
         func.avg(OrderEvent.return_velocity_days).label("avg_velocity"),
     ).where(
-        OrderEvent.customer_state_code.isnot(None)
+        OrderEvent.customer_state_code.isnot(None),
+        OrderEvent.company_id == company_id,
     ).group_by(
         OrderEvent.customer_state_code,
         OrderEvent.customer_state_name,
@@ -686,6 +691,7 @@ async def compute_state_risk_profiles(db: AsyncSession) -> None:
             tier = "CRITICAL"
 
         db.add(StateRiskProfile(
+            company_id   = company_id,
             state_code   = row.customer_state_code,
             state_name   = row.customer_state_name or row.customer_state_code,
             total_orders = row.total_orders,
@@ -700,7 +706,7 @@ async def compute_state_risk_profiles(db: AsyncSession) -> None:
     await db.commit()
 
 
-async def compute_actor_risk_profiles(db: AsyncSession) -> None:
+async def compute_actor_risk_profiles(db: AsyncSession, company_id: int) -> None:
     """
     Build actor risk profiles keyed by (state_name + dominant_return_reason).
     actor_fraud_score 0-100:
@@ -712,7 +718,7 @@ async def compute_actor_risk_profiles(db: AsyncSession) -> None:
     import hashlib
     from app.models.fraud import ActorRiskProfile
 
-    await db.execute(delete(ActorRiskProfile))
+    await db.execute(delete(ActorRiskProfile).where(ActorRiskProfile.company_id == company_id))
 
     q = select(
         OrderEvent.customer_state_name,
@@ -727,7 +733,8 @@ async def compute_actor_risk_profiles(db: AsyncSession) -> None:
         ).label("fraud_reason_count"),
         func.avg(OrderEvent.return_velocity_days).label("avg_velocity"),
     ).where(
-        OrderEvent.return_reason.isnot(None)
+        OrderEvent.return_reason.isnot(None),
+        OrderEvent.company_id == company_id,
     ).group_by(
         OrderEvent.customer_state_name,
         OrderEvent.return_reason,
@@ -770,6 +777,7 @@ async def compute_actor_risk_profiles(db: AsyncSession) -> None:
         actor_key = hashlib.sha256(key_raw.encode()).hexdigest()[:16]
 
         db.add(ActorRiskProfile(
+            company_id         = company_id,
             actor_key          = actor_key,
             state_name         = row.customer_state_name,
             dominant_reason    = row.return_reason,
@@ -896,18 +904,18 @@ def _composite_fraud_score(
     return round(min(100.0, z_component + v_component + cod_component + s_component + f_component), 1)
 
 
-async def compute_sku_risk_scores(session: AsyncSession, platform_id: int) -> int:
+async def compute_sku_risk_scores(session: AsyncSession, platform_id: int, company_id: int) -> int:
     """
     Recompute all SkuRiskScore rows for a platform after an upload.
-    1. Pull all order_events for this platform
+    1. Pull all order_events for this platform + company
     2. Group by sku_platform_name
     3. Compute rates + Z-score + risk tier
     4. Delete old scores + insert fresh ones
     Returns count of SKUs scored.
     """
-    # Pull all events for this platform
+    # Pull all events for this platform + company
     result = await session.execute(
-        select(OrderEvent).where(OrderEvent.platform_id == platform_id)
+        select(OrderEvent).where(OrderEvent.platform_id == platform_id, OrderEvent.company_id == company_id)
     )
     events = result.scalars().all()
 
@@ -1028,8 +1036,39 @@ async def compute_sku_risk_scores(session: AsyncSession, platform_id: int) -> in
 
     # Delete old scores for this platform
     await session.execute(
-        delete(SkuRiskScore).where(SkuRiskScore.platform_id == platform_id)
+        delete(SkuRiskScore).where(SkuRiskScore.platform_id == platform_id, SkuRiskScore.company_id == company_id)
     )
+
+    # Settlement-gap signal (C2): how much the platform UNDERPAID vs Casper-expected
+    # BS, as a fraction, per SKU. Sourced from the latest P&L report's per-SKU
+    # variance_bs (= actual - expected; negative = underpaid). Underpayment-only;
+    # matched to fraud SKUs by sku_pricing_id. Unmatched SKUs stay 0.0.
+    from app.models.pnl import PnlReport, PnlSkuRow
+    settlement_gap: dict[int, float] = {}
+    latest_report_id = (
+        await session.execute(
+            select(PnlReport.id)
+            .where(PnlReport.platform_id == platform_id)
+            .order_by(PnlReport.period_end.desc(), PnlReport.uploaded_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if latest_report_id is not None:
+        gap_rows = (
+            await session.execute(
+                select(
+                    PnlSkuRow.sku_pricing_id,
+                    PnlSkuRow.variance_bs,
+                    PnlSkuRow.casper_expected_bs,
+                ).where(PnlSkuRow.report_id == latest_report_id)
+            )
+        ).all()
+        for spid, var_bs, exp_bs in gap_rows:
+            if spid is None or var_bs is None or not exp_bs:
+                continue
+            gap = min(1.0, abs(var_bs) / abs(exp_bs)) if var_bs < 0 else 0.0
+            if gap > settlement_gap.get(spid, 0.0):
+                settlement_gap[spid] = gap
 
     # Insert fresh scores
     now = datetime.utcnow()
@@ -1039,6 +1078,7 @@ async def compute_sku_risk_scores(session: AsyncSession, platform_id: int) -> in
         tier  = _risk_tier(z, clr)
 
         session.add(SkuRiskScore(
+            company_id=company_id,
             sku_pricing_id=s["sku_pricing_id"],
             platform_id=platform_id,
             sku_platform_name=s["sku_platform_name"],
@@ -1072,7 +1112,7 @@ async def compute_sku_risk_scores(session: AsyncSession, platform_id: int) -> in
                 z_score=z,
                 velocity_fraud_pct=s["_velocity_fraud_pct"],
                 cod_abuse=s["cod_abuse_flag"],
-                settlement_gap_pct=0.0,    # TODO: wire in from PnlSkuRow.variance_bs (15/100 points currently unused)
+                settlement_gap_pct=settlement_gap.get(s["sku_pricing_id"], 0.0),
                 fee_overcharge_pct=s["_fee_overcharge_pct"],
             ),
         ))
@@ -1082,7 +1122,7 @@ async def compute_sku_risk_scores(session: AsyncSession, platform_id: int) -> in
 
 # ── Alert generation ──────────────────────────────────────────────────────────
 
-async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_id: int) -> int:
+async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_id: int, company_id: int) -> int:
     """
     Generate FraudAlert rows after an upload.
     Runs AFTER store_order_events() + compute_sku_risk_scores().
@@ -1091,11 +1131,12 @@ async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_
     """
     from app.models.pnl import PnlSkuRow
 
-    # Delete old unresolved alerts for this platform
+    # Delete old unresolved alerts for this platform + company
     await session.execute(
         delete(FraudAlert).where(
             FraudAlert.platform_id == platform_id,
             FraudAlert.is_resolved == False,
+            FraudAlert.company_id == company_id,
         )
     )
 
@@ -1126,6 +1167,7 @@ async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_
                     if r.variance_bs and r.variance_bs < -100
                 ]
                 alerts.append(FraudAlert(
+                company_id=company_id,
                     platform_id=platform_id,
                     report_id=report_id,
                     alert_type="SETTLEMENT_GAP",
@@ -1163,6 +1205,7 @@ async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_
         post = sku.postpaid_return_rate or 0
         diff = post - pre
         alerts.append(FraudAlert(
+                company_id=company_id,
             platform_id=platform_id,
             report_id=report_id,
             alert_type="COD_ABUSE",
@@ -1214,6 +1257,7 @@ async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_
 
         sev = _classify_alert_severity("VELOCITY_FRAUD", velocity_days=min_days)
         alert = FraudAlert(
+                company_id=company_id,
             platform_id=platform_id,
             report_id=report_id,
             alert_type="VELOCITY_FRAUD",
@@ -1249,6 +1293,7 @@ async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_
     for s in fo_skus[:3]:
         sev = _classify_alert_severity("FEE_OVERCHARGE", amount=s.fee_overcharge_amount)
         alert = FraudAlert(
+                company_id=company_id,
             platform_id=platform_id,
             report_id=report_id,
             alert_type="FEE_OVERCHARGE",
@@ -1285,6 +1330,7 @@ async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_
     for sku in critical_skus:
         if (sku.z_score or 0) >= 1.0:
             alerts.append(FraudAlert(
+                company_id=company_id,
                 platform_id=platform_id,
                 report_id=report_id,
                 alert_type="RETURN_SPIKE",
@@ -1317,14 +1363,14 @@ async def generate_fraud_alerts(session: AsyncSession, platform_id: int, report_
 
 # ── Overview + per-platform views ─────────────────────────────────────────────
 
-async def get_fraud_overview(session: AsyncSession) -> dict:
+async def get_fraud_overview(session: AsyncSession, company_id: int) -> dict:
     """Verdict + top alerts + platform health summary."""
     sev_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
 
     alerts_result = await session.execute(
         select(FraudAlert, Platform.name.label("platform_name"))
         .join(Platform, FraudAlert.platform_id == Platform.id)
-        .where(FraudAlert.is_resolved == False)
+        .where(FraudAlert.is_resolved == False, FraudAlert.company_id == company_id)
         .order_by(FraudAlert.created_at.desc())
     )
     alert_rows = alerts_result.all()
@@ -1408,7 +1454,7 @@ async def get_fraud_overview(session: AsyncSession) -> dict:
     }
 
 
-async def get_platform_fraud_view(session: AsyncSession, platform_id: int) -> dict:
+async def get_platform_fraud_view(session: AsyncSession, platform_id: int, company_id: int) -> dict:
     """Per-platform fraud view: risk table + alerts."""
     plat_result = await session.execute(
         select(Platform).where(Platform.id == platform_id)
@@ -1419,7 +1465,7 @@ async def get_platform_fraud_view(session: AsyncSession, platform_id: int) -> di
 
     scores_result = await session.execute(
         select(SkuRiskScore)
-        .where(SkuRiskScore.platform_id == platform_id)
+        .where(SkuRiskScore.platform_id == platform_id, SkuRiskScore.company_id == company_id)
         .order_by(SkuRiskScore.z_score.desc().nullslast())
     )
     scores = scores_result.scalars().all()
@@ -1534,27 +1580,29 @@ async def reprocess_report_for_fraud(session: AsyncSession, report_id: int) -> d
     else:
         return {"error": f"Cannot detect platform type from name: {plat_name!r}. Expected flipkart/meesho/snapdeal."}
 
+    cid = report.company_id
+
     # Delete existing events for this report and reinsert
     await session.execute(
         delete(OrderEvent).where(OrderEvent.report_id == report_id)
     )
     await session.flush()
 
-    count = await store_order_events(session, events, report_id, report.platform_id)
+    count = await store_order_events(session, events, report_id, report.platform_id, cid)
     await session.flush()
 
-    await compute_sku_risk_scores(session, report.platform_id)
+    await compute_sku_risk_scores(session, report.platform_id, cid)
     await session.flush()
-    await compute_return_reason_clusters(session)
-    await compute_state_risk_profiles(session)
-    await compute_actor_risk_profiles(session)
-    await generate_fraud_alerts(session, report.platform_id, report_id)
+    await compute_return_reason_clusters(session, cid)
+    await compute_state_risk_profiles(session, cid)
+    await compute_actor_risk_profiles(session, cid)
+    await generate_fraud_alerts(session, report.platform_id, report_id, cid)
     await session.commit()
 
     return {"reprocessed": True, "report_id": report_id, "events_extracted": count}
 
 
-async def get_settlement_gaps(session: AsyncSession) -> dict:
+async def get_settlement_gaps(session: AsyncSession, company_id: int) -> dict:
     """Settlement reconciliation across all reports using PnlSkuRow.variance_bs."""
     from app.models.pnl import PnlSkuRow
 
@@ -1574,6 +1622,7 @@ async def get_settlement_gaps(session: AsyncSession) -> dict:
         .where(
             PnlSkuRow.variance_bs.isnot(None),
             PnlSkuRow.casper_expected_bs.isnot(None),
+            PnlReport.company_id == company_id,
         )
         .group_by(PnlReport.id, PnlReport.period_start, PnlReport.period_end, Platform.name)
         .order_by(PnlReport.period_start.desc())
@@ -1610,25 +1659,27 @@ async def get_settlement_gaps(session: AsyncSession) -> dict:
 
 # ── Actor intelligence service functions ──────────────────────────────────────
 
-async def get_actor_overview(db: AsyncSession) -> dict:
+async def get_actor_overview(db: AsyncSession, company_id: int) -> dict:
     """Summary stats for the Actor Intelligence tab."""
     from app.models.fraud import ActorRiskProfile, StateRiskProfile, ReturnReasonCluster
 
-    total     = (await db.execute(select(func.count(ActorRiskProfile.id)))).scalar() or 0
+    total     = (await db.execute(select(func.count(ActorRiskProfile.id))
+        .where(ActorRiskProfile.company_id == company_id))).scalar() or 0
     high_risk = (await db.execute(
         select(func.count(ActorRiskProfile.id))
-        .where(ActorRiskProfile.risk_tier.in_(["RED", "CRITICAL"]))
+        .where(ActorRiskProfile.risk_tier.in_(["RED", "CRITICAL"]), ActorRiskProfile.company_id == company_id)
     )).scalar() or 0
 
     top_state = (await db.execute(
         select(StateRiskProfile)
+        .where(StateRiskProfile.company_id == company_id)
         .order_by(StateRiskProfile.fraud_rate.desc())
         .limit(1)
     )).scalars().first()
 
     top_reason = (await db.execute(
         select(ReturnReasonCluster)
-        .where(ReturnReasonCluster.fraud_signal_type == "FRAUD_SIGNAL")
+        .where(ReturnReasonCluster.fraud_signal_type == "FRAUD_SIGNAL", ReturnReasonCluster.company_id == company_id)
         .order_by(ReturnReasonCluster.order_count.desc())
         .limit(1)
     )).scalars().first()
@@ -1643,12 +1694,13 @@ async def get_actor_overview(db: AsyncSession) -> dict:
     }
 
 
-async def get_actor_risk_table(db: AsyncSession) -> list[dict]:
+async def get_actor_risk_table(db: AsyncSession, company_id: int) -> list[dict]:
     """Actor risk profiles sorted by fraud score descending."""
     from app.models.fraud import ActorRiskProfile
 
     result = await db.execute(
-        select(ActorRiskProfile).order_by(ActorRiskProfile.actor_fraud_score.desc())
+        select(ActorRiskProfile).where(ActorRiskProfile.company_id == company_id)
+        .order_by(ActorRiskProfile.actor_fraud_score.desc())
     )
     return [
         {
@@ -1667,12 +1719,13 @@ async def get_actor_risk_table(db: AsyncSession) -> list[dict]:
     ]
 
 
-async def get_return_reason_intelligence(db: AsyncSession) -> dict:
+async def get_return_reason_intelligence(db: AsyncSession, company_id: int) -> dict:
     """Return reason breakdown — categories + top reasons."""
     from app.models.fraud import ReturnReasonCluster
 
     result = await db.execute(
-        select(ReturnReasonCluster).order_by(ReturnReasonCluster.order_count.desc())
+        select(ReturnReasonCluster).where(ReturnReasonCluster.company_id == company_id)
+        .order_by(ReturnReasonCluster.order_count.desc())
     )
     clusters = result.scalars().all()
 
@@ -1701,12 +1754,13 @@ async def get_return_reason_intelligence(db: AsyncSession) -> dict:
     }
 
 
-async def get_state_risk_intelligence(db: AsyncSession) -> list[dict]:
+async def get_state_risk_intelligence(db: AsyncSession, company_id: int) -> list[dict]:
     """State risk profiles for India heatmap, sorted by fraud_rate desc."""
     from app.models.fraud import StateRiskProfile
 
     result = await db.execute(
-        select(StateRiskProfile).order_by(StateRiskProfile.fraud_rate.desc())
+        select(StateRiskProfile).where(StateRiskProfile.company_id == company_id)
+        .order_by(StateRiskProfile.fraud_rate.desc())
     )
     return [
         {
@@ -1725,31 +1779,32 @@ async def get_state_risk_intelligence(db: AsyncSession) -> list[dict]:
 
 # ── Dashboard aggregates ──────────────────────────────────────────────────────
 
-async def get_fraud_dashboard(session: AsyncSession) -> dict:
+async def get_fraud_dashboard(session: AsyncSession, company_id: int) -> dict:
     """Aggregated risk view across all platforms."""
     # Risk tier distribution
     tier_result = await session.execute(
         select(SkuRiskScore.risk_tier, func.count(SkuRiskScore.id))
+        .where(SkuRiskScore.company_id == company_id)
         .group_by(SkuRiskScore.risk_tier)
     )
     tier_counts = {row[0]: row[1] for row in tier_result}
 
     # Total revenue at risk
     rev_result = await session.execute(
-        select(func.sum(SkuRiskScore.revenue_at_risk))
+        select(func.sum(SkuRiskScore.revenue_at_risk)).where(SkuRiskScore.company_id == company_id)
     )
     total_rev_at_risk = float(rev_result.scalar() or 0)
 
     # Pending returns count
     pending_result = await session.execute(
-        select(func.sum(SkuRiskScore.pending_return_orders))
+        select(func.sum(SkuRiskScore.pending_return_orders)).where(SkuRiskScore.company_id == company_id)
     )
     total_pending = int(pending_result.scalar() or 0)
 
     # COD abuse count
     cod_result = await session.execute(
         select(func.count(SkuRiskScore.id))
-        .where(SkuRiskScore.cod_abuse_flag == True)
+        .where(SkuRiskScore.cod_abuse_flag == True, SkuRiskScore.company_id == company_id)
     )
     cod_abuse_count = int(cod_result.scalar() or 0)
 
@@ -1757,6 +1812,7 @@ async def get_fraud_dashboard(session: AsyncSession) -> dict:
     scores_result = await session.execute(
         select(SkuRiskScore, Platform.name.label("platform_name"))
         .join(Platform, SkuRiskScore.platform_id == Platform.id)
+        .where(SkuRiskScore.company_id == company_id)
         .order_by(SkuRiskScore.z_score.desc().nullslast(), SkuRiskScore.combined_loss_rate.desc().nullslast())
     )
     scores_rows = scores_result.all()
@@ -1800,10 +1856,11 @@ async def get_fraud_dashboard(session: AsyncSession) -> dict:
                 COUNT(CASE WHEN order_status NOT IN ('CANCELLED','IN_TRANSIT') THEN 1 END) AS shipped,
                 COUNT(*) AS total
             FROM order_events
-            WHERE order_date IS NOT NULL
+            WHERE order_date IS NOT NULL AND company_id = :cid
             GROUP BY week
             ORDER BY week
-        """)
+        """),
+        {"cid": company_id},
     )
     weekly_data = [
         {
@@ -1827,7 +1884,7 @@ async def get_fraud_dashboard(session: AsyncSession) -> dict:
             SkuRiskScore.gross_orders,
         )
         .join(Platform, SkuRiskScore.platform_id == Platform.id)
-        .where(SkuRiskScore.sku_pricing_id.isnot(None))
+        .where(SkuRiskScore.sku_pricing_id.isnot(None), SkuRiskScore.company_id == company_id)
         .order_by(SkuRiskScore.sku_pricing_id, SkuRiskScore.combined_loss_rate.desc().nullslast())
     )
     cross_rows = cross_result.all()

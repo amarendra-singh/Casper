@@ -781,10 +781,12 @@ async def check_duplicate(
     platform_id: int,
     period_start,
     period_end,
+    company_id: int,
 ) -> Optional[PnlReport]:
-    """Check if a report for this platform + period already exists."""
+    """Check if a report for this company + platform + period already exists."""
     result = await session.execute(
         select(PnlReport).where(
+            PnlReport.company_id == company_id,
             PnlReport.platform_id == platform_id,
             PnlReport.period_start == period_start,
             PnlReport.period_end == period_end,
@@ -818,15 +820,16 @@ def _parse_workbook(file_bytes: bytes) -> tuple[dict, list[dict]]:
     return summary, sku_rows_raw
 
 
-async def _build_pricing_lookup(session: AsyncSession, platform_id: int) -> dict[str, SkuPricing]:
+async def _build_pricing_lookup(session: AsyncSession, platform_id: int, company_id: int) -> dict[str, SkuPricing]:
     """
     Build a case-insensitive map: platform_sku_name.upper() → SkuPricing.
-    Used to match Flipkart SKU names against Casper pricing records.
+    Used to match Flipkart SKU names against this company's Casper pricing.
     """
     config_result = await session.execute(
         select(SkuPlatformConfig).where(
             SkuPlatformConfig.platform_id == platform_id,
             SkuPlatformConfig.platform_sku_name.isnot(None),
+            SkuPlatformConfig.company_id == company_id,
         )
     )
     configs = config_result.scalars().all()
@@ -836,7 +839,7 @@ async def _build_pricing_lookup(session: AsyncSession, platform_id: int) -> dict
         return {}
 
     pricing_result = await session.execute(
-        select(SkuPricing).where(SkuPricing.id.in_(pricing_ids))
+        select(SkuPricing).where(SkuPricing.id.in_(pricing_ids), SkuPricing.company_id == company_id)
     )
     pricing_by_id = {sp.id: sp for sp in pricing_result.scalars().all()}
 
@@ -848,9 +851,10 @@ async def _build_pricing_lookup(session: AsyncSession, platform_id: int) -> dict
 
 
 def _build_report_model(summary: dict, platform_id: int, filename: str,
-                        uploaded_by: int, period_start, period_end) -> PnlReport:
+                        uploaded_by: int, period_start, period_end, company_id: int) -> PnlReport:
     """Instantiate a PnlReport from parsed summary sheet data."""
     return PnlReport(
+        company_id=company_id,
         platform_id=platform_id,
         period_start=period_start,
         period_end=period_end,
@@ -891,7 +895,7 @@ def _build_report_model(summary: dict, platform_id: int, filename: str,
     )
 
 
-def _build_sku_row(raw: dict, report_id: int, matched_pricing: Optional[SkuPricing]) -> PnlSkuRow:
+def _build_sku_row(raw: dict, report_id: int, matched_pricing: Optional[SkuPricing], company_id: int) -> PnlSkuRow:
     """
     Build a PnlSkuRow from parsed raw data + matched Casper pricing.
     If matched: computes variance vs Casper expected BS (snapshot at upload time).
@@ -926,6 +930,7 @@ def _build_sku_row(raw: dict, report_id: int, matched_pricing: Optional[SkuPrici
         )
 
     row = PnlSkuRow(
+        company_id=company_id,
         report_id=report_id,
         platform_sku_name=raw["platform_sku_name"],
         **casper_fields,
@@ -943,6 +948,7 @@ async def parse_and_store(
     uploaded_by: int,
     period_start,
     period_end,
+    company_id: int,
     platform_name: str = "flipkart",
 ) -> PnlUploadResult:
     """
@@ -964,9 +970,9 @@ async def parse_and_store(
     platform = await session.scalar(select(Platform).where(Platform.id == platform_id))
     platform_name = platform.name if platform else "Unknown"
 
-    name_to_pricing = await _build_pricing_lookup(session, platform_id)
+    name_to_pricing = await _build_pricing_lookup(session, platform_id, company_id)
 
-    report = _build_report_model(summary, platform_id, filename, uploaded_by, period_start, period_end)
+    report = _build_report_model(summary, platform_id, filename, uploaded_by, period_start, period_end, company_id)
     session.add(report)
     await session.flush()  # need report.id for child rows
 
@@ -977,7 +983,7 @@ async def parse_and_store(
             matched += 1
         else:
             unmatched += 1
-        session.add(_build_sku_row(raw, report.id, sp))
+        session.add(_build_sku_row(raw, report.id, sp, company_id))
 
     # ── Extract + store order-level events for fraud intelligence ─────────────
     try:
@@ -990,7 +996,7 @@ async def parse_and_store(
         else:
             order_events = []
 
-        await store_order_events(session, order_events, report.id, platform_id)
+        await store_order_events(session, order_events, report.id, platform_id, company_id)
     except Exception:
         pass  # Never fail a P&L upload due to fraud extraction error
 
@@ -998,12 +1004,12 @@ async def parse_and_store(
 
     # ── Recompute risk scores + generate fraud alerts ─────────────────────────
     try:
-        await compute_sku_risk_scores(session, platform_id)
+        await compute_sku_risk_scores(session, platform_id, company_id)
         await session.commit()
-        await compute_return_reason_clusters(session)
-        await compute_state_risk_profiles(session)
-        await compute_actor_risk_profiles(session)
-        await generate_fraud_alerts(session, platform_id, report.id)
+        await compute_return_reason_clusters(session, company_id)
+        await compute_state_risk_profiles(session, company_id)
+        await compute_actor_risk_profiles(session, company_id)
+        await generate_fraud_alerts(session, platform_id, report.id, company_id)
         await session.commit()
     except Exception:
         pass  # Risk score / alert failure is non-critical
@@ -1020,16 +1026,16 @@ async def parse_and_store(
     )
 
 
-async def get_all_reports(session: AsyncSession, platform_id: Optional[int] = None) -> list[PnlReport]:
-    """List all reports, optionally filtered by platform."""
-    q = select(PnlReport).order_by(PnlReport.period_start.desc())
+async def get_all_reports(session: AsyncSession, company_id: int, platform_id: Optional[int] = None) -> list[PnlReport]:
+    """List all reports for a company, optionally filtered by platform."""
+    q = select(PnlReport).where(PnlReport.company_id == company_id).order_by(PnlReport.period_start.desc())
     if platform_id:
         q = q.where(PnlReport.platform_id == platform_id)
     result = await session.execute(q)
     return result.scalars().all()
 
 
-async def get_report_detail(session: AsyncSession, report_id: int) -> Optional[PnlReport]:
+async def get_report_detail(session: AsyncSession, report_id: int, company_id: int) -> Optional[PnlReport]:
     """Fetch full report, eagerly loading SKU rows + their live sku_pricing relationship."""
     from sqlalchemy.orm import selectinload
     result = await session.execute(
@@ -1038,14 +1044,14 @@ async def get_report_detail(session: AsyncSession, report_id: int) -> Optional[P
             selectinload(PnlReport.sku_rows)
             .selectinload(PnlSkuRow.sku_pricing)
         )
-        .where(PnlReport.id == report_id)
+        .where(PnlReport.id == report_id, PnlReport.company_id == company_id)
     )
     return result.scalar_one_or_none()
 
 
-async def delete_report(session: AsyncSession, report_id: int) -> bool:
+async def delete_report(session: AsyncSession, report_id: int, company_id: int) -> bool:
     """Delete report + all rows (cascade handles rows)."""
-    result = await session.execute(select(PnlReport).where(PnlReport.id == report_id))
+    result = await session.execute(select(PnlReport).where(PnlReport.id == report_id, PnlReport.company_id == company_id))
     report = result.scalar_one_or_none()
     if not report:
         return False
@@ -1054,7 +1060,7 @@ async def delete_report(session: AsyncSession, report_id: int) -> bool:
     return True
 
 
-async def get_dashboard_summary(session: AsyncSession) -> dict:
+async def get_dashboard_summary(session: AsyncSession, company_id: int) -> dict:
     """
     Aggregate all P&L reports into dashboard-level stats.
     Returns platform totals, monthly breakdown, and overall KPIs.
@@ -1062,6 +1068,7 @@ async def get_dashboard_summary(session: AsyncSession) -> dict:
     result = await session.execute(
         select(PnlReport, Platform.name.label("platform_name"))
         .join(Platform, Platform.id == PnlReport.platform_id)
+        .where(PnlReport.company_id == company_id)
         .order_by(PnlReport.period_start)
     )
     rows = result.all()

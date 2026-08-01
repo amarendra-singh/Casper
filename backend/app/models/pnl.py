@@ -9,6 +9,7 @@ class PnlReport(Base):
     __tablename__ = "pnl_reports"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    company_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
     platform_id: Mapped[int] = mapped_column(Integer, ForeignKey("platforms.id"), nullable=False)
     period_start: Mapped[date] = mapped_column(Date, nullable=False)
     period_end: Mapped[date] = mapped_column(Date, nullable=False)
@@ -59,6 +60,7 @@ class PnlSkuRow(Base):
     __tablename__ = "pnl_sku_rows"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    company_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
     report_id: Mapped[int] = mapped_column(Integer, ForeignKey("pnl_reports.id", ondelete="CASCADE"), nullable=False)
 
     # Raw from Flipkart

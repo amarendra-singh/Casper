@@ -177,7 +177,7 @@ export default function Pricing() {
           <label style={{ fontSize:12, fontWeight:700, color:'var(--text-2)', letterSpacing:'0.05em', textTransform:'uppercase', whiteSpace:'nowrap' }}>
             Select SKU
           </label>
-          <select className="input" style={{ maxWidth:420 }}
+          <select className="input" style={{ maxWidth:420 }} aria-label="Select SKU"
             value={selectedSku} onChange={e => handleSkuChange(e.target.value)}>
             <option value="">— Choose a SKU —</option>
             {skus.filter(s => s.is_active).map(s => (
@@ -256,7 +256,7 @@ export default function Pricing() {
             <div className="form-grid">
               <div className="input-group span-2">
                 <label>Platform *</label>
-                <select className="input" value={form.platform_id}
+                <select className="input" value={form.platform_id} aria-label="Platform"
                   onChange={e => setForm(f => ({ ...f, platform_id: e.target.value }))}>
                   <option value="">— Select Platform —</option>
                   {platforms.filter(p => p.is_active).map(p => (

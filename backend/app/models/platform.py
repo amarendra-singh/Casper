@@ -8,7 +8,8 @@ class Platform(Base):
     __tablename__ = "platforms"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    company_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)  # per-company; not globally unique
     cr_charge: Mapped[float] = mapped_column(Float, nullable=False, comment="Flat customer return charge in INR")
     cr_percentage: Mapped[float] = mapped_column(Float, nullable=False, comment="Customer return % for reporting")
     default_ad_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, comment="Default AD % of selling price for this platform")
@@ -27,6 +28,7 @@ class PlatformTier(Base):
     __tablename__ = "platform_tiers"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    company_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
     platform_id: Mapped[int] = mapped_column(Integer, ForeignKey("platforms.id", ondelete="CASCADE"), nullable=False)
     tier_name: Mapped[str] = mapped_column(String(50), nullable=False, comment="e.g. Gold, Silver, Bronze")
     fee: Mapped[float] = mapped_column(Float, nullable=False, comment="Flat fee in INR (used when fee_pct is null)")

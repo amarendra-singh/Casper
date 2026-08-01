@@ -11,10 +11,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_active_company
 from app.models.fraud import ActorRiskProfile, ReturnReasonCluster
 from app.models.pnl import PnlReport, PnlSkuRow
 from app.models.platform import Platform
+from app.services.profitability import compute_sku_intelligence
+from app.services.reconciliation import compute_reconciliation
+from app.services.action_pipeline import compute_action_pipeline
+from app.services.operations import compute_operations
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -37,7 +41,9 @@ def _time_label() -> str:
 def _build_metrics_cells(
     gross_u: int,
     net_u: int,
-    ret_u: int,
+    sku_gross: int,
+    rvp_u: int,
+    rto_u: int,
     settle: float,
     gross_s: float,
     avg_margin: float,
@@ -48,19 +54,21 @@ def _build_metrics_cells(
     top_score: float | None,
 ) -> list[dict]:
     """
-    Pure function: compute 8 ribbon metric cells from aggregated P&L and actor stats.
+    Pure function: compute 9 ribbon metric cells from aggregated P&L and actor stats.
     Returns '—' for any metric where source data is zero/None.
+    sku_gross/rvp_u/rto_u come from pnl_sku_rows — separates customer return (RVP) from RTO.
     """
 
     def _v(val: float | None, fmt: str = ".1f") -> str:
         return f"{val:{fmt}}" if val is not None else "—"
 
     # ── derived ───────────────────────────────────────────────────────────────
-    sell_thru   = round(net_u / gross_u * 100, 1) if gross_u else None
-    ret_rate    = round(ret_u / gross_u * 100, 1) if gross_u else None
-    fraud_rate  = round(fraud_cnt / total_ord * 100, 1) if total_ord else None
-    settle_rate = round(settle / gross_s * 100, 1) if gross_s else None
-    margin      = round(avg_margin, 1) if avg_margin else None
+    sell_thru     = round(net_u / gross_u * 100, 1) if gross_u else None
+    cust_ret_rate = round(rvp_u / sku_gross * 100, 1) if sku_gross else None
+    rto_rate      = round(rto_u / sku_gross * 100, 1) if sku_gross else None
+    fraud_rate    = round(fraud_cnt / total_ord * 100, 1) if total_ord else None
+    settle_rate   = round(settle / gross_s * 100, 1) if gross_s else None
+    margin        = round(avg_margin, 1) if avg_margin else None
 
     settle_l  = f"₹{settle  / 100_000:.1f}L"
     gross_s_l = f"₹{gross_s / 100_000:.1f}L"
@@ -78,13 +86,23 @@ def _build_metrics_cells(
         },
         {
             "idx": "a02", "dot": None,
-            "label": "Return rate",
-            "val": _v(ret_rate),
-            "unit": "%" if ret_rate is not None else "",
-            "delta": f"▼ {ret_u} units returned" if ret_rate else "Upload P&L",
-            "trend_cls": "down" if ret_rate and ret_rate > 20 else "up",
-            "meter": int(ret_rate) if ret_rate else 0,
-            "meter_cls": "amber" if ret_rate and ret_rate > 20 else "",
+            "label": "Customer return",
+            "val": _v(cust_ret_rate),
+            "unit": "%" if cust_ret_rate is not None else "",
+            "delta": f"▼ {rvp_u} RVP units · customer-initiated" if cust_ret_rate else "Upload P&L",
+            "trend_cls": "down" if cust_ret_rate and cust_ret_rate > 20 else "up",
+            "meter": int(cust_ret_rate) if cust_ret_rate else 0,
+            "meter_cls": "amber" if cust_ret_rate and cust_ret_rate > 20 else "",
+        },
+        {
+            "idx": "a09", "dot": None,
+            "label": "RTO rate",
+            "val": _v(rto_rate),
+            "unit": "%" if rto_rate is not None else "",
+            "delta": f"▼ {rto_u} RTO units · logistics failure" if rto_rate else "Upload P&L",
+            "trend_cls": "down" if rto_rate and rto_rate > 10 else "up",
+            "meter": int(rto_rate) if rto_rate else 0,
+            "meter_cls": "amber" if rto_rate and rto_rate > 10 else "",
         },
         {
             "idx": "a03", "dot": None,
@@ -149,54 +167,49 @@ def _build_metrics_cells(
     ]
 
 
-async def _compute_metrics(db: AsyncSession) -> list[dict]:
+async def _compute_metrics(db: AsyncSession, company_id: int) -> list[dict]:
     """Query P&L and actor aggregates, then delegate math to _build_metrics_cells."""
 
-    # P&L aggregates across ALL reports
+    # P&L report-level aggregates (sell-through denominator + settlement)
     pnl_res = await db.execute(
         select(
             func.coalesce(func.sum(PnlReport.gross_units),    0),
             func.coalesce(func.sum(PnlReport.net_units),      0),
-            func.coalesce(func.sum(PnlReport.returned_units), 0),
             func.coalesce(func.sum(PnlReport.bank_settlement),0.0),
             func.coalesce(func.sum(PnlReport.gross_sales),    0.0),
-        )
+        ).where(PnlReport.company_id == company_id)
     )
     pnl = pnl_res.one()
-    gross_u, net_u, ret_u, settle, gross_s = (
-        int(pnl[0]), int(pnl[1]), int(pnl[2]),
-        float(pnl[3]), float(pnl[4]),
+    gross_u, net_u, settle, gross_s = (
+        int(pnl[0]), int(pnl[1]),
+        float(pnl[2]), float(pnl[3]),
     )
 
-    # Real breakeven-based margin from matched SKU rows
-    # Formula: (total_payout - total_cost) / total_cost × 100
-    # total_cost = Σ casper_expected_bs / (1 + profit_pct/100)  — back-derives breakeven
-    margin_res = await db.execute(
+    # Customer return (RVP) and RTO from SKU rows — separates logistics vs customer returns
+    sku_ret_res = await db.execute(
         select(
-            func.sum(PnlSkuRow.bank_settlement_projected),
-            func.sum(
-                PnlSkuRow.casper_expected_bs /
-                (1.0 + PnlSkuRow.casper_expected_profit_pct / 100.0)
-            ),
-        ).where(
-            PnlSkuRow.sku_pricing_id.isnot(None),
-            PnlSkuRow.casper_expected_bs.isnot(None),
-            PnlSkuRow.casper_expected_profit_pct.isnot(None),
-            PnlSkuRow.casper_expected_profit_pct != 0,
-            PnlSkuRow.bank_settlement_projected.isnot(None),
-        )
+            func.coalesce(func.sum(PnlSkuRow.gross_units), 0),
+            func.coalesce(func.sum(PnlSkuRow.rvp_units),   0),
+            func.coalesce(func.sum(PnlSkuRow.rto_units),   0),
+        ).where(PnlSkuRow.company_id == company_id)
     )
-    margin_row = margin_res.one()
-    total_payout = float(margin_row[0] or 0)
-    total_cost   = float(margin_row[1] or 0)
-    avg_margin   = round((total_payout - total_cost) / total_cost * 100, 1) if total_cost else 0.0
+    sku_ret = sku_ret_res.one()
+    sku_gross = int(sku_ret[0])
+    rvp_u     = int(sku_ret[1])
+    rto_u     = int(sku_ret[2])
+
+    # a05 must equal the SKU-profit "blended margin" — single source of truth.
+    # Both are return-on-cost via sku_pricing.breakeven (see logic.md §6/§6b),
+    # so reuse the SKU-intelligence engine instead of a second divergent query.
+    _intel = await compute_sku_intelligence(db, company_id)
+    avg_margin = _intel["summary"]["blended_margin_pct"] or 0.0
 
     # Actor aggregates
     actor_res = await db.execute(
         select(
             func.coalesce(func.sum(ActorRiskProfile.fraud_reason_count), 0),
             func.coalesce(func.sum(ActorRiskProfile.total_orders),        0),
-        )
+        ).where(ActorRiskProfile.company_id == company_id)
     )
     actor = actor_res.one()
     fraud_cnt, total_ord = int(actor[0]), int(actor[1])
@@ -207,7 +220,7 @@ async def _compute_metrics(db: AsyncSession) -> list[dict]:
             func.count(),
             func.avg(ActorRiskProfile.avg_velocity_days),
             func.max(ActorRiskProfile.actor_fraud_score),
-        ).where(ActorRiskProfile.risk_tier == "CRITICAL")
+        ).where(ActorRiskProfile.risk_tier == "CRITICAL", ActorRiskProfile.company_id == company_id)
     )
     crit = crit_res.one()
     crit_count = int(crit[0])
@@ -215,7 +228,8 @@ async def _compute_metrics(db: AsyncSession) -> list[dict]:
     top_score  = float(round(crit[2], 0)) if crit[2] is not None else None
 
     return _build_metrics_cells(
-        gross_u=gross_u, net_u=net_u, ret_u=ret_u,
+        gross_u=gross_u, net_u=net_u,
+        sku_gross=sku_gross, rvp_u=rvp_u, rto_u=rto_u,
         settle=settle, gross_s=gross_s, avg_margin=avg_margin,
         fraud_cnt=fraud_cnt, total_ord=total_ord,
         crit_count=crit_count, crit_vel=crit_vel, top_score=top_score,
@@ -224,11 +238,11 @@ async def _compute_metrics(db: AsyncSession) -> list[dict]:
 
 # ── Insight generators ─────────────────────────────────────────────────────────
 
-async def _insight_fraud_spike(db: AsyncSession) -> dict | None:
+async def _insight_fraud_spike(db: AsyncSession, company_id: int) -> dict | None:
     """Hero card: top CRITICAL fraud actor."""
     result = await db.execute(
         select(ActorRiskProfile)
-        .where(ActorRiskProfile.risk_tier == "CRITICAL")
+        .where(ActorRiskProfile.risk_tier == "CRITICAL", ActorRiskProfile.company_id == company_id)
         .order_by(ActorRiskProfile.actor_fraud_score.desc())
         .limit(1)
     )
@@ -237,7 +251,7 @@ async def _insight_fraud_spike(db: AsyncSession) -> dict | None:
         # Fall back to top AMBER
         result = await db.execute(
             select(ActorRiskProfile)
-            .where(ActorRiskProfile.risk_tier == "AMBER")
+            .where(ActorRiskProfile.risk_tier == "AMBER", ActorRiskProfile.company_id == company_id)
             .order_by(ActorRiskProfile.actor_fraud_score.desc())
             .limit(1)
         )
@@ -280,12 +294,12 @@ async def _insight_fraud_spike(db: AsyncSession) -> dict | None:
     }
 
 
-async def _insight_return_breakdown(db: AsyncSession) -> dict | None:
+async def _insight_return_breakdown(db: AsyncSession, company_id: int) -> dict | None:
     """Return reason intelligence: top fraud-signal cluster."""
     # Top FRAUD_SIGNAL cluster
     fraud_result = await db.execute(
         select(ReturnReasonCluster)
-        .where(ReturnReasonCluster.fraud_signal_type == "FRAUD_SIGNAL")
+        .where(ReturnReasonCluster.fraud_signal_type == "FRAUD_SIGNAL", ReturnReasonCluster.company_id == company_id)
         .order_by(ReturnReasonCluster.order_count.desc())
         .limit(1)
     )
@@ -294,6 +308,7 @@ async def _insight_return_breakdown(db: AsyncSession) -> dict | None:
     # Totals by signal type
     totals_result = await db.execute(
         select(ReturnReasonCluster.fraud_signal_type, func.sum(ReturnReasonCluster.order_count))
+        .where(ReturnReasonCluster.company_id == company_id)
         .group_by(ReturnReasonCluster.fraud_signal_type)
     )
     totals = {row[0]: int(row[1]) for row in totals_result.all()}
@@ -328,13 +343,13 @@ async def _insight_return_breakdown(db: AsyncSession) -> dict | None:
     }
 
 
-async def _insight_platform_health(db: AsyncSession) -> dict | None:
+async def _insight_platform_health(db: AsyncSession, company_id: int) -> dict | None:
     """Platform margin spread from latest P&L reports."""
     # Latest report per platform
     result = await db.execute(
         select(PnlReport, Platform.name)
         .join(Platform, Platform.id == PnlReport.platform_id)
-        .where(PnlReport.net_margin_pct.isnot(None))
+        .where(PnlReport.net_margin_pct.isnot(None), PnlReport.company_id == company_id)
         .order_by(PnlReport.uploaded_at.desc())
     )
     rows = result.all()
@@ -387,10 +402,11 @@ async def _insight_platform_health(db: AsyncSession) -> dict | None:
     }
 
 
-async def _insight_risk_summary(db: AsyncSession) -> dict | None:
+async def _insight_risk_summary(db: AsyncSession, company_id: int) -> dict | None:
     """Actor risk tier summary card."""
     tier_result = await db.execute(
         select(ActorRiskProfile.risk_tier, func.count(), func.sum(ActorRiskProfile.total_orders))
+        .where(ActorRiskProfile.company_id == company_id)
         .group_by(ActorRiskProfile.risk_tier)
     )
     tier_stats = {row[0]: {"count": int(row[1]), "orders": int(row[2] or 0)} for row in tier_result.all()}
@@ -428,6 +444,7 @@ async def _insight_risk_summary(db: AsyncSession) -> dict | None:
 @router.get("/insights")
 async def get_dashboard_insights(
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_any),
 ):
     """
@@ -438,10 +455,10 @@ async def get_dashboard_insights(
     Returns ordered list: hero first, then supporting insights.
     """
     results = await asyncio.gather(
-        _insight_fraud_spike(db),
-        _insight_return_breakdown(db),
-        _insight_platform_health(db),
-        _insight_risk_summary(db),
+        _insight_fraud_spike(db, company.id),
+        _insight_return_breakdown(db, company.id),
+        _insight_platform_health(db, company.id),
+        _insight_risk_summary(db, company.id),
     )
 
     insights = [r for r in results if r is not None]
@@ -455,6 +472,7 @@ async def get_dashboard_insights(
 @router.get("/metrics")
 async def get_dashboard_metrics(
     db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
     _=Depends(require_any),
 ):
     """
@@ -463,5 +481,70 @@ async def get_dashboard_metrics(
     - actor_risk_profiles  (fraud rate, critical count, velocity, top score)
     Returns '—' for metrics where source data is absent.
     """
-    cells = await _compute_metrics(db)
+    cells = await _compute_metrics(db, company.id)
     return {"metrics": cells, "generated_at": datetime.now(timezone.utc).isoformat()}
+
+
+@router.get("/sku-intelligence")
+async def get_sku_intelligence(
+    db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
+    _=Depends(require_any),
+):
+    """
+    Cross-platform SKU profit intelligence from real settlement data:
+    - per-SKU TRUE breakeven-based margin (return-on-cost)
+    - Kill List (selling below cost) + Hero SKUs ranking
+    - blended margin, profit/loss counts
+    Empty payload when no matched SKU rows exist (graceful).
+    """
+    data = await compute_sku_intelligence(db, company.id)
+    return {**data, "generated_at": datetime.now(timezone.utc).isoformat()}
+
+
+@router.get("/reconciliation")
+async def get_reconciliation(
+    db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
+    _=Depends(require_any),
+):
+    """
+    Settlement reconciliation from real P&L data:
+    - cash position (settled vs pending the platform owes)
+    - per-platform fee load with high-fee flags
+    - per-SKU underpayment vs Casper-expected settlement (recoverable)
+    """
+    data = await compute_reconciliation(db, company.id)
+    return {**data, "generated_at": datetime.now(timezone.utc).isoformat()}
+
+
+@router.get("/action-pipeline")
+async def get_action_pipeline(
+    db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
+    _=Depends(require_any),
+):
+    """
+    Fraud → action pipeline from actor_risk_profiles:
+    - prioritised BLOCK / DISPUTE / WATCH queue (by recoverable impact)
+    - export-ready blocklist of CRITICAL actors
+    - estimated recoverable ₹ + repeat-offender flags + claim templates
+    """
+    data = await compute_action_pipeline(db, company.id)
+    return {**data, "generated_at": datetime.now(timezone.utc).isoformat()}
+
+
+@router.get("/operations")
+async def get_operations(
+    db: AsyncSession = Depends(get_db),
+    company=Depends(get_active_company),
+    _=Depends(require_any),
+):
+    """
+    Operations reports drill-down from real parsed P&L:
+    - order funnel (dispatched → RTO → returns → cancelled → net)
+    - fees waterfall (GMV → fee components + Other → bank settlement)
+    - top return-reason clusters + per-channel customer returns / RTO
+    """
+    data = await compute_operations(db, company.id)
+    return {**data, "generated_at": datetime.now(timezone.utc).isoformat()}

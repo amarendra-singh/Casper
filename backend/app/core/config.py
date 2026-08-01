@@ -15,8 +15,11 @@ class Settings:
     APP_HOST: str = config("APP_HOST", default="0.0.0.0")
     APP_PORT: int = config("APP_PORT", default=8000, cast=int)
 
-    DATABASE_URL: str = f"sqlite+aiosqlite:///{_DB_PATH}"
-    DATABASE_URL_SYNC: str = f"sqlite:///{_DB_PATH}"
+    # Read from the environment so production (Vercel + Postgres) can override.
+    # Local/dev default is the bundled SQLite file. Use an async driver URL, e.g.
+    #   postgresql+asyncpg://USER:PASS@HOST:5432/DBNAME
+    DATABASE_URL: str = config("DATABASE_URL", default=f"sqlite+aiosqlite:///{_DB_PATH}")
+    DATABASE_URL_SYNC: str = config("DATABASE_URL_SYNC", default=f"sqlite:///{_DB_PATH}")
 
     SECRET_KEY: str = config("SECRET_KEY")
     ALGORITHM: str = config("ALGORITHM", default="HS256")

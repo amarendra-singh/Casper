@@ -53,10 +53,11 @@
   --amber-dim:   #FEF3C7;
   --amber-text:  #92400E;
 
-  /* ── Typography ── */
+  /* ── Typography — editorial: Fraunces display serif + Geist UI + mono data ── */
   --font-ui:      'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-display: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono:    'JetBrains Mono', monospace;
+  --font-display: 'Fraunces', 'Geist', Georgia, serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+  --num:          'Fraunces', 'JetBrains Mono', serif;   /* hero figures */
 
   /* ── Radii ── */
   --r-shell:     24px;

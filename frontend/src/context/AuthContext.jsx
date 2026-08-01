@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { login as apiLogin, getMe, apiLogout } from '../api/client'
+import { login as apiLogin, register as apiRegister, getMe, apiLogout } from '../api/client'
 
 const AuthContext = createContext(null)
 
@@ -23,11 +23,22 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false))
   }, [])
 
-  const login = useCallback(async (email, password) => {
-    const data = await apiLogin(email, password)
+  const _persist = (data, email) => {
     localStorage.setItem('access_token', data.access_token)
     localStorage.setItem('refresh_token', data.refresh_token)
+    if (data.companies?.[0]) localStorage.setItem('active_company_id', String(data.companies[0].id))
     setUser({ name: data.name, role: data.role, email })
+  }
+
+  const login = useCallback(async (email, password) => {
+    const data = await apiLogin(email, password)
+    _persist(data, email)
+    return data
+  }, [])
+
+  const register = useCallback(async (payload) => {
+    const data = await apiRegister(payload)
+    _persist(data, payload.email)
     return data
   }, [])
 
@@ -35,11 +46,12 @@ export function AuthProvider({ children }) {
     try { await apiLogout() } catch {}
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
+    localStorage.removeItem('active_company_id')
     setUser(null)
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   )

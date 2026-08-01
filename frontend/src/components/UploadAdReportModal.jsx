@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import * as XLSX from 'xlsx'
+// xlsx is lazy-loaded inside the file handler (keeps it out of the main bundle).
 
 /**
  * UploadAdReportModal
@@ -42,8 +42,9 @@ export default function UploadAdReportModal({ platform, rows, onApply, onClose }
     setParsing(true)
 
     const reader = new FileReader()
-    reader.onload = ev => {
+    reader.onload = async ev => {
       try {
+        const XLSX = await import('xlsx')
         const wb = XLSX.read(ev.target.result, { type: 'array' })
         const ws = wb.Sheets[wb.SheetNames[0]]
         const raw = XLSX.utils.sheet_to_json(ws, { defval: '' })
