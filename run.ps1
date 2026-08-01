@@ -34,11 +34,14 @@ if (-not (Test-Path $envFile)) {
   $secret = -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 50 | ForEach-Object { [char]$_ })
   $exampleFile = Join-Path $root 'backend\.env.example'
   if (Test-Path $exampleFile) {
-    (Get-Content $exampleFile -Raw) -replace 'SECRET_KEY=.*', "SECRET_KEY=$secret" |
-      Set-Content $envFile -Encoding utf8
+    $envText = (Get-Content $exampleFile -Raw) -replace 'SECRET_KEY=.*', "SECRET_KEY=$secret"
   } else {
-    "SECRET_KEY=$secret" | Set-Content $envFile -Encoding utf8
+    $envText = "SECRET_KEY=$secret`r`n"
   }
+  # Write WITHOUT a BOM. PowerShell 5.1's `-Encoding utf8` prepends a UTF-8 BOM,
+  # which python-decouple does not strip, so the first key becomes "﻿SECRET_KEY"
+  # and the backend aborts on boot for a missing SECRET_KEY.
+  [System.IO.File]::WriteAllText($envFile, $envText, (New-Object System.Text.UTF8Encoding($false)))
   Write-Host "Created backend\.env with a generated SECRET_KEY." -ForegroundColor Yellow
 }
 
