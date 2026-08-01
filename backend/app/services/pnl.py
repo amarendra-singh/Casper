@@ -964,6 +964,9 @@ async def parse_and_store(
             summary, sku_rows_raw = _parse_snapdeal_cpr_workbook(file_bytes)
         else:
             summary, sku_rows_raw = _parse_snapdeal_workbook(file_bytes)
+    elif _pname == "shopdeck":
+        from app.services.shopdeck import parse_shopdeck
+        summary, sku_rows_raw = parse_shopdeck(file_bytes)
     else:
         summary, sku_rows_raw = _parse_workbook(file_bytes)
 
