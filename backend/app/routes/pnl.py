@@ -239,6 +239,46 @@ async def upload_shopdeck_customers(
     return {"parsed": len(customers), "ingested": ingested, **result}
 
 
+# ── P&L statement / analytics (industry-standard income statement) ──────────────
+
+@router.get("/statement/{report_id}")
+async def pnl_statement(
+    report_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_any),
+    company=Depends(get_active_company),
+):
+    """Full contribution-margin income statement for one report."""
+    from app.services.pnl_statement import compute_pnl_statement
+    stmt = await compute_pnl_statement(db, report_id, company.id)
+    if stmt is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+    return stmt
+
+
+@router.get("/trend")
+async def pnl_trend(
+    platform_id: int | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_any),
+    company=Depends(get_active_company),
+):
+    """Period-over-period P&L trend across the company's reports."""
+    from app.services.pnl_statement import compute_pnl_trend
+    return await compute_pnl_trend(db, company.id, platform_id)
+
+
+@router.get("/consolidated")
+async def pnl_consolidated(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_any),
+    company=Depends(get_active_company),
+):
+    """Blended business-wide P&L — the latest report of each platform."""
+    from app.services.pnl_statement import compute_pnl_consolidated
+    return await compute_pnl_consolidated(db, company.id)
+
+
 # ── List reports ──────────────────────────────────────────────────────────────
 
 @router.get("/reports", response_model=list[PnlReportSummary])
