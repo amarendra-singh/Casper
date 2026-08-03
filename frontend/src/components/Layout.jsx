@@ -264,6 +264,10 @@ export default function Layout() {
                 className={({ isActive }) => `nav-item nav-sub-item${isActive ? ' active' : ''}`}>
                 Overview
               </NavLink>
+              <NavLink to="/pnl/business"
+                className={({ isActive }) => `nav-item nav-sub-item${isActive ? ' active' : ''}`}>
+                Business P&amp;L
+              </NavLink>
               {pnlPlatforms.map(p => (
                 <NavLink key={p.id} to={`/pnl/${p.name.toLowerCase()}`}
                   className={({ isActive }) => `nav-item nav-sub-item${isActive ? ' active' : ''}`}>

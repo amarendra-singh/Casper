@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { getPnlReport } from '../../api/client'
 import { fmtPeriod }     from './flipkart/utils'
 import { useReportData } from './flipkart/useReportData'
+import IncomeStatement   from './flipkart/IncomeStatement'
 import ReportOverview    from './flipkart/ReportOverview'
 import ProfitLossView    from './flipkart/ProfitLossView'
 import OperatingPnLView  from './flipkart/OperatingPnLView'
@@ -16,7 +17,7 @@ const PLATFORM_COLORS = {
   amazon:   '#FF9900',
 }
 
-const VIEWS = ['overview', 'pnl', 'ops', 'insights']
+const VIEWS = ['statement', 'overview', 'pnl', 'ops', 'insights']
 
 /**
  * Generic top-level route for /pnl/:platform/:reportId.
@@ -31,9 +32,9 @@ export default function PnLReport() {
   const platformName  = platform.charAt(0).toUpperCase() + platform.slice(1)
   const platformColor = PLATFORM_COLORS[platform.toLowerCase()] || '#888'
 
-  const VIEW_LABELS = [`${platformName} Report`, 'Profit & Loss', 'Operating P&L', 'Insights']
+  const VIEW_LABELS = ['P&L Statement', `${platformName} Report`, 'Profit & Loss', 'Operating P&L', 'Insights']
 
-  const view     = VIEWS.includes(searchParams.get('view')) ? searchParams.get('view') : 'overview'
+  const view     = VIEWS.includes(searchParams.get('view')) ? searchParams.get('view') : VIEWS[0]
   const tabIndex = VIEWS.indexOf(view)
 
   const [report,  setReport]  = useState(null)
@@ -109,6 +110,7 @@ export default function PnLReport() {
         </div>
       </div>
 
+      {view === 'statement' && <IncomeStatement report={report} />}
       {view === 'overview'  && <ReportOverview  report={report} insightsData={insightsData} platform={platform} onViewPnL={() => setView('pnl')} />}
       {view === 'pnl'       && <ProfitLossView   report={report} augmentedRows={augmentedRows} platform={platform} />}
       {view === 'ops'       && <OperatingPnLView report={report} onRefresh={() => fetchReport(false)} />}

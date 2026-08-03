@@ -26,6 +26,7 @@ const Pricing = lazy(() => import('./pages/Pricing'))
 const Vendors = lazy(() => import('./pages/Vendors'))
 const PnLList = lazy(() => import('./pages/PnL/PnLList'))
 const PnLReport = lazy(() => import('./pages/PnL/PnLReport'))
+const ConsolidatedPnL = lazy(() => import('./pages/PnL/ConsolidatedPnL'))
 const Settings = lazy(() => import('./pages/Settings'))
 const ProfitCalculator = lazy(() => import('./pages/ProfitCalculator'))
 const Users = lazy(() => import('./pages/Users'))
@@ -94,6 +95,7 @@ function AppRoutes() {
         <Route path="pricing/:skuId?" element={<RequireModule module="pricing"><Pricing /></RequireModule>} />
         <Route path="settings/intro" element={<SettingsIntro />} />
         <Route path="pnl/intro" element={<RequireModule module="pnl"><PnLIntro /></RequireModule>} />
+        <Route path="pnl/business" element={<RequireModule module="pnl"><ConsolidatedPnL /></RequireModule>} />
         <Route path="pnl/:platform" element={<RequireModule module="pnl"><PnLList /></RequireModule>} />
         <Route path="pnl/:platform/:reportId" element={<RequireModule module="pnl"><PnLReport /></RequireModule>} />
         <Route path="fraud" element={<RequireModule module="fraud"><FraudDashboard /></RequireModule>} />

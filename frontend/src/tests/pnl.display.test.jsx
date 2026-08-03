@@ -11,6 +11,9 @@ import PnLReport from '../pages/PnL/PnLReport'
 
 vi.mock('../api/client', () => ({
   getPnlReport: vi.fn(),
+  getPnlStatement: vi.fn(() => new Promise(() => {})),
+  getPnlTrend: vi.fn(() => new Promise(() => {})),
+  getPnlConsolidated: vi.fn(() => new Promise(() => {})),
 }))
 
 import { getPnlReport } from '../api/client'
@@ -282,7 +285,7 @@ describe('SKU filter pills', () => {
 
 describe('tab navigation', () => {
   it('shows FK Report view when view=fk', async () => {
-    renderReport('fk')
+    renderReport('overview')
     await screen.findByText(/revenue flow/i)
   })
 
@@ -292,7 +295,7 @@ describe('tab navigation', () => {
   })
 
   it('clicking Profit & Loss tab shows table', async () => {
-    renderReport('fk')
+    renderReport('overview')
     await screen.findByText(/revenue flow/i)
     fireEvent.click(screen.getByText('Profit & Loss'))
     const sku = await screen.findByText('SHJ-JS-VRI-N65-WHITE')
@@ -411,7 +414,7 @@ describe('Operating P&L tab', () => {
   })
 
   it('clicking Operating P&L tab shows the view', async () => {
-    renderReport('fk')
+    renderReport('overview')
     await screen.findByText(/revenue flow/i)
     fireEvent.click(screen.getByText('Operating P&L'))
     const matches = await screen.findAllByText(/total payout/i)
