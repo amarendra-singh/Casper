@@ -228,7 +228,11 @@ function PnLRow({ row, onJumpToSku }) {
     <tr className={`pnl-tr${isLoss ? ' pnl-tr-loss' : ''}`}>
       <td className="pnl-td sku-col sticky-col">
         <span className="pnl-sku-name">{row.platform_sku_name}</span>
-        <button className="pnl-sku-link" title="View in SKUs page" onClick={onJumpToSku}>🔗</button>
+        <button className="pnl-sku-link" title="View in SKUs page" aria-label="View in SKUs page" onClick={onJumpToSku}>
+          <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 3H3.5A1.5 1.5 0 0 0 2 4.5v8A1.5 1.5 0 0 0 3.5 14h8A1.5 1.5 0 0 0 13 12.5V10"/><path d="M10 2h4v4"/><path d="M14 2 7 9"/>
+          </svg>
+        </button>
       </td>
 
       {/* ── Sold ─────────────────────────────────────────────────── */}
@@ -273,8 +277,8 @@ function PnLRow({ row, onJumpToSku }) {
         )}
       </td>
       <td className="pnl-td center pnl-td-primary">
-        <span className={`pnl-status-badge status-${isLoss ? 'loss' : 'profit'}`}>
-          {isLoss ? '🔴' : '🟢'}
+        <span className={`pnl-status-tag ${isLoss ? 'loss' : 'ok'}`}>
+          <span className="pnl-status-dot" />{isLoss ? 'Loss' : 'OK'}
         </span>
       </td>
     </tr>

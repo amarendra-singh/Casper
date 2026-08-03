@@ -1,4 +1,5 @@
 import { fmt, fmtN } from './utils'
+import { Box, Undo, XMark, Check, Cash, Card } from './glyphs'
 
 /**
  * Report Overview tab — Revenue Flow, Unit Flow, SKU Summary.
@@ -102,13 +103,13 @@ export default function ReportOverview({ report, insightsData, onViewPnL, platfo
         <div className="pnl-fk-section-title" style={{ marginTop: 24 }}>{unitLabel} Flow</div>
         <div className="pnl-fk-units">
           {[
-            { label: `Gross ${unitLabel}`,  value: grossUnits,    cls: 'base',   icon: '📦' },
-            !isSnapdeal && { label: 'RTO',  value: rtoUnits,      cls: 'cost',   icon: '↩' },
-            { label: isSnapdeal ? 'Returns' : 'RVP', value: rvpUnits, cls: 'cost', icon: '↩' },
-            !isSnapdeal && { label: 'Cancelled', value: cancelledUnits, cls: 'cost', icon: '✕' },
-            isSnapdeal && report.cod_orders != null && { label: 'COD Orders',  value: report.cod_orders,  cls: 'base', icon: '💵' },
-            isSnapdeal && report.ncod_orders != null && { label: 'NCOD Orders', value: report.ncod_orders, cls: 'base', icon: '💳' },
-            { label: `Net ${unitLabel}`,   value: netUnits,       cls: 'result', icon: '✓' },
+            { label: `Gross ${unitLabel}`,  value: grossUnits,    cls: 'base',   icon: <Box /> },
+            !isSnapdeal && { label: 'RTO',  value: rtoUnits,      cls: 'cost',   icon: <Undo /> },
+            { label: isSnapdeal ? 'Returns' : 'RVP', value: rvpUnits, cls: 'cost', icon: <Undo /> },
+            !isSnapdeal && { label: 'Cancelled', value: cancelledUnits, cls: 'cost', icon: <XMark /> },
+            isSnapdeal && report.cod_orders != null && { label: 'COD Orders',  value: report.cod_orders,  cls: 'base', icon: <Cash /> },
+            isSnapdeal && report.ncod_orders != null && { label: 'NCOD Orders', value: report.ncod_orders, cls: 'base', icon: <Card /> },
+            { label: `Net ${unitLabel}`,   value: netUnits,       cls: 'result', icon: <Check /> },
           ].filter(Boolean).map((item, i) => (
             <div key={i} className={`pnl-fk-unit-card pnl-fk-unit-${item.cls}`}>
               <div className="pnl-fku-icon">{item.icon}</div>

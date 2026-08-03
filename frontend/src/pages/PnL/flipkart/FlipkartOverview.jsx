@@ -1,4 +1,5 @@
 import { fmt, fmtN } from './utils'
+import { Box, Undo, XMark, Check } from './glyphs'
 
 /**
  * Flipkart Report tab — Revenue Flow, Unit Flow, SKU Summary.
@@ -60,11 +61,11 @@ export default function FlipkartOverview({ report, insightsData, onViewPnL }) {
         <div className="pnl-fk-section-title" style={{ marginTop: 24 }}>Unit Flow</div>
         <div className="pnl-fk-units">
           {[
-            { label: 'Gross Orders',  value: report.gross_units,                cls: 'base',   icon: '📦' },
-            { label: 'RTO',           value: insightsData?.totalRTO || 0,       cls: 'cost',   icon: '↩' },
-            { label: 'RVP',           value: insightsData?.totalRVP || 0,       cls: 'cost',   icon: '↩' },
-            { label: 'Cancelled',     value: insightsData?.totalCancelled || 0, cls: 'cost',   icon: '✕' },
-            { label: 'Net Delivered', value: report.net_units,                  cls: 'result', icon: '✓' },
+            { label: 'Gross Orders',  value: report.gross_units,                cls: 'base',   icon: <Box /> },
+            { label: 'RTO',           value: insightsData?.totalRTO || 0,       cls: 'cost',   icon: <Undo /> },
+            { label: 'RVP',           value: insightsData?.totalRVP || 0,       cls: 'cost',   icon: <Undo /> },
+            { label: 'Cancelled',     value: insightsData?.totalCancelled || 0, cls: 'cost',   icon: <XMark /> },
+            { label: 'Net Delivered', value: report.net_units,                  cls: 'result', icon: <Check /> },
           ].map((item, i) => (
             <div key={i} className={`pnl-fk-unit-card pnl-fk-unit-${item.cls}`}>
               <div className="pnl-fku-icon">{item.icon}</div>

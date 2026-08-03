@@ -1,5 +1,6 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { fmt, fmtN } from './utils'
+import { Undo, XMark, Check, Warn } from './glyphs'
 
 /**
  * Insights tab — KPIs, variance bar chart, waterfall, return analysis, margin distribution.
@@ -131,10 +132,10 @@ function WaterfallPanel({ report, data }) {
 
 function ReturnAnalysis({ report, data }) {
   const cards = [
-    { label: 'Delivered', value: report.net_units,        cls: 'green', icon: '✓' },
-    { label: 'RTO',       value: data.totalRTO,           cls: 'amber', icon: '↩' },
-    { label: 'RVP',       value: data.totalRVP,           cls: 'red',   icon: '↩' },
-    { label: 'Cancelled', value: data.totalCancelled,     cls: 'muted', icon: '✕' },
+    { label: 'Delivered', value: report.net_units,        cls: 'green', icon: <Check /> },
+    { label: 'RTO',       value: data.totalRTO,           cls: 'amber', icon: <Undo /> },
+    { label: 'RVP',       value: data.totalRVP,           cls: 'red',   icon: <Undo /> },
+    { label: 'Cancelled', value: data.totalCancelled,     cls: 'muted', icon: <XMark /> },
   ]
 
   return (
@@ -188,7 +189,7 @@ function MarginDistribution({ report, data }) {
         })}
       </div>
       <div className="ins-margin-note">
-        ⚠ Flipkart Margin = after Flipkart fees only. Add your purchase cost for true business margin.
+        <Warn s={13} /> Flipkart Margin = after Flipkart fees only. Add your purchase cost for true business margin.
       </div>
     </div>
   )

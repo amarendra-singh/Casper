@@ -1,11 +1,12 @@
 import { fmt, fmtN, fmtPct } from './utils'
+import { Ban, Warn, Search, TrendDown } from './glyphs'
 
 /**
  * Four pattern-detection cards surfaced on the Operating P&L view:
- *   1. ☠️ Kill List           — SKUs selling below cost
- *   2. ⚠️ Return Leakage      — SKUs with >30% return rate
- *   3. 🔍 Data Gap            — FK SKUs not in Casper master (can't compute P&L)
- *   4. 📉 Volume Absorption   — fixed-cost recovery vs target
+ *   1. Kill List           — SKUs selling below cost
+ *   2. Return Leakage      — SKUs with >30% return rate
+ *   3. Data Gap            — FK SKUs not in Casper master (can't compute P&L)
+ *   4. Volume Absorption   — fixed-cost recovery vs target
  */
 export default function OperatingPnlPatternCards({ killList, returnLeakage, dataGap, totals }) {
   return (
@@ -13,7 +14,7 @@ export default function OperatingPnlPatternCards({ killList, returnLeakage, data
 
       {/* Kill List */}
       <Card
-        icon="☠️"
+        icon={<Ban />}
         title="Kill List"
         subtitle="BS/unit < breakeven"
         count={killList.length}
@@ -33,7 +34,7 @@ export default function OperatingPnlPatternCards({ killList, returnLeakage, data
 
       {/* Return Leakage */}
       <Card
-        icon="⚠️"
+        icon={<Warn />}
         title="Return Leakage"
         subtitle="Return rate > 30%"
         count={returnLeakage.length}
@@ -53,7 +54,7 @@ export default function OperatingPnlPatternCards({ killList, returnLeakage, data
 
       {/* Data Gap */}
       <Card
-        icon="🔍"
+        icon={<Search />}
         title="Data Gap"
         subtitle="Unmatched Flipkart SKUs"
         count={dataGap.length}
@@ -76,7 +77,7 @@ export default function OperatingPnlPatternCards({ killList, returnLeakage, data
 
       {/* Volume Absorption */}
       <Card
-        icon="📉"
+        icon={<TrendDown />}
         title="Volume Absorption"
         subtitle="Fixed-cost recovery"
         badge={totals.target_units > 0 && totals.volume_pct != null ? `${totals.volume_pct.toFixed(0)}%` : null}

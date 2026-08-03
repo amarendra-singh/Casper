@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { fmt, fmtN } from './utils'
+import { Check, XMark } from './glyphs'
 import { useOperatingPnlData }    from './useOperatingPnlData'
 import OperatingPnlPatternCards   from './OperatingPnlPatternCards'
 import { updatePlatform }    from '../../../api/client'
@@ -105,7 +106,7 @@ function VerdictBanner({ totals }) {
   const losing = totals.final_profit < 0
   return (
     <div className={`pnl-verdict-banner ${losing ? 'losing' : 'winning'}`}>
-      <span className="pnl-verdict-icon">{losing ? '🔴' : '🟢'}</span>
+      <span className={`pnl-verdict-dot ${losing ? 'loss' : 'ok'}`} />
       <span>
         You received <strong>{fmt(totals.payout)}</strong> from Flipkart but spent{' '}
         <strong>{fmt(totals.total_cost)}</strong> on these products
@@ -141,10 +142,10 @@ function TargetUnitsEditor({ platformId, initial, volumePct, onSaved }) {
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
           <input type="number" value={value} onChange={e => setValue(e.target.value)}
             style={{ width: 60, fontSize: 12, padding: '2px 4px' }} />
-          <button className="pnl-btn-ghost" style={{ fontSize: 10, padding: '2px 6px' }}
-            onClick={save} disabled={saving}>{saving ? '…' : '✓'}</button>
-          <button className="pnl-btn-ghost" style={{ fontSize: 10, padding: '2px 6px' }}
-            onClick={() => setEditing(false)}>✕</button>
+          <button className="pnl-btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 6px' }}
+            onClick={save} disabled={saving} aria-label="Save target">{saving ? '…' : <Check s={13} />}</button>
+          <button className="pnl-btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 6px' }}
+            onClick={() => setEditing(false)} aria-label="Cancel">{<XMark s={13} />}</button>
         </div>
       ) : (
         <div className="pnl-sum-val" style={{ cursor: 'pointer' }} onClick={() => setEditing(true)}>
