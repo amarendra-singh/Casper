@@ -11,12 +11,57 @@ import PnLReport from '../pages/PnL/PnLReport'
 
 vi.mock('../api/client', () => ({
   getPnlReport: vi.fn(),
+  getPnlRows: vi.fn(),
   getPnlStatement: vi.fn(() => new Promise(() => {})),
   getPnlTrend: vi.fn(() => new Promise(() => {})),
   getPnlConsolidated: vi.fn(() => new Promise(() => {})),
 }))
 
-import { getPnlReport } from '../api/client'
+import { getPnlReport, getPnlRows } from '../api/client'
+
+// The P&L table now pulls its math from the backend (GET /pnl/rows/{id}). Mock it
+// by deriving backend-shaped {rows, summary} from whatever report getPnlReport
+// currently resolves — mirrors backend build_pnl_rows for the fields tests assert.
+function buildRowsFixture(report) {
+  const rows = (report?.sku_rows || []).filter(r => r.is_matched).map(r => {
+    const nu = r.net_units || 0, gu = r.gross_units || 0
+    const be = r.casper_breakeven, beg = r.casper_breakeven_gst
+    const bsp = r.bank_settlement_projected
+    const payoutU = (bsp != null && nu) ? bsp / nu : null
+    const feeSum = Math.abs(r.commission_fee || 0) + Math.abs(r.collection_fee || 0) +
+      Math.abs(r.fixed_fee || 0) + Math.abs(r.taxes_gst || 0) + Math.abs(r.taxes_tcs || 0) +
+      Math.abs(r.taxes_tds || 0) - Math.abs(r.rewards_benefits || 0)
+    const expTotal = be != null ? be * nu : null
+    const profitU = (payoutU != null && be != null) ? payoutU - be : null
+    const totalProfit = (bsp != null && expTotal != null) ? bsp - expTotal : null
+    return {
+      id: r.id, platform_sku_name: r.platform_sku_name,
+      gross_units: gu, net_units: nu,
+      return_rate_pct: gu ? (gu - nu) / gu * 100 : null,
+      casper_breakeven: be, casper_breakeven_gst: beg,
+      casper_target_pre_gst: r.casper_target_pre_gst, casper_target_post_gst: r.casper_target_post_gst,
+      fees_per_unit: nu ? feeSum / nu : null,
+      total_earned: bsp, fk_bs_per_unit: payoutU,
+      profit_no_gst: profitU, expected_total: expTotal, total_true_profit: totalProfit,
+      real_margin_pct: (profitU != null && be) ? profitU / be * 100 : null,
+      margin_gst_pct: (payoutU != null && beg) ? (payoutU - beg) / beg * 100 : null,
+      calc: {},
+    }
+  })
+  const sum = (f) => rows.reduce((s, r) => s + (f(r) || 0), 0)
+  return {
+    rows,
+    summary: {
+      total_expected: sum(r => r.expected_total), total_actual: sum(r => r.total_earned),
+      total_profit: sum(r => r.total_true_profit), total_units: sum(r => r.net_units),
+      overall_var_pct: null, avg_profit_per_unit: null,
+      weighted_margin_pct: null, weighted_margin_gst_pct: null,
+      profitable: rows.filter(r => (r.total_true_profit ?? 0) > 0).length,
+      loss_making: rows.filter(r => (r.total_true_profit ?? 0) <= 0).length,
+    },
+  }
+}
+getPnlRows.mockImplementation(async () => buildRowsFixture(await getPnlReport(1)))
 
 // ── Shared test report fixture ────────────────────────────────────────────────
 

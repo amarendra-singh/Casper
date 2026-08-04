@@ -1,7 +1,31 @@
 """Unit tests for the P&L statement engine (pure functions)."""
 from app.services.pnl_statement import (
-    build_pnl_statement, build_pnl_trend, build_consolidated,
+    build_pnl_statement, build_pnl_trend, build_consolidated, build_pnl_rows,
 )
+
+
+def test_build_pnl_rows_math_and_calc():
+    rows = [{
+        "id": 1, "platform_sku_name": "SKU-A", "gross_units": 20, "net_units": 10,
+        "bank_settlement_projected": 1200, "commission_fee": -100, "taxes_gst": -50,
+        "price": 30, "package": 5, "logistics": 8, "addons": 0, "misc_total": 4,
+        "cr_cost": 3, "damage_cost": 2, "breakeven": 52, "breakeven_gst": 55,
+        "target_pre_gst": 62, "target_post_gst": 65,
+    }]
+    out = build_pnl_rows(rows)
+    r = out["rows"][0]
+    assert r["fk_bs_per_unit"] == 120.0          # 1200 / 10
+    assert r["expected_total"] == 520.0          # 52 × 10
+    assert r["profit_no_gst"] == 68.0            # 120 − 52
+    assert r["total_true_profit"] == 680.0       # 1200 − 520
+    assert r["real_margin_pct"] == round(68 / 52 * 100, 2)
+    assert r["return_rate_pct"] == 50.0          # (20−10)/20
+    # calc breakdown: breakeven shows the full cost stack, footing to 52
+    be_ops = dict((o[0], o[1]) for o in r["calc"]["casper_breakeven"]["ops"])
+    assert be_ops["Product cost"] == 30 and be_ops["+ Return cost"] == 3
+    assert r["calc"]["casper_breakeven"]["result"] == 52
+    assert out["summary"]["total_profit"] == 680.0
+    assert out["summary"]["profitable"] == 1
 
 
 def _row(net_units, bsp, cogs_pu=0, misc_pu=0, ful_pu=0, ret_pu=0, matched=True, **fees):

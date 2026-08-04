@@ -256,6 +256,21 @@ async def pnl_statement(
     return stmt
 
 
+@router.get("/rows/{report_id}")
+async def pnl_rows(
+    report_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_any),
+    company=Depends(get_active_company),
+):
+    """Per-SKU P&L rows with per-number calc breakdowns (backend single source of truth)."""
+    from app.services.pnl_statement import compute_pnl_rows
+    result = await compute_pnl_rows(db, report_id, company.id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+    return result
+
+
 @router.get("/trend")
 async def pnl_trend(
     platform_id: int | None = None,

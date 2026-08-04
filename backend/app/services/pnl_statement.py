@@ -336,6 +336,157 @@ async def compute_pnl_trend(db, company_id: int, platform_id: Optional[int] = No
     return build_pnl_trend(periods)
 
 
+def build_pnl_rows(rows: list[dict]) -> dict:
+    """
+    Per-SKU P&L reconciliation rows — the math behind the P&L table, on the
+    backend (single source of truth). For every displayed number it also returns
+    a `calc` breakdown: {ops: [[label, value], ...], result} so the UI can show
+    exactly how each figure was derived on hover.
+
+    Each input row: platform_sku_name, id, gross_units, net_units,
+      bank_settlement_projected, commission_fee, collection_fee, fixed_fee,
+      taxes_gst, taxes_tcs, taxes_tds, rewards_benefits, price, package,
+      logistics, addons, misc_total, cr_cost, damage_cost, breakeven,
+      breakeven_gst, target_pre_gst, target_post_gst.
+    """
+    out = []
+    tot_exp = tot_act = tot_profit = tot_units = 0.0
+    wpn = wcn = wpg = wcg = 0.0   # weighted profit/cost, no-gst and gst
+    profit_u_sum = 0.0
+    n = 0
+
+    for r in rows:
+        nu = r.get("net_units") or 0
+        gu = r.get("gross_units") or 0
+        be = r.get("breakeven")
+        beg = r.get("breakeven_gst")
+        bsp = r.get("bank_settlement_projected")
+
+        payout_u = (bsp / nu) if (bsp is not None and nu) else None
+        fee_sum = (abs(r.get("commission_fee") or 0) + abs(r.get("collection_fee") or 0)
+                   + abs(r.get("fixed_fee") or 0) + abs(r.get("taxes_gst") or 0)
+                   + abs(r.get("taxes_tcs") or 0) + abs(r.get("taxes_tds") or 0)
+                   - abs(r.get("rewards_benefits") or 0))
+        fees_u = (fee_sum / nu) if nu else None
+        exp_total = (be * nu) if be is not None else None
+        profit_u = (payout_u - be) if (payout_u is not None and be is not None) else None
+        total_profit = (bsp - exp_total) if (bsp is not None and exp_total is not None) else None
+        margin = (profit_u / be * 100) if (profit_u is not None and be) else None
+        profit_u_gst = (payout_u - beg) if (payout_u is not None and beg is not None) else None
+        margin_gst = (profit_u_gst / beg * 100) if (profit_u_gst is not None and beg) else None
+        ret_rate = ((gu - nu) / gu * 100) if gu else None
+
+        # ops = [label, value, kind]; kind: 'money' (default), 'n' (count), None (no value)
+        calc = {
+            "return_rate_pct": {"unit": "pct", "result": ret_rate, "ops": [
+                ["Returned units", gu - nu, "n"], ["÷ Gross units", gu, "n"], ["× 100", None, None]]},
+            "casper_breakeven": {"unit": "money", "result": be, "ops": [
+                ["Product cost", r.get("price"), "money"], ["+ Packaging", r.get("package"), "money"],
+                ["+ Logistics", r.get("logistics"), "money"], ["+ Add-ons", r.get("addons"), "money"],
+                ["+ Overhead", r.get("misc_total"), "money"], ["+ Return cost", r.get("cr_cost"), "money"],
+                ["+ Damage", r.get("damage_cost"), "money"]]},
+            "fees_per_unit": {"unit": "money", "result": fees_u, "ops": [
+                ["Commission + fees + taxes", fee_sum, "money"], ["÷ Units sold", nu, "n"]]},
+            "total_earned": {"unit": "money", "result": bsp, "ops": [
+                ["Platform bank settlement", bsp, "money"]]},
+            "fk_bs_per_unit": {"unit": "money", "result": payout_u, "ops": [
+                ["Net Payout", bsp, "money"], ["÷ Units sold", nu, "n"]]},
+            "profit_no_gst": {"unit": "money", "result": profit_u, "ops": [
+                ["Payout / unit", payout_u, "money"], ["− Breakeven / unit", be, "money"]]},
+            "expected_total": {"unit": "money", "result": exp_total, "ops": [
+                ["Breakeven / unit", be, "money"], ["× Units sold", nu, "n"]]},
+            "total_true_profit": {"unit": "money", "result": total_profit, "ops": [
+                ["Net Payout", bsp, "money"], ["− Total Cost", exp_total, "money"]]},
+            "real_margin_pct": {"unit": "pct", "result": margin, "ops": [
+                ["Profit / unit", profit_u, "money"], ["÷ Breakeven / unit", be, "money"], ["× 100", None, None]]},
+            "margin_gst_pct": {"unit": "pct", "result": margin_gst, "ops": [
+                ["Profit / unit", profit_u_gst, "money"], ["÷ Breakeven + GST", beg, "money"], ["× 100", None, None]]},
+        }
+
+        out.append({
+            "id": r.get("id"),
+            "platform_sku_name": r.get("platform_sku_name"),
+            "gross_units": gu,
+            "net_units": nu,
+            "return_rate_pct": _round(ret_rate),
+            "casper_breakeven": _round(be),
+            "casper_breakeven_gst": _round(beg),
+            "casper_target_pre_gst": _round(r.get("target_pre_gst")),
+            "casper_target_post_gst": _round(r.get("target_post_gst")),
+            "fees_per_unit": _round(fees_u),
+            "total_earned": _round(bsp),
+            "fk_bs_per_unit": _round(payout_u),
+            "profit_no_gst": _round(profit_u),
+            "expected_total": _round(exp_total),
+            "total_true_profit": _round(total_profit),
+            "real_margin_pct": _round(margin),
+            "margin_gst_pct": _round(margin_gst),
+            "calc": calc,
+        })
+
+        if exp_total is not None:
+            tot_exp += exp_total
+            if bsp is not None:
+                tot_act += bsp
+            if total_profit is not None:
+                tot_profit += total_profit
+        tot_units += nu
+        if profit_u is not None and be is not None:
+            wpn += profit_u * nu; wcn += be * nu
+        if profit_u_gst is not None and beg is not None:
+            wpg += profit_u_gst * nu; wcg += beg * nu
+        if profit_u is not None:
+            profit_u_sum += profit_u; n += 1
+
+    summary = {
+        "total_expected": _round(tot_exp),
+        "total_actual": _round(tot_act),
+        "total_profit": _round(tot_profit),
+        "total_units": int(tot_units),
+        "overall_var_pct": _pct(tot_act - tot_exp, tot_exp),
+        "avg_profit_per_unit": _round(profit_u_sum / n) if n else None,
+        "weighted_margin_pct": _pct(wpn, wcn),
+        "weighted_margin_gst_pct": _pct(wpg, wcg),
+        "profitable": sum(1 for r in out if (r["total_true_profit"] or 0) > 0),
+        "loss_making": sum(1 for r in out if (r["total_true_profit"] or 0) <= 0),
+    }
+    return {"rows": out, "summary": summary}
+
+
+async def compute_pnl_rows(db, report_id: int, company_id: int) -> Optional[dict]:
+    """Per-SKU P&L rows (matched SKUs) with calc breakdowns — backend single source of truth."""
+    from app.models.pnl import PnlReport
+    q = _statement_query().where(PnlReport.id == report_id, PnlReport.company_id == company_id)
+    report = await db.scalar(q)
+    if report is None:
+        return None
+    raw = []
+    for r in report.sku_rows:
+        sp = r.sku_pricing
+        if sp is None:
+            continue  # matched rows only
+        breakeven = sp.breakeven
+        breakeven_gst = round(breakeven + (sp.gst or 0), 2)
+        raw.append({
+            "id": r.id, "platform_sku_name": r.platform_sku_name,
+            "gross_units": r.gross_units, "net_units": r.net_units,
+            "bank_settlement_projected": r.bank_settlement_projected,
+            "commission_fee": r.commission_fee, "collection_fee": r.collection_fee,
+            "fixed_fee": r.fixed_fee, "taxes_gst": r.taxes_gst,
+            "taxes_tcs": r.taxes_tcs, "taxes_tds": r.taxes_tds,
+            "rewards_benefits": r.rewards_benefits,
+            "price": sp.price, "package": sp.package, "logistics": sp.logistics,
+            "addons": sp.addons, "misc_total": sp.misc_total,
+            "cr_cost": sp.cr_cost, "damage_cost": sp.damage_cost,
+            "breakeven": breakeven, "breakeven_gst": breakeven_gst,
+            "target_pre_gst": round(breakeven + (sp.net_profit_amt or 0), 2),
+            "target_post_gst": sp.bank_settlement,
+        })
+    result = build_pnl_rows(raw)
+    result["report"] = _report_meta(report)
+    return result
+
+
 async def compute_unmatched_skus(db, company_id: int) -> list[dict]:
     """
     Distinct platform SKU names seen in uploads that have NO cost match in the
