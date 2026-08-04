@@ -194,6 +194,42 @@ def test_statement_foots_and_reconciles():
     assert st["gross_profit"] == 500          # 1000 net sales − 500 cogs
 
 
+def test_uncosted_skus_do_not_inflate_profit():
+    """
+    Regression: the Statement counted payout from SKUs with no cost data while
+    counting nobody's cost for them, so it disagreed with the P&L table. Revenue
+    and cost must always cover the same set of SKUs.
+    """
+    rows = [
+        _row(10, bsp=800, cogs_pu=50, matched=True),    # costed
+        _row(5,  bsp=400, matched=False),               # no pricing → no cost
+    ]
+    report = {"gross_sales": 1500, "returns_amount": 0, "net_sales": 1500, "bank_settlement": 1200}
+    s = build_pnl_statement(rows, report)
+    st = s["subtotals"]
+    assert st["net_payout"] == 1200          # still reconciles to the platform
+    assert st["uncosted_payout"] == 400      # excluded from profit, shown as a line
+    assert st["costed_payout"] == 800
+    assert st["operating_profit"] == 300     # 800 − 500 cogs, NOT 1200 − 500
+    keyed = {l["key"]: l["amount"] for l in s["lines"]}
+    assert keyed["uncosted_payout"] == -400
+
+
+def test_statement_profit_matches_rows_engine():
+    """The two views the user sees must agree on the bottom line."""
+    stmt_rows = [_row(10, bsp=800, cogs_pu=30, ful_pu=10, ret_pu=5, misc_pu=4, matched=True),
+                 _row(5,  bsp=400, matched=False)]
+    report = {"gross_sales": 1500, "returns_amount": 0, "net_sales": 1500, "bank_settlement": 1200}
+    statement = build_pnl_statement(stmt_rows, report)
+
+    # Same matched SKU through the per-SKU rows engine (breakeven = 30+10+5+4 = 49)
+    table = build_pnl_rows([{
+        "id": 1, "platform_sku_name": "SKU-A", "gross_units": 10, "net_units": 10,
+        "bank_settlement_projected": 800, "breakeven": 49, "breakeven_gst": 52,
+    }])
+    assert statement["subtotals"]["operating_profit"] == table["summary"]["total_profit"]
+
+
 def test_margins_are_revenue_anchored():
     rows = [_row(10, bsp=800, cogs_pu=50, misc_pu=10, commission_fee=200)]
     report = {"gross_sales": 1000, "returns_amount": 0, "net_sales": 1000, "bank_settlement": 800}

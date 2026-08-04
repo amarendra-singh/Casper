@@ -108,10 +108,17 @@ def build_pnl_statement(rows: list[dict], report: dict) -> dict:
     overhead    = _s(rows, "_overhead_total")     # misc / fixed-cost allocation × units
     total_cost  = cogs + fulfillment + return_cost + overhead
 
+    # Payout earned by SKUs we have NO cost for. Counting their revenue while
+    # counting nobody's cost would inflate profit, so it is removed on its own
+    # line — revenue and cost must always cover the same set of SKUs.
+    uncosted_payout = round(_s([r for r in rows if not r.get("matched")],
+                               "bank_settlement_projected"), 2)
+    costed_payout = net_payout - uncosted_payout
+
     # ── Subtotals ────────────────────────────────────────────────────────────
-    gross_profit = net_sales - cogs
-    contribution = net_payout - cogs - fulfillment - return_cost   # after all variable costs
-    operating    = contribution - overhead                          # == net_payout − total_cost
+    gross_profit = net_sales - cogs                                  # revenue-anchored indicator
+    contribution = costed_payout - cogs - fulfillment - return_cost  # after variable costs
+    operating    = contribution - overhead                           # == costed_payout − total_cost
 
     # ── Data quality: COGS coverage ──────────────────────────────────────────
     matched_units = int(_s([r for r in rows if r.get("matched")], "net_units"))
@@ -138,6 +145,9 @@ def build_pnl_statement(rows: list[dict], report: dict) -> dict:
         line("other_fees", "Other Marketplace Fees", -other_fees, "expense", 1),
         line("net_payout", "Net Payout", net_payout, "subtotal", 0,
              note="Reconciles to platform bank settlement"),
+        line("uncosted_payout", "Less: SKUs with no cost data", -uncosted_payout, "expense", 1,
+             note="Excluded so revenue and cost cover the same SKUs"),
+        line("costed_payout", "Costed Net Payout", costed_payout, "subtotal", 0),
         line("cogs", "COGS (Product Cost)", -cogs, "expense", 1),
         line("fulfillment", "Fulfillment (Packaging, Logistics)", -fulfillment, "expense", 1),
         line("return_cost", "Return Cost (Courier + Damage)", -return_cost, "expense", 1),
@@ -153,6 +163,8 @@ def build_pnl_statement(rows: list[dict], report: dict) -> dict:
             "net_sales": _round(net_sales),
             "total_platform_fees": _round(total_platform_fees),
             "net_payout": _round(net_payout),
+            "uncosted_payout": _round(uncosted_payout),
+            "costed_payout": _round(costed_payout),
             "tcs": _round(tcs),
             "tds": _round(tds),
             "cogs": _round(cogs),
