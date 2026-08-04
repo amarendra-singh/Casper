@@ -822,9 +822,32 @@ def _parse_workbook(file_bytes: bytes) -> tuple[dict, list[dict]]:
 
 async def _build_pricing_lookup(session: AsyncSession, platform_id: int, company_id: int) -> dict[str, SkuPricing]:
     """
-    Build a case-insensitive map: platform_sku_name.upper() → SkuPricing.
-    Used to match Flipkart SKU names against this company's Casper pricing.
+    Build a case-insensitive map: platform SKU name (upper) → SkuPricing.
+
+    Two sources, in priority order:
+      1. the SKU's own name (Sku.shringar_sku) — the common case, where the seller
+         lists under the same code they use internally;
+      2. an explicit per-platform alias (SkuPlatformConfig.platform_sku_name),
+         which overrides (1) when the marketplace name differs.
+
+    Matching on aliases ALONE silently hid SKUs that exist in the master but had
+    no alias row, so their sales were dropped from P&L.
     """
+    from app.models.sku import Sku
+
+    lookup: dict[str, SkuPricing] = {}
+
+    # 1. Base: this platform's pricing keyed by the SKU's own name.
+    base = await session.execute(
+        select(SkuPricing, Sku.shringar_sku)
+        .join(Sku, Sku.id == SkuPricing.sku_id)
+        .where(SkuPricing.platform_id == platform_id, SkuPricing.company_id == company_id)
+    )
+    for pricing, shringar_sku in base.all():
+        if shringar_sku:
+            lookup[shringar_sku.strip().upper()] = pricing
+
+    # 2. Aliases win where the marketplace name differs from the internal code.
     config_result = await session.execute(
         select(SkuPlatformConfig).where(
             SkuPlatformConfig.platform_id == platform_id,
@@ -833,21 +856,17 @@ async def _build_pricing_lookup(session: AsyncSession, platform_id: int, company
         )
     )
     configs = config_result.scalars().all()
-
     pricing_ids = [c.sku_pricing_id for c in configs]
-    if not pricing_ids:
-        return {}
+    if pricing_ids:
+        pricing_result = await session.execute(
+            select(SkuPricing).where(SkuPricing.id.in_(pricing_ids), SkuPricing.company_id == company_id)
+        )
+        pricing_by_id = {sp.id: sp for sp in pricing_result.scalars().all()}
+        for cfg in configs:
+            if cfg.platform_sku_name and cfg.sku_pricing_id in pricing_by_id:
+                lookup[cfg.platform_sku_name.strip().upper()] = pricing_by_id[cfg.sku_pricing_id]
 
-    pricing_result = await session.execute(
-        select(SkuPricing).where(SkuPricing.id.in_(pricing_ids), SkuPricing.company_id == company_id)
-    )
-    pricing_by_id = {sp.id: sp for sp in pricing_result.scalars().all()}
-
-    return {
-        cfg.platform_sku_name.strip().upper(): pricing_by_id[cfg.sku_pricing_id]
-        for cfg in configs
-        if cfg.platform_sku_name and cfg.sku_pricing_id in pricing_by_id
-    }
+    return lookup
 
 
 def _build_report_model(summary: dict, platform_id: int, filename: str,
