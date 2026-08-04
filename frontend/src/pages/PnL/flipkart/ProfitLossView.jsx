@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fmt, fmtN, fmtPct } from './utils'
-import { getPnlRows } from '../../../api/client'
+import { getPnlRows, getUnmatchedSkus, addHiddenSkuPricing } from '../../../api/client'
 
 /**
  * Profit & Loss tab — per-SKU actual-vs-target reconciliation.
@@ -56,6 +56,90 @@ function C({ row, k, children }) {
   return <Calc value={children} title={CALC_TITLES[k]} calc={row.calc?.[k]} />
 }
 
+/**
+ * Hidden-SKU panel — the SKUs in this report that have no cost in the master, so
+ * they are excluded from profit. Entering a price creates the pricing, registers
+ * the upload's name as the platform alias, and re-matches this report in one call,
+ * so the numbers move immediately instead of needing a re-upload.
+ */
+function HiddenSkuPanel({ reportId, onClose, onMatched }) {
+  const [items, setItems]   = useState(null)
+  const [openSku, setOpen]  = useState(null)
+  const [price, setPrice]   = useState('')
+  const [busy, setBusy]     = useState(false)
+  const [err, setErr]       = useState('')
+
+  useEffect(() => {
+    getUnmatchedSkus(reportId).then(setItems).catch(() => setItems([]))
+  }, [reportId])
+
+  const submit = async (name) => {
+    if (!price || Number(price) <= 0) { setErr('Enter a price greater than 0'); return }
+    setBusy(true); setErr('')
+    try {
+      const r = await addHiddenSkuPricing({ platform_sku_name: name, report_id: reportId, price: Number(price) })
+      setItems(p => p.filter(x => x.platform_sku_name !== name))
+      setOpen(null); setPrice('')
+      onMatched(r)
+    } catch (e) {
+      setErr(e.response?.data?.detail || 'Could not add SKU')
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <div className="hs-overlay" onClick={onClose}>
+      <aside className="hs-panel" onClick={e => e.stopPropagation()}>
+        <header className="hs-head">
+          <div>
+            <div className="hs-title">SKUs with no cost data</div>
+            <div className="hs-sub">
+              Their sales are excluded from profit until you add a cost. Biggest first.
+            </div>
+          </div>
+          <button className="hs-close" onClick={onClose} aria-label="Close">×</button>
+        </header>
+
+        {items === null && <div className="hs-empty">Loading…</div>}
+        {items?.length === 0 && <div className="hs-empty">Nothing hidden — every SKU has a cost.</div>}
+
+        <div className="hs-list">
+          {items?.map(u => (
+            <div key={u.platform_sku_name} className="hs-item">
+              <div className="hs-item-row">
+                <span className="hs-name">{u.platform_sku_name}</span>
+                <span className="hs-meta">{u.units} units · {fmt(u.payout)}</span>
+                <button className="btn btn-ghost btn-sm"
+                  onClick={() => { setOpen(openSku === u.platform_sku_name ? null : u.platform_sku_name); setPrice(''); setErr('') }}>
+                  {openSku === u.platform_sku_name ? 'Cancel' : 'Add cost'}
+                </button>
+              </div>
+              {openSku === u.platform_sku_name && (
+                <div className="hs-form">
+                  <label>
+                    Your purchase cost per unit
+                    <input type="number" min="0" step="0.01" autoFocus value={price}
+                      placeholder="e.g. 63"
+                      onChange={e => setPrice(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && submit(u.platform_sku_name)} />
+                  </label>
+                  <button className="btn btn-accent btn-sm" disabled={busy}
+                    onClick={() => submit(u.platform_sku_name)}>
+                    {busy ? 'Saving…' : 'Save & match'}
+                  </button>
+                  <p className="hs-hint">
+                    Packaging, logistics, return and overhead use your defaults — edit later in SKUs.
+                  </p>
+                  {err && <p className="hs-err">{err}</p>}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </aside>
+    </div>
+  )
+}
+
 export default function ProfitLossView({ report, platform = 'flipkart' }) {
   const platformName = platform.charAt(0).toUpperCase() + platform.slice(1)
   const navigate = useNavigate()
@@ -66,6 +150,9 @@ export default function ProfitLossView({ report, platform = 'flipkart' }) {
   const [skuSearch, setSkuSearch] = useState('')
   const [sortCol,   setSortCol]   = useState('total_true_profit')
   const [sortDir,   setSortDir]   = useState('asc')
+  const [showHidden, setShowHidden] = useState(false)
+  const [hiddenCount, setHiddenCount] = useState(report.unmatched_skus || 0)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let alive = true
@@ -74,7 +161,13 @@ export default function ProfitLossView({ report, platform = 'flipkart' }) {
       .then(d => { if (alive) { setData(d); setLoading(false) } })
       .catch(() => { if (alive) { setErr('Could not load P&L rows'); setLoading(false) } })
     return () => { alive = false }
-  }, [report.id])
+  }, [report.id, reloadKey])
+
+  // A SKU was costed and the report re-matched — pull the new numbers in.
+  const onMatched = (r) => {
+    setHiddenCount(r.remaining_hidden)
+    setReloadKey(k => k + 1)
+  }
 
   if (loading) return <div className="pnl-body"><div className="pnl-empty">Loading P&amp;L…</div></div>
   if (err || !data) return <div className="pnl-body"><div className="pnl-empty">{err || 'No data'}</div></div>
@@ -128,10 +221,18 @@ export default function ProfitLossView({ report, platform = 'flipkart' }) {
         <SumItem label="Loss-making" valClass="red"   value={s.loss_making} />
         <div className="pnl-sum-divider"/>
         <SumItem label="Total Units" value={fmtN(s.total_units)} />
-        {report.unmatched_skus > 0 && (
-          <SumItem label="No Pricing Data" valClass="amber" value={`${report.unmatched_skus} SKUs hidden`} />
+        {hiddenCount > 0 && (
+          <button className="pnl-sum-item pnl-sum-action" onClick={() => setShowHidden(true)}
+            title="Add costs for these SKUs so they count towards profit">
+            <div className="pnl-sum-label">No Pricing Data</div>
+            <div className="pnl-sum-val amber">{hiddenCount} SKUs hidden <span className="pnl-sum-cta">Fix</span></div>
+          </button>
         )}
       </div>
+
+      {showHidden && (
+        <HiddenSkuPanel reportId={report.id} onClose={() => setShowHidden(false)} onMatched={onMatched} />
+      )}
 
       {/* Controls */}
       <div className="pnl-tbl-controls">

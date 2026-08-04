@@ -296,13 +296,65 @@ async def pnl_consolidated(
 
 @router.get("/unmatched-skus")
 async def pnl_unmatched_skus(
+    report_id: int | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any),
     company=Depends(get_active_company),
 ):
     """SKUs seen in uploads with no cost match — the 'hidden' SKUs to add to the master."""
     from app.services.pnl_statement import compute_unmatched_skus
-    return await compute_unmatched_skus(db, company.id)
+    return await compute_unmatched_skus(db, company.id, report_id)
+
+
+@router.post("/hidden-skus/add")
+async def pnl_add_hidden_sku(
+    payload: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin_or_above),
+    company=Depends(get_active_company),
+):
+    """
+    Add pricing for one hidden SKU and re-match the report in the same call, so the
+    P&L updates immediately instead of needing a re-upload.
+    """
+    from app.services.pnl_statement import quick_add_hidden_sku
+
+    name = (payload.get("platform_sku_name") or "").strip()
+    report_id = payload.get("report_id")
+    price = payload.get("price")
+    if not name or report_id is None or price in (None, ""):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="platform_sku_name, report_id and price are required")
+    try:
+        price = float(price)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="price must be a number")
+    if price <= 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="price must be greater than 0")
+
+    costs = {k: float(payload[k]) for k in ("package", "logistics", "addons")
+             if payload.get(k) not in (None, "")}
+    result = await quick_add_hidden_sku(db, company.id, int(report_id), name, price, costs)
+    if not result.get("created"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=result.get("error") or "Could not add SKU")
+    pnl_logger.info(f"Hidden SKU added — {name} report={report_id} company={company.id} "
+                    f"rows_matched={result['rows_matched']} user={current_user.id}")
+    return result
+
+
+@router.post("/rematch/{report_id}")
+async def pnl_rematch(
+    report_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin_or_above),
+    company=Depends(get_active_company),
+):
+    """Re-link a report's unmatched rows against pricing that exists now."""
+    from app.services.pnl_statement import rematch_report, compute_unmatched_skus
+    matched = await rematch_report(db, report_id, company.id)
+    remaining = await compute_unmatched_skus(db, company.id, report_id)
+    return {"rows_matched": matched, "remaining_hidden": len(remaining)}
 
 
 # ── List reports ──────────────────────────────────────────────────────────────

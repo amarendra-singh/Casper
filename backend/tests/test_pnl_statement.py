@@ -97,6 +97,27 @@ def test_tcs_tds_fall_back_to_report_level_totals():
 
 # ── Period-aligned consolidation ─────────────────────────────────────────────
 
+def test_rematch_snapshot_matches_upload_snapshot():
+    """
+    Re-matching must freeze costs exactly like an upload does, or a re-matched row
+    would drift from one stamped at upload time.
+    """
+    from app.services.pnl_statement import _snapshot_from_pricing
+    from app.services.pnl import _build_sku_row
+
+    sp = SimpleNamespace(id=1, price=63.0, package=7.0, logistics=10.0, addons=6.0,
+                         misc_total=12.0, cr_cost=34.0, damage_cost=5.04,
+                         breakeven=137.04, gst=6.85, bank_settlement=172.0,
+                         profit_percentage=20.0)
+    snap = _snapshot_from_pricing(sp)
+    uploaded = _build_sku_row({"platform_sku_name": "X", "net_units": 1},
+                              report_id=1, matched_pricing=sp, company_id=1)
+    for field, value in snap.items():
+        assert getattr(uploaded, field) == value
+    assert round(snap["snap_cogs_per_unit"] + snap["snap_fulfillment_per_unit"]
+                 + snap["snap_return_per_unit"] + snap["snap_overhead_per_unit"], 2) == sp.breakeven
+
+
 def test_consolidation_picks_latest_common_period():
     index = {"2026-04": {1, 2}, "2026-05": {1, 2}, "2026-06": {1}}
     period, missing = select_consolidation_period(index)

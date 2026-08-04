@@ -574,11 +574,14 @@ async def compute_pnl_rows(db, report_id: int, company_id: int) -> Optional[dict
     return result
 
 
-async def compute_unmatched_skus(db, company_id: int) -> list[dict]:
+async def compute_unmatched_skus(db, company_id: int, report_id: Optional[int] = None) -> list[dict]:
     """
     Distinct platform SKU names seen in uploads that have NO cost match in the
     SKU master (sku_pricing_id IS NULL) — the 'hidden' SKUs excluded from P&L.
     Aggregated so the user can prioritise which to add (by volume / payout).
+
+    `report_id` scopes the list to one report, so a report's "N SKUs hidden"
+    badge and the panel it opens always show the same N.
     """
     from sqlalchemy import select, func
     from app.models.pnl import PnlSkuRow
@@ -591,6 +594,8 @@ async def compute_unmatched_skus(db, company_id: int) -> list[dict]:
          .where(PnlSkuRow.company_id == company_id, PnlSkuRow.sku_pricing_id.is_(None))
          .group_by(PnlSkuRow.platform_sku_name)
          .order_by(func.coalesce(func.sum(PnlSkuRow.net_units), 0).desc()))
+    if report_id is not None:
+        q = q.where(PnlSkuRow.report_id == report_id)
     rows = (await db.execute(q)).all()
     return [{
         "platform_sku_name": r.platform_sku_name,
@@ -598,6 +603,113 @@ async def compute_unmatched_skus(db, company_id: int) -> list[dict]:
         "units": int(r.units or 0),
         "payout": round(r.payout or 0, 2),
     } for r in rows]
+
+
+def _snapshot_from_pricing(sp) -> dict:
+    """Frozen cost snapshot fields for a SkuPricing — mirrors pnl._build_sku_row."""
+    return dict(
+        snap_cogs_per_unit=sp.price,
+        snap_fulfillment_per_unit=(sp.package or 0) + (sp.logistics or 0) + (sp.addons or 0),
+        snap_return_per_unit=(sp.cr_cost or 0) + (sp.damage_cost or 0),
+        snap_overhead_per_unit=sp.misc_total,
+        snap_breakeven=sp.breakeven,
+        snap_gst=sp.gst,
+    )
+
+
+async def rematch_report(db, report_id: int, company_id: int) -> int:
+    """
+    Link a report's unmatched rows to pricing that exists now, stamping the frozen
+    cost snapshot — so adding a hidden SKU updates the report instead of requiring
+    a re-upload. Matching mirrors upload: SkuPlatformConfig.platform_sku_name (the
+    per-platform alias), case-insensitive.
+
+    Returns the number of rows newly matched.
+    """
+    from app.models.pnl import PnlReport, PnlSkuRow
+    from app.services.pnl import _build_pricing_lookup
+
+    report = await db.scalar(
+        _statement_query().where(PnlReport.id == report_id, PnlReport.company_id == company_id)
+    )
+    if report is None:
+        return 0
+
+    lookup = await _build_pricing_lookup(db, report.platform_id, company_id)
+    if not lookup:
+        return 0
+
+    matched = 0
+    for row in report.sku_rows:
+        if row.sku_pricing_id is not None:
+            continue
+        sp = lookup.get((row.platform_sku_name or "").strip().upper())
+        if sp is None:
+            continue
+        row.sku_pricing_id = sp.id
+        for field, value in _snapshot_from_pricing(sp).items():
+            setattr(row, field, value)
+        matched += 1
+
+    if matched:
+        await db.commit()
+    return matched
+
+
+async def quick_add_hidden_sku(db, company_id: int, report_id: int, platform_sku_name: str,
+                               price: float, costs: Optional[dict] = None) -> dict:
+    """
+    Create pricing for one hidden SKU and immediately re-match the report.
+
+    Reuses services.entries.upsert_row so cost/breakeven math stays in one place,
+    and registers the upload's SKU name as the platform alias so future uploads
+    match too.
+    """
+    from app.models.pnl import PnlReport
+    from app.schemas.entries import EntryRowInput, PlatformOverride
+    from app.services.entries import (
+        upsert_row, get_misc_total, get_damage_percent, get_platforms,
+    )
+    from app.core.config import settings
+
+    report = await db.scalar(
+        _statement_query().where(PnlReport.id == report_id, PnlReport.company_id == company_id)
+    )
+    if report is None:
+        return {"created": False, "error": "Report not found"}
+
+    platforms = [p for p in await get_platforms(db) if p.id == report.platform_id]
+    if not platforms:
+        return {"created": False, "error": "Platform not found"}
+
+    name = (platform_sku_name or "").strip()
+    row = EntryRowInput(
+        sku=name,
+        price=price,
+        platform_overrides=[PlatformOverride(platform_id=report.platform_id,
+                                             platform_sku_name=name)],
+        **(costs or {}),
+    )
+    result = await upsert_row(
+        db, row,
+        misc_default=await get_misc_total(db),
+        damage_default=await get_damage_percent(db),
+        profit_default=getattr(settings, "DEFAULT_PROFIT_PERCENT", 20.0),
+        platforms=platforms,
+        company_id=company_id,
+    )
+    if not result.success:
+        return {"created": False, "error": result.error}
+    await db.commit()
+
+    rematched = await rematch_report(db, report_id, company_id)
+    remaining = await compute_unmatched_skus(db, company_id, report_id)
+    return {
+        "created": True,
+        "sku": name,
+        "rows_matched": rematched,
+        "remaining_hidden": len(remaining),
+    }
 
 
 def select_consolidation_period(index: dict[str, set]) -> tuple[Optional[str], list]:
