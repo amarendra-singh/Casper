@@ -63,6 +63,14 @@ export default function IncomeStatement({ report }) {
         </div>
       </div>
 
+      {cov.cost_basis === 'estimated' && (
+        <div className="is-warn">
+          Costs are <strong>estimated</strong> from today's SKU pricing — this report was uploaded
+          before cost snapshots existed, so its profit can shift if you edit pricing. Re-upload it
+          to freeze the cost basis.
+        </div>
+      )}
+
       {!cov.reliable && cov.cogs_coverage_pct != null && (
         <div className="is-warn">
           COGS coverage {cov.cogs_coverage_pct}% — {cov.total_units - cov.matched_units} of {cov.total_units} units

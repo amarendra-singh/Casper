@@ -1,7 +1,116 @@
 """Unit tests for the P&L statement engine (pure functions)."""
+from types import SimpleNamespace
+
 from app.services.pnl_statement import (
     build_pnl_statement, build_pnl_trend, build_consolidated, build_pnl_rows,
+    _cost_basis, select_consolidation_period,
 )
+
+
+# ── Frozen cost snapshot ─────────────────────────────────────────────────────
+
+def _orm_row(*, snap=None, live=None):
+    """Fake PnlSkuRow: `snap` = frozen snapshot values, `live` = sku_pricing."""
+    sp = SimpleNamespace(**live) if live else None
+    fields = dict(snap_cogs_per_unit=None, snap_fulfillment_per_unit=None,
+                  snap_return_per_unit=None, snap_overhead_per_unit=None,
+                  snap_breakeven=None, snap_gst=None)
+    if snap:
+        fields.update(snap)
+    return SimpleNamespace(sku_pricing=sp, **fields)
+
+
+LIVE = dict(price=100, package=10, logistics=10, addons=0, misc_total=5,
+            cr_cost=20, damage_cost=5, breakeven=150, gst=9)
+
+
+def test_cost_basis_prefers_frozen_snapshot():
+    row = _orm_row(
+        snap=dict(snap_cogs_per_unit=60, snap_fulfillment_per_unit=15,
+                  snap_return_per_unit=20, snap_overhead_per_unit=5,
+                  snap_breakeven=100, snap_gst=5),
+        live=LIVE,   # live pricing differs — must be ignored
+    )
+    cb, frozen = _cost_basis(row)
+    assert frozen is True
+    assert cb["cogs"] == 60 and cb["breakeven"] == 100
+
+
+def test_cost_basis_falls_back_to_live_when_no_snapshot():
+    cb, frozen = _cost_basis(_orm_row(live=LIVE))
+    assert frozen is False
+    assert cb["cogs"] == 100 and cb["fulfillment"] == 20 and cb["return_cost"] == 25
+
+
+def test_cost_basis_unmatched_row_is_zero():
+    cb, frozen = _cost_basis(_orm_row())
+    assert frozen is False and cb["breakeven"] is None and cb["cogs"] == 0
+
+
+def test_frozen_report_does_not_move_when_pricing_changes():
+    """Regression: the whole point of the snapshot — closed periods stay closed."""
+    def statement_for(live_price):
+        row = _orm_row(
+            snap=dict(snap_cogs_per_unit=50, snap_fulfillment_per_unit=10,
+                      snap_return_per_unit=5, snap_overhead_per_unit=4,
+                      snap_breakeven=69, snap_gst=3),
+            live={**LIVE, "price": live_price},
+        )
+        cb, _ = _cost_basis(row)
+        return cb["cogs"]
+
+    assert statement_for(100) == statement_for(999) == 50
+
+
+def test_statement_cost_basis_flag():
+    frozen_rows = [_row(10, bsp=800, cogs_pu=50, matched=True, frozen=True)]
+    mixed_rows  = [_row(10, bsp=800, cogs_pu=50, matched=True, frozen=True),
+                   _row(10, bsp=700, cogs_pu=40, matched=True, frozen=False)]
+    report = {"gross_sales": 2000, "returns_amount": 0, "net_sales": 2000, "bank_settlement": 1500}
+    assert build_pnl_statement(frozen_rows, report)["coverage"]["cost_basis"] == "frozen"
+    assert build_pnl_statement(mixed_rows, report)["coverage"]["cost_basis"] == "estimated"
+
+
+# ── TCS / TDS as their own lines ─────────────────────────────────────────────
+
+def test_tcs_tds_are_separate_lines_and_shrink_the_plug():
+    rows = [_row(10, bsp=800, commission_fee=-100, taxes_tcs=-40, taxes_tds=-20)]
+    report = {"gross_sales": 1000, "returns_amount": 0, "net_sales": 1000, "bank_settlement": 800}
+    s = build_pnl_statement(rows, report)
+    keyed = {l["key"]: l["amount"] for l in s["lines"]}
+    assert keyed["tcs"] == -40 and keyed["tds"] == -20
+    # identified fees now 160 of the 200 gap → plug is only 40
+    assert keyed["other_fees"] == -40
+    st = s["subtotals"]
+    assert st["tcs"] == 40 and st["tds"] == 20
+    # statement still foots
+    assert round(st["net_sales"] - st["total_platform_fees"], 2) == st["net_payout"]
+
+
+def test_tcs_tds_fall_back_to_report_level_totals():
+    rows = [_row(10, bsp=800)]                       # no per-row tax fields
+    report = {"gross_sales": 1000, "returns_amount": 0, "net_sales": 1000,
+              "bank_settlement": 800, "tcs_amount": -30, "tds_amount": -10}
+    keyed = {l["key"]: l["amount"] for l in build_pnl_statement(rows, report)["lines"]}
+    assert keyed["tcs"] == -30 and keyed["tds"] == -10
+
+
+# ── Period-aligned consolidation ─────────────────────────────────────────────
+
+def test_consolidation_picks_latest_common_period():
+    index = {"2026-04": {1, 2}, "2026-05": {1, 2}, "2026-06": {1}}
+    period, missing = select_consolidation_period(index)
+    assert period == "2026-05" and missing == []
+
+
+def test_consolidation_discloses_when_no_common_period():
+    index = {"2026-05": {1}, "2026-06": {2}}
+    period, missing = select_consolidation_period(index)
+    assert period == "2026-06" and missing == [1]
+
+
+def test_consolidation_empty_is_safe():
+    assert select_consolidation_period({}) == (None, [])
 
 
 def test_build_pnl_rows_math_and_calc():
@@ -28,7 +137,8 @@ def test_build_pnl_rows_math_and_calc():
     assert out["summary"]["profitable"] == 1
 
 
-def _row(net_units, bsp, cogs_pu=0, misc_pu=0, ful_pu=0, ret_pu=0, matched=True, **fees):
+def _row(net_units, bsp, cogs_pu=0, misc_pu=0, ful_pu=0, ret_pu=0, matched=True,
+         frozen=True, **fees):
     """Build a per-SKU row dict as the DB wrapper would."""
     return {
         "net_units": net_units,
@@ -39,7 +149,10 @@ def _row(net_units, bsp, cogs_pu=0, misc_pu=0, ful_pu=0, ret_pu=0, matched=True,
         "collection_fee": fees.get("collection_fee", 0),
         "fixed_fee": fees.get("fixed_fee", 0),
         "taxes_gst": fees.get("taxes_gst", 0),
+        "taxes_tcs": fees.get("taxes_tcs", 0),
+        "taxes_tds": fees.get("taxes_tds", 0),
         "matched": matched,
+        "_frozen": frozen,
         "_cogs_total": cogs_pu * net_units,
         "_fulfillment_total": ful_pu * net_units,
         "_return_total": ret_pu * net_units,

@@ -94,6 +94,16 @@ class PnlSkuRow(Base):
     amount_settled: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     amount_pending: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
+    # ── Frozen cost snapshot (captured at upload; null = uploaded before this
+    # feature existed → engines fall back to live pricing and flag "estimated").
+    # Closed periods must not move when SKU pricing is edited later.
+    snap_cogs_per_unit: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    snap_fulfillment_per_unit: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    snap_return_per_unit: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    snap_overhead_per_unit: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    snap_breakeven: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    snap_gst: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
     # Casper snapshot (frozen at upload time — null if unmatched)
     casper_expected_bs: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     casper_expected_profit_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)

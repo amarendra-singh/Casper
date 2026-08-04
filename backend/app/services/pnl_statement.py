@@ -85,9 +85,14 @@ def build_pnl_statement(rows: list[dict], report: dict) -> dict:
     fixed      = _abs_s(rows, "fixed_fee")
     gst_fees   = _abs_s(rows, "taxes_gst")
     marketing  = abs(report.get("marketing_fee") or 0)
+    # TCS/TDS are withholding taxes, not marketplace fees — they are creditable
+    # (TCS against GST liability, TDS against income tax) so they get their own
+    # lines rather than disappearing into the balancing plug.
+    tcs = _abs_s(rows, "taxes_tcs") or abs(report.get("tcs_amount") or 0)
+    tds = _abs_s(rows, "taxes_tds") or abs(report.get("tds_amount") or 0)
 
     total_platform_fees = max(net_sales - net_payout, 0)
-    identified = commission + shipping + collection + fixed + gst_fees + marketing
+    identified = commission + shipping + collection + fixed + gst_fees + marketing + tcs + tds
     other_fees = round(total_platform_fees - identified, 2)
     # Only surface "Other fees" as a positive plug; if identified overshoots (rare,
     # from rounding/rewards), fold the excess back so the statement still foots.
@@ -125,6 +130,10 @@ def build_pnl_statement(rows: list[dict], report: dict) -> dict:
         line("collection", "Collection / Payment Fee", -collection, "expense", 1),
         line("fixed", "Fixed Fees", -fixed, "expense", 1),
         line("gst_fees", "GST on Fees", -gst_fees, "expense", 1),
+        line("tcs", "TCS (Tax Collected at Source)", -tcs, "expense", 1,
+             note="Creditable against GST liability"),
+        line("tds", "TDS (Tax Deducted at Source)", -tds, "expense", 1,
+             note="Creditable against income tax"),
         line("marketing", "Marketing / Ads", -marketing, "expense", 1),
         line("other_fees", "Other Marketplace Fees", -other_fees, "expense", 1),
         line("net_payout", "Net Payout", net_payout, "subtotal", 0,
@@ -144,6 +153,8 @@ def build_pnl_statement(rows: list[dict], report: dict) -> dict:
             "net_sales": _round(net_sales),
             "total_platform_fees": _round(total_platform_fees),
             "net_payout": _round(net_payout),
+            "tcs": _round(tcs),
+            "tds": _round(tds),
             "cogs": _round(cogs),
             "fulfillment": _round(fulfillment),
             "return_cost": _round(return_cost),
@@ -175,6 +186,11 @@ def build_pnl_statement(rows: list[dict], report: dict) -> dict:
             "total_units": net_units,
             "cogs_coverage_pct": coverage_pct,
             "reliable": (coverage_pct or 0) >= 70,  # < 70% COGS coverage → margins understated
+            # "frozen" = costs snapshotted at upload (report is immutable);
+            # "estimated" = uploaded before snapshots existed, so costs come from
+            # today's live pricing and this report can move if pricing is edited.
+            "cost_basis": "frozen" if all(r.get("_frozen") for r in rows if r.get("matched")) and rows
+                          else "estimated",
         },
     }
 
@@ -244,11 +260,47 @@ def build_consolidated(statements: list[dict]) -> dict:
 
 # ── DB wrappers ──────────────────────────────────────────────────────────────
 
+def _cost_basis(row) -> tuple[dict, bool]:
+    """
+    Per-unit cost basis for one SKU row, and whether it is frozen.
+
+    Prefers the snapshot captured at upload (`snap_*`) so a closed period's profit
+    never moves when SKU pricing is edited later. Falls back to live `sku_pricing`
+    for rows uploaded before snapshots existed — those are reported as "estimated".
+
+    This is the ONLY place that decides frozen-vs-live; both the statement engine
+    and the per-SKU rows engine call it, so the two can never diverge.
+    """
+    if row.snap_breakeven is not None:
+        return {
+            "cogs": row.snap_cogs_per_unit or 0,
+            "fulfillment": row.snap_fulfillment_per_unit or 0,
+            "return_cost": row.snap_return_per_unit or 0,
+            "overhead": row.snap_overhead_per_unit or 0,
+            "breakeven": row.snap_breakeven,
+            "gst": row.snap_gst or 0,
+        }, True
+
+    sp = row.sku_pricing
+    if sp is None:
+        return {"cogs": 0, "fulfillment": 0, "return_cost": 0,
+                "overhead": 0, "breakeven": None, "gst": 0}, False
+    return {
+        "cogs": sp.price or 0,
+        "fulfillment": (sp.package or 0) + (sp.logistics or 0) + (sp.addons or 0),
+        "return_cost": (sp.cr_cost or 0) + (sp.damage_cost or 0),
+        "overhead": sp.misc_total or 0,
+        "breakeven": sp.breakeven,
+        "gst": sp.gst or 0,
+    }, False
+
+
 def _rows_and_report(report) -> tuple[list[dict], dict]:
     """Turn an eagerly-loaded PnlReport ORM object into (rows, report) dicts."""
     rows = []
     for r in report.sku_rows:
-        sp = r.sku_pricing
+        matched = r.sku_pricing is not None or r.snap_breakeven is not None
+        cb, frozen = _cost_basis(r)
         nu = r.net_units or 0
         rows.append({
             "net_units": nu,
@@ -259,11 +311,14 @@ def _rows_and_report(report) -> tuple[list[dict], dict]:
             "collection_fee": r.collection_fee or 0,
             "fixed_fee": r.fixed_fee or 0,
             "taxes_gst": r.taxes_gst or 0,
-            "matched": sp is not None,
-            "_cogs_total": (sp.price if sp else 0) * nu,
-            "_fulfillment_total": ((sp.package + sp.logistics + sp.addons) if sp else 0) * nu,
-            "_return_total": ((sp.cr_cost + sp.damage_cost) if sp else 0) * nu,
-            "_overhead_total": (sp.misc_total if sp else 0) * nu,
+            "taxes_tcs": r.taxes_tcs or 0,
+            "taxes_tds": r.taxes_tds or 0,
+            "matched": matched,
+            "_frozen": frozen,
+            "_cogs_total": cb["cogs"] * nu,
+            "_fulfillment_total": cb["fulfillment"] * nu,
+            "_return_total": cb["return_cost"] * nu,
+            "_overhead_total": cb["overhead"] * nu,
         })
     report_d = {
         "gross_sales": report.gross_sales,
@@ -380,7 +435,7 @@ def build_pnl_rows(rows: list[dict]) -> dict:
         calc = {
             "return_rate_pct": {"unit": "pct", "result": ret_rate, "ops": [
                 ["Returned units", gu - nu, "n"], ["÷ Gross units", gu, "n"], ["× 100", None, None]]},
-            "casper_breakeven": {"unit": "money", "result": be, "ops": [
+            "casper_breakeven": {"unit": "money", "result": be, "ops": r.get("cost_ops") or [
                 ["Product cost", r.get("price"), "money"], ["+ Packaging", r.get("package"), "money"],
                 ["+ Logistics", r.get("logistics"), "money"], ["+ Add-ons", r.get("addons"), "money"],
                 ["+ Overhead", r.get("misc_total"), "money"], ["+ Return cost", r.get("cr_cost"), "money"],
@@ -461,12 +516,33 @@ async def compute_pnl_rows(db, report_id: int, company_id: int) -> Optional[dict
     if report is None:
         return None
     raw = []
+    all_frozen = True
     for r in report.sku_rows:
         sp = r.sku_pricing
-        if sp is None:
-            continue  # matched rows only
-        breakeven = sp.breakeven
-        breakeven_gst = round(breakeven + (sp.gst or 0), 2)
+        cb, frozen = _cost_basis(r)
+        if cb["breakeven"] is None:
+            continue  # matched rows only (needs a cost basis)
+        if not frozen:
+            all_frozen = False
+        breakeven = cb["breakeven"]
+        breakeven_gst = round(breakeven + cb["gst"], 2)
+        # Cost components for the breakeven hover popover. A frozen row only stored
+        # aggregates, so it explains itself at that granularity; a live row can show
+        # the full granular stack.
+        if frozen:
+            cost_ops = [
+                ["Product cost", cb["cogs"], "money"],
+                ["+ Fulfillment", cb["fulfillment"], "money"],
+                ["+ Return cost", cb["return_cost"], "money"],
+                ["+ Overhead", cb["overhead"], "money"],
+            ]
+        else:
+            cost_ops = [
+                ["Product cost", sp.price, "money"], ["+ Packaging", sp.package, "money"],
+                ["+ Logistics", sp.logistics, "money"], ["+ Add-ons", sp.addons, "money"],
+                ["+ Overhead", sp.misc_total, "money"], ["+ Return cost", sp.cr_cost, "money"],
+                ["+ Damage", sp.damage_cost, "money"],
+            ]
         raw.append({
             "id": r.id, "platform_sku_name": r.platform_sku_name,
             "gross_units": r.gross_units, "net_units": r.net_units,
@@ -475,15 +551,14 @@ async def compute_pnl_rows(db, report_id: int, company_id: int) -> Optional[dict
             "fixed_fee": r.fixed_fee, "taxes_gst": r.taxes_gst,
             "taxes_tcs": r.taxes_tcs, "taxes_tds": r.taxes_tds,
             "rewards_benefits": r.rewards_benefits,
-            "price": sp.price, "package": sp.package, "logistics": sp.logistics,
-            "addons": sp.addons, "misc_total": sp.misc_total,
-            "cr_cost": sp.cr_cost, "damage_cost": sp.damage_cost,
             "breakeven": breakeven, "breakeven_gst": breakeven_gst,
-            "target_pre_gst": round(breakeven + (sp.net_profit_amt or 0), 2),
-            "target_post_gst": sp.bank_settlement,
+            "cost_ops": cost_ops,
+            "target_pre_gst": round(breakeven + (sp.net_profit_amt or 0), 2) if sp else None,
+            "target_post_gst": sp.bank_settlement if sp else None,
         })
     result = build_pnl_rows(raw)
     result["report"] = _report_meta(report)
+    result["cost_basis"] = "frozen" if (all_frozen and raw) else "estimated"
     return result
 
 
@@ -513,21 +588,54 @@ async def compute_unmatched_skus(db, company_id: int) -> list[dict]:
     } for r in rows]
 
 
+def select_consolidation_period(index: dict[str, set]) -> tuple[Optional[str], list]:
+    """
+    Choose the period to consolidate on, given {period: {platform_id, ...}}.
+
+    Prefers the latest period covered by EVERY platform that has any report —
+    summing a Flipkart May report with a Meesho June report would misstate the
+    business. If no period is common to all, falls back to the latest period and
+    reports the platforms missing from it, so the UI can disclose the gap rather
+    than silently mismatch.
+    """
+    if not index:
+        return None, []
+    all_platforms = set().union(*index.values())
+    complete = [p for p, plats in index.items() if plats == all_platforms]
+    period = max(complete) if complete else max(index)
+    return period, sorted(all_platforms - index[period])
+
+
 async def compute_pnl_consolidated(db, company_id: int) -> dict:
-    """Blended business-wide P&L — the latest report of each platform."""
+    """
+    Blended business-wide P&L for a single aligned period across platforms.
+
+    Uses the latest report per platform *within that period* so the consolidation
+    is period-comparable.
+    """
     from app.models.pnl import PnlReport
     q = _statement_query().where(PnlReport.company_id == company_id).order_by(PnlReport.period_start.desc())
     reports = (await db.execute(q)).scalars().all()
 
+    index: dict[str, set] = {}
+    for rep in reports:
+        index.setdefault(_report_meta(rep)["period"], set()).add(rep.platform_id)
+    period, missing_ids = select_consolidation_period(index)
+
+    id_to_name = {rep.platform_id: (rep.platform.name if rep.platform else None) for rep in reports}
     seen: set[int] = set()
     statements = []
-    for rep in reports:
-        if rep.platform_id in seen:
+    for rep in reports:                      # already newest-first
+        if _report_meta(rep)["period"] != period or rep.platform_id in seen:
             continue
         seen.add(rep.platform_id)
         rows, report_d = _rows_and_report(rep)
         st = build_pnl_statement(rows, report_d)
         st["platform"] = rep.platform.name if rep.platform else None
-        st["period"] = _report_meta(rep)["period"]
+        st["period"] = period
         statements.append(st)
-    return build_consolidated(statements)
+
+    result = build_consolidated(statements)
+    result["period"] = period
+    result["excluded_platforms"] = [id_to_name.get(pid) for pid in missing_ids]
+    return result

@@ -927,6 +927,14 @@ def _build_sku_row(raw: dict, report_id: int, matched_pricing: Optional[SkuPrici
             casper_expected_profit_pct=sp.profit_percentage,
             variance_bs=variance_bs,
             variance_margin_pct=variance_margin,
+            # Freeze the cost basis at upload time so this report's profit never
+            # moves when SKU pricing is edited later (closed periods stay closed).
+            snap_cogs_per_unit=sp.price,
+            snap_fulfillment_per_unit=(sp.package or 0) + (sp.logistics or 0) + (sp.addons or 0),
+            snap_return_per_unit=(sp.cr_cost or 0) + (sp.damage_cost or 0),
+            snap_overhead_per_unit=sp.misc_total,
+            snap_breakeven=sp.breakeven,
+            snap_gst=sp.gst,
         )
 
     row = PnlSkuRow(

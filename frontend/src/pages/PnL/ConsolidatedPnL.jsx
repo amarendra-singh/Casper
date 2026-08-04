@@ -38,11 +38,18 @@ export default function ConsolidatedPnL() {
       <div className="pnl-header">
         <h1 className="pnl-title">Business P&amp;L</h1>
         <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-          Blended across {data.platforms.length} platform{data.platforms.length !== 1 ? 's' : ''} · latest report each
+          {data.period ? `Period ${data.period} · ` : ''}
+          blended across {data.platforms.length} platform{data.platforms.length !== 1 ? 's' : ''}
         </div>
       </div>
 
       <div className="pnl-body pnl-body-full pnl-animate-in">
+        {data.excluded_platforms?.length > 0 && (
+          <div className="is-warn">
+            Not included in {data.period}: <strong>{data.excluded_platforms.join(', ')}</strong> —
+            no report for this period. Upload one to see a complete business P&amp;L.
+          </div>
+        )}
         <div className="is-kpis">
           <Kpi label="Net Sales"        value={fmt(st.net_sales)} />
           <Kpi label="Contribution"     value={fmt(st.contribution)} />
