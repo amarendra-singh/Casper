@@ -1888,3 +1888,26 @@ div.pnl-animate-in {
 .is-plat-margin { text-align: right; font-weight: 700; font-family: var(--font-mono); }
 .is-plat-margin.pos { color: var(--green-deep, #16a34a); }
 .is-plat-margin.neg { color: var(--red, #dc2626); }
+
+/* ── Hover-to-explain calc popover (P&L table) ─────────────────────────────── */
+.calc-cell { position: relative; cursor: help; border-bottom: 1px dotted color-mix(in srgb, currentColor 40%, transparent); }
+.calc-pop {
+  position: fixed; transform: translate(-50%, calc(-100% - 10px)); z-index: 9999;
+  min-width: 190px; padding: 10px 12px; border-radius: 10px;
+  background: var(--ink, #0e0e10); color: #fff;
+  box-shadow: 0 10px 30px -8px rgba(0,0,0,0.45);
+  font-family: var(--font-ui); text-align: left; pointer-events: none;
+  animation: calcpop 0.1s ease;
+}
+@keyframes calcpop { from { opacity: 0; transform: translate(-50%, calc(-100% - 4px)); } }
+.calc-pop::after {
+  content: ''; position: absolute; left: 50%; bottom: -5px; transform: translateX(-50%) rotate(45deg);
+  width: 10px; height: 10px; background: var(--ink, #0e0e10);
+}
+.calc-pop-title { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255,255,255,0.55); margin-bottom: 7px; }
+.calc-pop-row { display: flex; justify-content: space-between; gap: 16px; font-size: 12px; padding: 2px 0; }
+.calc-pop-row .cl { color: rgba(255,255,255,0.78); }
+.calc-pop-row .cv { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: #fff; }
+.calc-pop-result { margin-top: 5px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.18); font-weight: 700; }
+.calc-pop-result .cl { color: #fff; }
+.calc-pop-result .cv { color: var(--pink-2, #F23A77); }

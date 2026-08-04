@@ -4,7 +4,7 @@ from app.services.pnl_statement import (
 )
 
 
-def _row(net_units, bsp, cogs_pu=0, misc_pu=0, matched=True, **fees):
+def _row(net_units, bsp, cogs_pu=0, misc_pu=0, ful_pu=0, ret_pu=0, matched=True, **fees):
     """Build a per-SKU row dict as the DB wrapper would."""
     return {
         "net_units": net_units,
@@ -17,8 +17,27 @@ def _row(net_units, bsp, cogs_pu=0, misc_pu=0, matched=True, **fees):
         "taxes_gst": fees.get("taxes_gst", 0),
         "matched": matched,
         "_cogs_total": cogs_pu * net_units,
+        "_fulfillment_total": ful_pu * net_units,
+        "_return_total": ret_pu * net_units,
         "_overhead_total": misc_pu * net_units,
     }
+
+
+def test_full_cost_stack_including_return_cost():
+    # payout 800; per-unit: cogs 30, fulfillment 10, return 5, overhead 4 (×10 units)
+    rows = [_row(10, bsp=800, cogs_pu=30, ful_pu=10, ret_pu=5, misc_pu=4)]
+    report = {"gross_sales": 1000, "returns_amount": 0, "net_sales": 1000, "bank_settlement": 800}
+    s = build_pnl_statement(rows, report)
+    st = s["subtotals"]
+    assert st["cogs"] == 300
+    assert st["fulfillment"] == 100
+    assert st["return_cost"] == 50           # the return-cost line the user asked for
+    assert st["overhead"] == 40
+    assert st["total_cost"] == 490           # == breakeven × units
+    assert st["contribution"] == 350         # 800 − 300 − 100 − 50
+    assert st["operating_profit"] == 310     # 350 − 40 == payout(800) − total_cost(490)
+    rc = next(l for l in s["lines"] if l["key"] == "return_cost")
+    assert rc["amount"] == -50
 
 
 def test_statement_foots_and_reconciles():

@@ -279,6 +279,17 @@ async def pnl_consolidated(
     return await compute_pnl_consolidated(db, company.id)
 
 
+@router.get("/unmatched-skus")
+async def pnl_unmatched_skus(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_any),
+    company=Depends(get_active_company),
+):
+    """SKUs seen in uploads with no cost match — the 'hidden' SKUs to add to the master."""
+    from app.services.pnl_statement import compute_unmatched_skus
+    return await compute_unmatched_skus(db, company.id)
+
+
 # ── List reports ──────────────────────────────────────────────────────────────
 
 @router.get("/reports", response_model=list[PnlReportSummary])

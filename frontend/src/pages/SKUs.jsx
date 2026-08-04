@@ -5,7 +5,7 @@ import {
   getVendors, getCategories, getPlatforms,
   getMiscTotal, getSettings,
   getEntries, upsertBatch, deleteSku,
-  updateCategory, deleteCategory
+  updateCategory, deleteCategory, getUnmatchedSkus
 } from '../api/client'
 import SmartCell from '../components/SmartCell'
 import AddVendorModal from '../components/AddVendorModal'
@@ -284,6 +284,8 @@ export default function SKUs() {
   const [miscDef,     setMiscDef]     = useState(12)
   const [profDef,     setProfDef]     = useState(20)
   const [rows,        setRows]        = useState(() => [newRow(), newRow(), newRow()])
+  const [unmatched,   setUnmatched]   = useState([])
+  const [showHidden,  setShowHidden]  = useState(false)
   const [colVis,      setColVis]      = useState(loadVisibility)
   const [density,     setDensity]     = useState(() => localStorage.getItem('skuDensity') || 'normal')
   const [importOpen,      setImportOpen]      = useState(false)
@@ -340,6 +342,21 @@ export default function SKUs() {
     )), [])
 
   const addRow = () => setRows(p => [...p, newRow()])
+
+  // Hidden SKUs: names seen in uploads that have no cost match yet.
+  const loadUnmatched = useCallback(() => {
+    getUnmatchedSkus().then(setUnmatched).catch(() => setUnmatched([]))
+  }, [])
+  useEffect(() => { loadUnmatched() }, [loadUnmatched])
+
+  const addHiddenSku = (name) => {
+    // Prepend a dirty row pre-filled with the upload name so future uploads match.
+    setRows(p => [newRow({ sku: name, status: STATUS.DIRTY }), ...p])
+    setUnmatched(p => p.filter(u => u.platform_sku_name !== name))
+    setShowHidden(false)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const delRow = async id => {
     const row = rows.find(r => r.id === id)
     if (row?.skuId) {
@@ -742,6 +759,30 @@ export default function SKUs() {
         </div>
       </div>
 
+      {/* ── Hidden SKUs (seen in uploads, no cost match yet) ── */}
+      {unmatched.length > 0 && (
+        <div className="sku-hidden-banner">
+          <div className="sku-hidden-head" onClick={() => setShowHidden(s => !s)}>
+            <span className="sku-hidden-title">
+              {unmatched.length} hidden SKU{unmatched.length !== 1 ? 's' : ''} from uploads
+              <span className="sku-hidden-sub"> — no pricing yet, so excluded from P&amp;L</span>
+            </span>
+            <span className="sku-hidden-toggle">{showHidden ? 'Hide' : 'Review & add'}</span>
+          </div>
+          {showHidden && (
+            <div className="sku-hidden-list">
+              {unmatched.map(u => (
+                <div key={u.platform_sku_name} className="sku-hidden-row">
+                  <span className="sku-hidden-name">{u.platform_sku_name}</span>
+                  <span className="sku-hidden-meta">{u.units} units · {u.reports} report{u.reports !== 1 ? 's' : ''}</span>
+                  <button className="btn btn-ghost btn-sm" onClick={() => addHiddenSku(u.platform_sku_name)}>+ Add</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Settings bar ── */}
       <div className="e-bar">
         <div className="e-bar-item">
@@ -849,8 +890,8 @@ export default function SKUs() {
               {vis('log')    && <th className="sh sh-ue w-log">Inbound Logistics</th>}
               {vis('addons') && <th className="sh sh-ue w-addons">Addons</th>}
               {vis('misc')   && <th className="sh sh-ue w-misc">Misc</th>}
-              {vis('crpct')  && <th className="sh sh-ue w-crpct">CR %</th>}
-              {vis('cramt')  && <th className="sh sh-ue w-cramt">CR ₹</th>}
+              {vis('crpct')  && <th className="sh sh-ue w-crpct" title="Courier return cost — expected return rate %">Return %</th>}
+              {vis('cramt')  && <th className="sh sh-ue w-cramt" title="Return cost per unit (courier return charge)">Return ₹</th>}
               {vis('dmgpct') && <th className="sh sh-ue w-dmgpct">Dmg %</th>}
               {vis('dmgamt') && <th className="sh sh-ue w-dmgamt">Dmg ₹</th>}
               <th className="sh sh-prof w-be">Breakeven</th>
@@ -1432,11 +1473,11 @@ function MobileCard({ row, calc:c, vendorOpts, catOpts, miscDef, profDef,
               <input className="m-input mono right" type="number" value={row.misc}
                 placeholder={miscDef} onChange={e=>onUpd(row.id,{misc:e.target.value})}/>
             </div>
-            <div className="m-field"><label>CR %</label>
+            <div className="m-field"><label>Return %</label>
               <input className="m-input mono right" type="number" value={row.crPct}
                 placeholder={c.crPct} onChange={e=>onUpd(row.id,{crPct:e.target.value,crAmt:''})}/>
             </div>
-            <div className="m-field"><label>CR ₹</label>
+            <div className="m-field"><label>Return ₹</label>
               <input className="m-input mono right" type="number" value={row.crAmt}
                 placeholder={c.crAmt} onChange={e=>onUpd(row.id,{crAmt:e.target.value,crPct:''})}/>
             </div>

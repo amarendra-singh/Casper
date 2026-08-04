@@ -872,3 +872,25 @@ select.ec-input,
   margin-left: 2px;
 }
 
+
+/* ── Hidden SKUs banner (unmatched from uploads) ───────────────────────────── */
+.sku-hidden-banner {
+  margin: 0 0 14px; border: 1px solid var(--amber-dim, #FEF3C7);
+  background: color-mix(in srgb, var(--amber, #d97706) 7%, transparent);
+  border-radius: var(--radius, 12px); overflow: hidden;
+}
+.sku-hidden-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 16px; cursor: pointer; user-select: none;
+}
+.sku-hidden-title { font-size: 13px; font-weight: 600; color: var(--amber-text, #92400e); }
+.sku-hidden-sub { font-weight: 400; color: var(--text-2, #6b7280); }
+.sku-hidden-toggle { font-size: 12px; font-weight: 600; color: var(--pink, #EC2D6E); white-space: nowrap; }
+.sku-hidden-list { border-top: 1px solid var(--amber-dim, #FEF3C7); max-height: 300px; overflow-y: auto; background: var(--canvas, #fff); }
+.sku-hidden-row {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 14px; align-items: center;
+  padding: 8px 16px; border-bottom: 1px solid var(--rule, #eee);
+}
+.sku-hidden-row:last-child { border-bottom: none; }
+.sku-hidden-name { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--ink, #111); }
+.sku-hidden-meta { font-size: 11px; color: var(--muted, #9ca3af); }

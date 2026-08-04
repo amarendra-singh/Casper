@@ -1,6 +1,31 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fmt, fmtN, fmtPct } from './utils'
+
+/**
+ * Hover-to-explain cell: shows the exact formula + underlying values behind a
+ * computed number. Uses a fixed-position popover (the table scrolls, so an
+ * absolutely-positioned one would be clipped by the overflow container).
+ */
+function Calc({ value, title, rows, result }) {
+  const [pos, setPos] = useState(null)
+  const ref = useRef(null)
+  const show = () => { const r = ref.current?.getBoundingClientRect(); if (r) setPos({ x: r.left + r.width / 2, y: r.top }) }
+  return (
+    <span ref={ref} className="calc-cell" onMouseEnter={show} onMouseLeave={() => setPos(null)}>
+      {value}
+      {pos && (
+        <span className="calc-pop" style={{ left: pos.x, top: pos.y }}>
+          <span className="calc-pop-title">{title}</span>
+          {rows.map((r, i) => (
+            <span key={i} className="calc-pop-row"><span className="cl">{r.label}</span><span className="cv">{r.value}</span></span>
+          ))}
+          <span className="calc-pop-row calc-pop-result"><span className="cl">Result</span><span className="cv">{result}</span></span>
+        </span>
+      )}
+    </span>
+  )
+}
 
 /**
  * Profit & Loss tab — per-SKU actual-vs-target reconciliation.
@@ -252,28 +277,70 @@ function PnLRow({ row, onJumpToSku }) {
       {/* ── Actual (FK) ──────────────────────────────────────────── */}
       <td className="pnl-td right mono red">{row.fees_per_unit != null ? fmt(row.fees_per_unit, 1) : '—'}</td>
       <td className="pnl-td right mono">{row.total_earned != null ? fmt(row.total_earned) : '—'}</td>
-      <td className="pnl-td right mono">{row.fk_bs_per_unit != null ? fmt(row.fk_bs_per_unit, 1) : '—'}</td>
+      <td className="pnl-td right mono">
+        {row.fk_bs_per_unit == null ? '—' : (
+          <Calc value={fmt(row.fk_bs_per_unit, 1)} title="Payout / unit"
+            rows={[
+              { label: 'Net Payout', value: fmt(row.total_earned) },
+              { label: '÷ Units sold', value: fmtN(row.net_units) },
+            ]} result={fmt(row.fk_bs_per_unit, 1)} />
+        )}
+      </td>
 
       {/* ── Variance / Bottom Line — primary highlight ───────────── */}
       <td className={`pnl-td right mono pnl-td-primary variance ${noCls}`}>
-        {profitNo == null ? '—' : (profitNo >= 0 ? '+' : '') + fmt(profitNo, 1)}
+        {profitNo == null ? '—' : (
+          <Calc value={(profitNo >= 0 ? '+' : '') + fmt(profitNo, 1)} title="Profit / unit"
+            rows={[
+              { label: 'Payout / unit', value: fmt(row.fk_bs_per_unit, 1) },
+              { label: '− Breakeven / unit', value: fmt(row.casper_breakeven, 1) },
+            ]} result={(profitNo >= 0 ? '+' : '') + fmt(profitNo, 1)} />
+        )}
       </td>
-      <td className="pnl-td right mono muted">{row.expected_total != null ? fmt(row.expected_total) : '—'}</td>
+      <td className="pnl-td right mono muted">
+        {row.expected_total == null ? '—' : (
+          <Calc value={fmt(row.expected_total)} title="Total Cost"
+            rows={[
+              { label: 'Breakeven / unit', value: fmt(row.casper_breakeven, 1) },
+              { label: '× Units sold', value: fmtN(row.net_units) },
+            ]} result={fmt(row.expected_total)} />
+        )}
+      </td>
       <td className={`pnl-td right mono pnl-td-primary variance ${totalCls}`}>
-        {totalP == null ? '—' : (totalP >= 0 ? '+' : '') + fmt(totalP)}
+        {totalP == null ? '—' : (
+          <Calc value={(totalP >= 0 ? '+' : '') + fmt(totalP)} title="Net Profit"
+            rows={[
+              { label: 'Net Payout', value: fmt(row.total_earned) },
+              { label: '− Total Cost', value: fmt(row.expected_total) },
+            ]} result={(totalP >= 0 ? '+' : '') + fmt(totalP)} />
+        )}
       </td>
       <td className="pnl-td center pnl-td-primary">
         {row.real_margin_pct == null ? '—' : (
-          <span className={`pnl-ret-rate ${row.real_margin_pct > 0 ? 'low' : row.real_margin_pct > -10 ? 'mid' : 'high'}`}>
-            {row.real_margin_pct >= 0 ? '+' : ''}{row.real_margin_pct.toFixed(1)}%
-          </span>
+          <Calc
+            value={<span className={`pnl-ret-rate ${row.real_margin_pct > 0 ? 'low' : row.real_margin_pct > -10 ? 'mid' : 'high'}`}>
+              {row.real_margin_pct >= 0 ? '+' : ''}{row.real_margin_pct.toFixed(1)}%
+            </span>}
+            title="Net Margin (return on cost)"
+            rows={[
+              { label: 'Profit / unit', value: fmt(profitNo, 1) },
+              { label: '÷ Breakeven / unit', value: fmt(row.casper_breakeven, 1) },
+              { label: '× 100', value: '' },
+            ]} result={(row.real_margin_pct >= 0 ? '+' : '') + row.real_margin_pct.toFixed(1) + '%'} />
         )}
       </td>
       <td className="pnl-td center pnl-td-primary">
         {row.margin_gst_pct == null ? '—' : (
-          <span className={`pnl-ret-rate ${row.margin_gst_pct > 0 ? 'low' : row.margin_gst_pct > -10 ? 'mid' : 'high'}`}>
-            {row.margin_gst_pct >= 0 ? '+' : ''}{row.margin_gst_pct.toFixed(1)}%
-          </span>
+          <Calc
+            value={<span className={`pnl-ret-rate ${row.margin_gst_pct > 0 ? 'low' : row.margin_gst_pct > -10 ? 'mid' : 'high'}`}>
+              {row.margin_gst_pct >= 0 ? '+' : ''}{row.margin_gst_pct.toFixed(1)}%
+            </span>}
+            title="Net Margin after GST"
+            rows={[
+              { label: 'Profit / unit', value: fmt(profitNo, 1) },
+              { label: '÷ Breakeven +GST', value: fmt(row.casper_breakeven_gst, 1) },
+              { label: '× 100', value: '' },
+            ]} result={(row.margin_gst_pct >= 0 ? '+' : '') + row.margin_gst_pct.toFixed(1) + '%'} />
         )}
       </td>
       <td className="pnl-td center pnl-td-primary">

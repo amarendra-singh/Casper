@@ -133,6 +133,7 @@ export const uploadShopdeckCustomers    = (formData)   => api.post('/pnl/shopdec
 export const getPnlStatement            = (reportId)   => api.get(`/pnl/statement/${reportId}`).then(r => r.data)
 export const getPnlTrend                = (platformId) => api.get('/pnl/trend', { params: platformId ? { platform_id: platformId } : {} }).then(r => r.data)
 export const getPnlConsolidated         = ()           => api.get('/pnl/consolidated').then(r => r.data)
+export const getUnmatchedSkus           = ()           => api.get('/pnl/unmatched-skus').then(r => r.data)
 
 // Billing / expense ledger
 export const getLedger        = (params) => api.get('/ledger/', { params }).then(r => r.data)

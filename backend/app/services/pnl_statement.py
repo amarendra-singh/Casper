@@ -95,14 +95,18 @@ def build_pnl_statement(rows: list[dict], report: dict) -> dict:
         other_fees = 0.0
         total_platform_fees = identified
 
-    # ── COGS + overhead from the cost model (matched SKUs only) ──────────────
-    cogs     = _s(rows, "_cogs_total")       # cogs_per_unit × net_units, precomputed per row
-    overhead = _s(rows, "_overhead_total")   # misc_per_unit × net_units
+    # ── Full cost stack from the cost model (matched SKUs only) ──────────────
+    # Together these equal breakeven × net_units — the complete per-unit cost floor.
+    cogs        = _s(rows, "_cogs_total")         # product purchase cost (price × units)
+    fulfillment = _s(rows, "_fulfillment_total")  # (package + logistics + addons) × units
+    return_cost = _s(rows, "_return_total")       # (courier-return + damage provision) × units
+    overhead    = _s(rows, "_overhead_total")     # misc / fixed-cost allocation × units
+    total_cost  = cogs + fulfillment + return_cost + overhead
 
     # ── Subtotals ────────────────────────────────────────────────────────────
     gross_profit = net_sales - cogs
-    contribution = net_payout - cogs
-    operating    = contribution - overhead
+    contribution = net_payout - cogs - fulfillment - return_cost   # after all variable costs
+    operating    = contribution - overhead                          # == net_payout − total_cost
 
     # ── Data quality: COGS coverage ──────────────────────────────────────────
     matched_units = int(_s([r for r in rows if r.get("matched")], "net_units"))
@@ -126,6 +130,8 @@ def build_pnl_statement(rows: list[dict], report: dict) -> dict:
         line("net_payout", "Net Payout", net_payout, "subtotal", 0,
              note="Reconciles to platform bank settlement"),
         line("cogs", "COGS (Product Cost)", -cogs, "expense", 1),
+        line("fulfillment", "Fulfillment (Packaging, Logistics)", -fulfillment, "expense", 1),
+        line("return_cost", "Return Cost (Courier + Damage)", -return_cost, "expense", 1),
         line("contribution", "Contribution Margin", contribution, "subtotal", 0),
         line("overhead", "Overhead Absorption", -overhead, "expense", 1),
         line("operating_profit", "Operating / Net Profit", operating, "total", 0),
@@ -139,9 +145,12 @@ def build_pnl_statement(rows: list[dict], report: dict) -> dict:
             "total_platform_fees": _round(total_platform_fees),
             "net_payout": _round(net_payout),
             "cogs": _round(cogs),
+            "fulfillment": _round(fulfillment),
+            "return_cost": _round(return_cost),
+            "overhead": _round(overhead),
+            "total_cost": _round(total_cost),
             "gross_profit": _round(gross_profit),
             "contribution": _round(contribution),
-            "overhead": _round(overhead),
             "operating_profit": _round(operating),
         },
         "margins": {
@@ -212,7 +221,8 @@ def build_consolidated(statements: list[dict]) -> dict:
         return {"subtotals": {}, "margins": {}, "platforms": []}
 
     keys = ["gross_sales", "net_sales", "total_platform_fees", "net_payout",
-            "cogs", "gross_profit", "contribution", "overhead", "operating_profit"]
+            "cogs", "fulfillment", "return_cost", "overhead", "total_cost",
+            "gross_profit", "contribution", "operating_profit"]
     agg = {k: round(sum((s["subtotals"].get(k) or 0) for s in statements), 2) for k in keys}
     ns = agg["net_sales"] or 0
     return {
@@ -251,6 +261,8 @@ def _rows_and_report(report) -> tuple[list[dict], dict]:
             "taxes_gst": r.taxes_gst or 0,
             "matched": sp is not None,
             "_cogs_total": (sp.price if sp else 0) * nu,
+            "_fulfillment_total": ((sp.package + sp.logistics + sp.addons) if sp else 0) * nu,
+            "_return_total": ((sp.cr_cost + sp.damage_cost) if sp else 0) * nu,
             "_overhead_total": (sp.misc_total if sp else 0) * nu,
         })
     report_d = {
@@ -322,6 +334,32 @@ async def compute_pnl_trend(db, company_id: int, platform_id: Optional[int] = No
             "net_units": st["units"]["net_units"],
         })
     return build_pnl_trend(periods)
+
+
+async def compute_unmatched_skus(db, company_id: int) -> list[dict]:
+    """
+    Distinct platform SKU names seen in uploads that have NO cost match in the
+    SKU master (sku_pricing_id IS NULL) — the 'hidden' SKUs excluded from P&L.
+    Aggregated so the user can prioritise which to add (by volume / payout).
+    """
+    from sqlalchemy import select, func
+    from app.models.pnl import PnlSkuRow
+    q = (select(
+            PnlSkuRow.platform_sku_name,
+            func.count(func.distinct(PnlSkuRow.report_id)).label("reports"),
+            func.coalesce(func.sum(PnlSkuRow.net_units), 0).label("units"),
+            func.coalesce(func.sum(PnlSkuRow.bank_settlement_projected), 0).label("payout"),
+         )
+         .where(PnlSkuRow.company_id == company_id, PnlSkuRow.sku_pricing_id.is_(None))
+         .group_by(PnlSkuRow.platform_sku_name)
+         .order_by(func.coalesce(func.sum(PnlSkuRow.net_units), 0).desc()))
+    rows = (await db.execute(q)).all()
+    return [{
+        "platform_sku_name": r.platform_sku_name,
+        "reports": r.reports,
+        "units": int(r.units or 0),
+        "payout": round(r.payout or 0, 2),
+    } for r in rows]
 
 
 async def compute_pnl_consolidated(db, company_id: int) -> dict:
