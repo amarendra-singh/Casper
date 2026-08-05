@@ -332,8 +332,25 @@ async def pnl_add_hidden_sku(
     if price <= 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="price must be greater than 0")
 
-    costs = {k: float(payload[k]) for k in ("package", "logistics", "addons")
-             if payload.get(k) not in (None, "")}
+    # Full cost stack, mirroring the SKUs grid. Anything omitted falls back to the
+    # company defaults resolved inside upsert_row (misc, return %, damage %, profit %).
+    NUMERIC = ("package", "logistics", "addons", "misc_total",
+               "cr_percentage", "cr_cost", "damage_percentage", "damage_cost",
+               "gst", "profit_percentage")
+    costs: dict = {}
+    for k in NUMERIC:
+        if payload.get(k) not in (None, ""):
+            try:
+                costs[k] = float(payload[k])
+            except (TypeError, ValueError):
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                    detail=f"{k} must be a number")
+    for k in ("vendor_id", "category_id"):
+        if payload.get(k) not in (None, ""):
+            costs[k] = int(payload[k])
+    if payload.get("vendor_sku"):
+        costs["vendor_sku"] = str(payload["vendor_sku"]).strip()
+
     result = await quick_add_hidden_sku(db, company.id, int(report_id), name, price, costs)
     if not result.get("created"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fmt, fmtN, fmtPct } from './utils'
-import { getPnlRows, getUnmatchedSkus, addHiddenSkuPricing } from '../../../api/client'
+import { getPnlRows, getUnmatchedSkus, addHiddenSkuPricing, getVendors } from '../../../api/client'
 
 /**
  * Profit & Loss tab — per-SKU actual-vs-target reconciliation.
@@ -62,24 +62,58 @@ function C({ row, k, children }) {
  * the upload's name as the platform alias, and re-matches this report in one call,
  * so the numbers move immediately instead of needing a re-upload.
  */
+const BLANK_COSTS = {
+  price: '', package: '', logistics: '', addons: '', misc_total: '',
+  cr_percentage: '', cr_cost: '', damage_percentage: '', damage_cost: '', vendor_id: '',
+}
+
+// Same cost stack as the SKUs grid. Blank = fall back to the company default,
+// which the backend resolves — so only Price is truly required.
+const COST_FIELDS = [
+  { key: 'package',           label: 'Package' },
+  { key: 'logistics',         label: 'Inbound Logistics' },
+  { key: 'addons',            label: 'Addons' },
+  { key: 'misc_total',        label: 'Misc', hint: 'default' },
+  { key: 'cr_percentage',     label: 'Return %', pairs: 'cr_cost' },
+  { key: 'cr_cost',           label: 'Return ₹', pairs: 'cr_percentage' },
+  { key: 'damage_percentage', label: 'Dmg %',    pairs: 'damage_cost' },
+  { key: 'damage_cost',       label: 'Dmg ₹',    pairs: 'damage_percentage' },
+]
+
 function HiddenSkuPanel({ reportId, onClose, onMatched }) {
   const [items, setItems]   = useState(null)
   const [openSku, setOpen]  = useState(null)
-  const [price, setPrice]   = useState('')
+  const [form, setForm]     = useState(BLANK_COSTS)
+  const [vendors, setVendors] = useState([])
   const [busy, setBusy]     = useState(false)
   const [err, setErr]       = useState('')
 
   useEffect(() => {
     getUnmatchedSkus(reportId).then(setItems).catch(() => setItems([]))
+    getVendors().then(setVendors).catch(() => setVendors([]))
   }, [reportId])
 
+  // % and ₹ are two ways to say the same thing — entering one clears its partner
+  // so the backend never receives a contradictory pair.
+  const setField = (key, value, pairs) =>
+    setForm(f => ({ ...f, [key]: value, ...(pairs ? { [pairs]: '' } : {}) }))
+
+  // Live preview of what this SKU will cost you per unit.
+  const previewBreakeven = (() => {
+    const n = k => parseFloat(form[k]) || 0
+    const base = n('price') + n('package') + n('logistics') + n('addons') + n('misc_total')
+    return base > 0 ? base + n('cr_cost') + n('damage_cost') : null
+  })()
+
   const submit = async (name) => {
-    if (!price || Number(price) <= 0) { setErr('Enter a price greater than 0'); return }
+    if (!form.price || Number(form.price) <= 0) { setErr('Enter a price greater than 0'); return }
     setBusy(true); setErr('')
     try {
-      const r = await addHiddenSkuPricing({ platform_sku_name: name, report_id: reportId, price: Number(price) })
+      const payload = { platform_sku_name: name, report_id: reportId }
+      Object.entries(form).forEach(([k, v]) => { if (v !== '') payload[k] = v })
+      const r = await addHiddenSkuPricing(payload)
       setItems(p => p.filter(x => x.platform_sku_name !== name))
-      setOpen(null); setPrice('')
+      setOpen(null); setForm(BLANK_COSTS)
       onMatched(r)
     } catch (e) {
       setErr(e.response?.data?.detail || 'Could not add SKU')
@@ -109,25 +143,49 @@ function HiddenSkuPanel({ reportId, onClose, onMatched }) {
                 <span className="hs-name">{u.platform_sku_name}</span>
                 <span className="hs-meta">{u.units} units · {fmt(u.payout)}</span>
                 <button className="btn btn-ghost btn-sm"
-                  onClick={() => { setOpen(openSku === u.platform_sku_name ? null : u.platform_sku_name); setPrice(''); setErr('') }}>
+                  onClick={() => { setOpen(openSku === u.platform_sku_name ? null : u.platform_sku_name); setForm(BLANK_COSTS); setErr('') }}>
                   {openSku === u.platform_sku_name ? 'Cancel' : 'Add cost'}
                 </button>
               </div>
               {openSku === u.platform_sku_name && (
                 <div className="hs-form">
-                  <label>
-                    Your purchase cost per unit
-                    <input type="number" min="0" step="0.01" autoFocus value={price}
-                      placeholder="e.g. 63"
-                      onChange={e => setPrice(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && submit(u.platform_sku_name)} />
-                  </label>
-                  <button className="btn btn-accent btn-sm" disabled={busy}
-                    onClick={() => submit(u.platform_sku_name)}>
-                    {busy ? 'Saving…' : 'Save & match'}
-                  </button>
+                  <div className="hs-grid">
+                    <label className="hs-f hs-f-wide">Vendor
+                      <select value={form.vendor_id} onChange={e => setField('vendor_id', e.target.value)}>
+                        <option value="">— none —</option>
+                        {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                      </select>
+                    </label>
+                    <label className="hs-f hs-f-req">Price ₹
+                      <input type="number" min="0" step="0.01" autoFocus value={form.price}
+                        placeholder="required"
+                        onChange={e => setField('price', e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && submit(u.platform_sku_name)} />
+                    </label>
+                    {COST_FIELDS.map(f => (
+                      <label key={f.key} className="hs-f">{f.label}
+                        <input type="number" min="0" step="0.01" value={form[f.key]}
+                          placeholder={f.hint || 'auto'}
+                          onChange={e => setField(f.key, e.target.value, f.pairs)}
+                          onKeyDown={e => e.key === 'Enter' && submit(u.platform_sku_name)} />
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="hs-actions">
+                    <span className="hs-preview">
+                      {previewBreakeven
+                        ? <>Breakeven <strong>{fmt(previewBreakeven)}</strong> / unit</>
+                        : 'Enter a price to see breakeven'}
+                    </span>
+                    <button className="btn btn-accent btn-sm" disabled={busy}
+                      onClick={() => submit(u.platform_sku_name)}>
+                      {busy ? 'Saving…' : 'Save & match'}
+                    </button>
+                  </div>
                   <p className="hs-hint">
-                    Packaging, logistics, return and overhead use your defaults — edit later in SKUs.
+                    Blank fields use your company defaults. Return and Damage each accept a %
+                    <em>or</em> a ₹ amount — filling one clears the other.
                   </p>
                   {err && <p className="hs-err">{err}</p>}
                 </div>

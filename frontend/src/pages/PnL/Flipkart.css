@@ -1962,3 +1962,21 @@ div.pnl-animate-in {
 .hs-form input:focus { border-color: var(--pink, #EC2D6E); box-shadow: 0 0 0 3px var(--pink-soft, #FCE4EC); }
 .hs-hint { font-size: 10.5px; color: var(--muted, var(--text-3)); margin-top: 8px; line-height: 1.45; }
 .hs-err { font-size: 11px; color: var(--red, #dc2626); font-weight: 600; margin-top: 6px; }
+
+/* Hidden-SKU quick-add: full cost stack, mirrors the SKUs grid */
+.hs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 12px; }
+.hs-f { display: flex; flex-direction: column; gap: 4px; font-size: 10.5px; font-weight: 600; color: var(--text-2, #4b5563); margin: 0; }
+.hs-f-wide { grid-column: 1 / -1; }
+.hs-f-req > input { border-color: var(--pink, #EC2D6E) !important; }
+.hs-f input, .hs-f select {
+  width: 100%; padding: 7px 10px; margin: 0;
+  border: 1px solid var(--border-2, #d9d6d2); border-radius: 8px;
+  font-family: var(--font-mono); font-size: 12.5px;
+  background: var(--canvas, #fff); color: var(--ink, #111); outline: none;
+}
+.hs-f select { font-family: var(--font-ui); cursor: pointer; }
+.hs-f input::placeholder { color: var(--muted-2, #b8b6b2); font-style: italic; }
+.hs-f input:focus, .hs-f select:focus { border-color: var(--pink, #EC2D6E); box-shadow: 0 0 0 3px var(--pink-soft, #FCE4EC); }
+.hs-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+.hs-preview { font-size: 11.5px; color: var(--text-2, #4b5563); }
+.hs-preview strong { font-family: var(--num, var(--font-mono)); font-size: 14px; color: var(--ink, #111); }
