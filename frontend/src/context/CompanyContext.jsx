@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { getCompanies, createCompany as apiCreate, getCompanyContext, updateCompanyModules,
-         renameCompany as apiRename, archiveCompany as apiArchive, leaveCompany as apiLeave } from '../api/client'
+         renameCompany as apiRename, archiveCompany as apiArchive, leaveCompany as apiLeave,
+         restoreCompany as apiRestore } from '../api/client'
 import { useAuth } from './AuthContext'
 
 const CompanyContext = createContext(null)
@@ -56,9 +57,9 @@ export function CompanyProvider({ children }) {
     return co
   }, [])
 
-  const renameCompany = useCallback(async (id, name) => {
-    const co = await apiRename(id, name)
-    setCompanies(p => p.map(c => (c.id === id ? { ...c, name: co.name } : c)))
+  const renameCompany = useCallback(async (id, name, color) => {
+    const co = await apiRename(id, name, color)
+    setCompanies(p => p.map(c => (c.id === id ? { ...c, name: co.name, color: co.color } : c)))
     return co
   }, [])
 
@@ -75,12 +76,13 @@ export function CompanyProvider({ children }) {
 
   const archiveCompany = useCallback(async (id) => { await apiArchive(id); await afterRemoval(id) }, [afterRemoval])
   const leaveCompany   = useCallback(async (id) => { await apiLeave(id);   await afterRemoval(id) }, [afterRemoval])
+  const restoreCompany = useCallback(async (id) => { await apiRestore(id); await load() }, [load])
 
   const activeCompany = companies.find(c => c.id === activeId) || companies[0] || null
 
   return (
     <CompanyContext.Provider value={{ companies, activeCompany, activeId, setActive, createCompany,
-        renameCompany, archiveCompany, leaveCompany, reload: load, modules, role, updateModules }}>
+        renameCompany, archiveCompany, leaveCompany, restoreCompany, reload: load, modules, role, updateModules }}>
       {children}
     </CompanyContext.Provider>
   )

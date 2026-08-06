@@ -88,11 +88,18 @@ function CompanyManage() {
 
   return (
     <div className="st-add-card" style={{ marginBottom: 16 }}>
-      <div style={{ marginBottom: 12 }}>
-        <div className="st-title" style={{ fontSize: 16 }}>Company</div>
-        <p className="st-sub" style={{ margin: '2px 0 0' }}>
-          Rename or remove <b>{activeCompany?.name || 'this company'}</b>
-        </p>
+      <div style={{ marginBottom: 12, display: 'flex', alignItems: 'flex-start',
+                    justifyContent: 'space-between', gap: 12 }}>
+        <div>
+          <div className="st-title" style={{ fontSize: 16 }}>Company</div>
+          <p className="st-sub" style={{ margin: '2px 0 0' }}>
+            Rename or remove <b>{activeCompany?.name || 'this company'}</b>
+          </p>
+        </div>
+        {/* Company CRUD now lives on the Companies page. This stays as a shortcut for the
+            ACTIVE company only, so the two surfaces can't drift apart again. */}
+        <a className="st-cancel-btn" href="/companies"
+           style={{ textDecoration: 'none', whiteSpace: 'nowrap' }}>All companies →</a>
       </div>
       {isOwner ? (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>

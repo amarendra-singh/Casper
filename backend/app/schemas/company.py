@@ -9,7 +9,8 @@ class CompanyCreate(BaseModel):
 
 
 class CompanyUpdate(BaseModel):
-    name: str
+    name: Optional[str] = None
+    color: Optional[str] = None
 
 
 class CompanyResponse(BaseModel):
@@ -18,6 +19,7 @@ class CompanyResponse(BaseModel):
     slug: str
     color: str
     role: CompanyRole          # the requesting user's role in this company
+    is_active: bool = True     # false = archived; the UI offers Restore
 
 
 class CompanyContext(BaseModel):

@@ -60,23 +60,34 @@ async def create_company(db: AsyncSession, owner_id: int, name: str,
     return co
 
 
-async def list_user_companies(db: AsyncSession, user_id: int):
-    """Return [(Company, role)] for every company the user belongs to."""
-    rows = await db.execute(
-        select(Company, CompanyMembership.role)
-        .join(CompanyMembership, CompanyMembership.company_id == Company.id)
-        .where(CompanyMembership.user_id == user_id, Company.is_active.is_(True))
-        .order_by(Company.created_at)
-    )
+async def list_user_companies(db: AsyncSession, user_id: int, include_archived: bool = False):
+    """
+    Return [(Company, role)] for every company the user belongs to.
+
+    Archived companies are excluded by default so they drop out of the switcher.
+    `include_archived=True` is what makes them recoverable — without it an archived
+    company is invisible and therefore unrestorable.
+    """
+    q = (select(Company, CompanyMembership.role)
+         .join(CompanyMembership, CompanyMembership.company_id == Company.id)
+         .where(CompanyMembership.user_id == user_id)
+         .order_by(Company.created_at))
+    if not include_archived:
+        q = q.where(Company.is_active.is_(True))
+    rows = await db.execute(q)
     return rows.all()
 
 
-async def rename_company(db: AsyncSession, company_id: int, name: str):
-    """Update a company's display name (slug stays stable). Returns Company or None."""
+async def rename_company(db: AsyncSession, company_id: int, name: str | None = None,
+                         color: str | None = None):
+    """Update a company's display name/colour (slug stays stable). Returns Company or None."""
     co = (await db.execute(select(Company).where(Company.id == company_id))).scalar_one_or_none()
     if not co:
         return None
-    co.name = name.strip()
+    if name and name.strip():
+        co.name = name.strip()
+    if color:
+        co.color = color
     return co
 
 
@@ -86,6 +97,15 @@ async def archive_company(db: AsyncSession, company_id: int) -> bool:
     if not co:
         return False
     co.is_active = False
+    return True
+
+
+async def restore_company(db: AsyncSession, company_id: int) -> bool:
+    """Undo an archive. Archiving used to be one-way, stranding the company's data."""
+    co = (await db.execute(select(Company).where(Company.id == company_id))).scalar_one_or_none()
+    if not co:
+        return False
+    co.is_active = True
     return True
 
 

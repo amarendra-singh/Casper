@@ -50,6 +50,7 @@ const WORKSPACE = [
   { to: '/ledger', label: 'Expense Ledger', Icon: IcLedger, module: 'ledger', end: true },
   { to: '/users', label: 'Users', Icon: IcUsers, module: 'users', end: true },
   { to: '/settings', label: 'Settings',  Icon: IcSettings, subItems: [
+    { to: '/companies',      label: 'Companies' },
     { to: '/settings',       label: 'Platforms & Tiers', end: true },
     { to: '/settings/intro', label: 'Overview' },
   ]},
@@ -197,21 +198,13 @@ export default function Layout() {
                   </div>
                 )
               })}
-              <div className="co-add" role="menuitem" tabIndex={0} aria-label="Add new company"
-                onClick={async () => {
-                  const name = window.prompt('New company name')
-                  if (!name?.trim()) return
-                  try { const co = await createCompany(name.trim()); setShowCo(false); setActive(co.id) }
-                  catch (e) { alert(e.response?.data?.detail || 'Could not create company') }
-                }}
-                onKeyDown={onKey(() => {
-                  const name = window.prompt('New company name')
-                  if (!name?.trim()) return
-                  createCompany(name.trim()).then(co => { setShowCo(false); setActive(co.id) })
-                    .catch(e => alert(e.response?.data?.detail || 'Could not create company'))
-                })}>
+              {/* Creating used to happen through a raw window.prompt() here — no colour,
+                  no validation. It now goes to the Companies page, which owns company CRUD. */}
+              <div className="co-add" role="menuitem" tabIndex={0} aria-label="Manage companies"
+                onClick={() => { setShowCo(false); navigate('/companies') }}
+                onKeyDown={onKey(() => { setShowCo(false); navigate('/companies') })}>
                 <span className="co-add-plus">+</span>
-                <span className="co-add-label">Add new company</span>
+                <span className="co-add-label">Add / manage companies</span>
               </div>
             </div>
           )}
@@ -345,23 +338,9 @@ export default function Layout() {
             </>}
           </div>
 
-          {/* Settings */}
-          <div className="nav-sec">
-            <div className="sec-hdr" onClick={() => togSec('settings')}>
-              <span className="sec-lbl">Settings</span>
-              <span className={`sec-chev ${open.settings ? '' : 'closed'}`}>▾</span>
-            </div>
-            {open.settings && <>
-              <NavLink to="/settings"
-                className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-                Platforms & Tiers
-              </NavLink>
-              <NavLink to="/vendors"
-                className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-                Vendors
-              </NavLink>
-            </>}
-          </div>
+          {/* NOTE: a second "Settings" section used to live here, linking to the same
+              /settings route as the Workspace item above and re-listing Vendors (already
+              its own Workspace item). Removed — one Settings entry, one home per feature. */}
 
         </div>
 

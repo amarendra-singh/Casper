@@ -11,7 +11,7 @@ from app.schemas.company import (
     MemberResponse, MemberCreate, MemberRoleUpdate,
 )
 from app.services.company import (
-    create_company, rename_company, archive_company,
+    create_company, rename_company, archive_company, restore_company,
     list_user_companies, get_membership, get_modules, set_company_modules,
     list_members, add_member, update_member_role, remove_member,
 )
@@ -31,12 +31,15 @@ router = APIRouter(prefix="/companies", tags=["Companies"])
 
 def _resp(company, role) -> CompanyResponse:
     return CompanyResponse(id=company.id, name=company.name, slug=company.slug,
-                           color=company.color, role=role)
+                           color=company.color, role=role, is_active=company.is_active)
 
 
 @router.get("/", response_model=list[CompanyResponse])
-async def my_companies(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    return [_resp(c, r) for c, r in await list_user_companies(db, user.id)]
+async def my_companies(include_archived: bool = False, db: AsyncSession = Depends(get_db),
+                       user: User = Depends(get_current_user)):
+    """Companies the user belongs to. `include_archived` surfaces archived ones so
+    they can be restored — the switcher calls this without the flag."""
+    return [_resp(c, r) for c, r in await list_user_companies(db, user.id, include_archived)]
 
 
 @router.post("/", response_model=CompanyResponse, status_code=status.HTTP_201_CREATED)
@@ -52,7 +55,7 @@ async def new_company(payload: CompanyCreate, db: AsyncSession = Depends(get_db)
 async def rename_company_route(company_id: int, payload: CompanyUpdate,
                               db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     await _require_owner(db, user, company_id)
-    co = await rename_company(db, company_id, payload.name)
+    co = await rename_company(db, company_id, payload.name, getattr(payload, "color", None))
     await db.commit()
     await db.refresh(co)
     return _resp(co, CompanyRole.owner)
@@ -65,6 +68,17 @@ async def archive_company_route(company_id: int, db: AsyncSession = Depends(get_
     await _require_owner(db, user, company_id)
     await archive_company(db, company_id)
     await db.commit()
+
+
+@router.post("/{company_id}/restore", response_model=CompanyResponse)
+async def restore_company_route(company_id: int, db: AsyncSession = Depends(get_db),
+                                user: User = Depends(get_current_user)):
+    """Owner-only undo of an archive — archiving was previously irreversible."""
+    company = await _require_owner(db, user, company_id)
+    await restore_company(db, company_id)
+    await db.commit()
+    await db.refresh(company)
+    return _resp(company, CompanyRole.owner)
 
 
 @router.post("/{company_id}/leave", status_code=status.HTTP_204_NO_CONTENT)

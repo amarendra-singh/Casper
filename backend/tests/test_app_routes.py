@@ -34,6 +34,8 @@ def test_core_routers_mounted():
         "/api/v1/pnl/unmatched-skus",
         "/api/v1/pnl/hidden-skus/add",
         "/api/v1/pnl/rematch/{report_id}",
+        "/api/v1/companies/",
+        "/api/v1/companies/{company_id}/restore",
         "/api/v1/fraud/actors",
         "/api/v1/dashboard/metrics",
     ]:

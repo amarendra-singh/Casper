@@ -27,6 +27,7 @@ const Vendors = lazy(() => import('./pages/Vendors'))
 const PnLList = lazy(() => import('./pages/PnL/PnLList'))
 const PnLReport = lazy(() => import('./pages/PnL/PnLReport'))
 const ConsolidatedPnL = lazy(() => import('./pages/PnL/ConsolidatedPnL'))
+const Companies = lazy(() => import('./pages/Companies'))
 const Settings = lazy(() => import('./pages/Settings'))
 const ProfitCalculator = lazy(() => import('./pages/ProfitCalculator'))
 const Users = lazy(() => import('./pages/Users'))
@@ -101,6 +102,7 @@ function AppRoutes() {
         <Route path="fraud" element={<RequireModule module="fraud"><FraudDashboard /></RequireModule>} />
         <Route path="fraud/platform/:platformId" element={<RequireModule module="fraud"><FraudPlatformPage /></RequireModule>} />
         <Route path="settings" element={<Settings />} />
+        <Route path="companies" element={<Companies />} />
         <Route path="account" element={<Account />} />
         <Route path="users" element={<RequireModule module="users"><Users /></RequireModule>} />
       </Route>
