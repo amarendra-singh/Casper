@@ -420,3 +420,19 @@
   .canvas { border-radius: 12px 12px 0 0; padding: 16px 16px 20px; }
   .topbar { padding: 12px 16px 10px; }
 }
+
+/* Group mode — "All Companies" row in the switcher */
+.co-row-all { border-bottom: 1px solid var(--rule, #edeae6); }
+.co-row-all.on { background: var(--pink-wash, #FFF1F5); }
+.co-rdot-all {
+  background: conic-gradient(from 0deg, #EC2D6E, #7A5BFF, #0EA5E9, #16A34A, #EC2D6E);
+}
+
+/* Group-mode notice */
+.group-banner {
+  margin: 0 0 18px; padding: 11px 16px; border-radius: 12px;
+  background: var(--pink-wash, #FFF1F5);
+  border: 1px solid color-mix(in srgb, var(--pink, #EC2D6E) 22%, transparent);
+  color: var(--text-2, #4b5563); font-size: 12px; line-height: 1.5;
+}
+.group-banner strong { color: var(--pink, #EC2D6E); }

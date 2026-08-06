@@ -6,20 +6,28 @@ import { useAuth } from './AuthContext'
 
 const CompanyContext = createContext(null)
 
+export const ALL = 'all'   // sentinel for group mode; sent as the X-Company-Id header
+
 export function CompanyProvider({ children }) {
   const { user } = useAuth()
   const [companies, setCompanies] = useState([])
+  // 'all' = group mode: consolidated reads across every company the user belongs to.
+  // Writes stay single-company (the backend refuses non-GET while in group mode).
   const [activeId, setActiveId] = useState(() => {
     const v = localStorage.getItem('active_company_id')
+    if (v === ALL) return ALL
     return v ? Number(v) : null
   })
+  const isAll = activeId === ALL
 
   const load = useCallback(async () => {
     if (!localStorage.getItem('access_token')) { setCompanies([]); return }
     try {
       const cs = await getCompanies()
       setCompanies(cs)
-      const stored = Number(localStorage.getItem('active_company_id'))
+      const raw = localStorage.getItem('active_company_id')
+      if (raw === ALL) { setActiveId(ALL); return }   // stay in group mode across reloads
+      const stored = Number(raw)
       const next = cs.find(c => c.id === stored) ? stored : (cs[0]?.id ?? null)
       if (next) { localStorage.setItem('active_company_id', String(next)); setActiveId(next) }
     } catch { /* unauthenticated or none yet */ }
@@ -33,10 +41,25 @@ export function CompanyProvider({ children }) {
   const [role, setRole] = useState(null)
   useEffect(() => {
     if (!activeId || !localStorage.getItem('access_token')) { setModules({}); setRole(null); return }
+    // Group mode has no single company context; union the modules so every
+    // consolidated screen the user can reach in ANY company stays available.
+    if (activeId === ALL) {
+      const first = companies[0]
+      if (!first) return
+      Promise.all(companies.map(c => getCompanyContext(c.id).catch(() => null)))
+        .then(ctxs => {
+          const union = {}
+          ctxs.filter(Boolean).forEach(ctx => {
+            Object.entries(ctx.modules || {}).forEach(([k, v]) => { union[k] = union[k] || v })
+          })
+          setModules(union); setRole(null)
+        })
+      return
+    }
     getCompanyContext(activeId)
       .then(ctx => { setModules(ctx.modules || {}); setRole(ctx.company?.role || null) })
       .catch(() => {})
-  }, [activeId, user])
+  }, [activeId, user, companies])
 
   const updateModules = useCallback(async (next) => {
     const ctx = await updateCompanyModules(activeId, next)
@@ -46,8 +69,8 @@ export function CompanyProvider({ children }) {
 
   // Switching company reloads the app so every screen refetches scoped data.
   const setActive = useCallback((id) => {
-    localStorage.setItem('active_company_id', String(id))
-    setActiveId(id)
+    localStorage.setItem('active_company_id', String(id))   // 'all' stays a string
+    setActiveId(id === ALL ? ALL : Number(id))
     window.location.assign('/')
   }, [])
 
@@ -78,10 +101,12 @@ export function CompanyProvider({ children }) {
   const leaveCompany   = useCallback(async (id) => { await apiLeave(id);   await afterRemoval(id) }, [afterRemoval])
   const restoreCompany = useCallback(async (id) => { await apiRestore(id); await load() }, [load])
 
-  const activeCompany = companies.find(c => c.id === activeId) || companies[0] || null
+  const activeCompany = isAll
+    ? { id: ALL, name: 'All Companies', color: 'var(--ink)', role: null, isAll: true }
+    : (companies.find(c => c.id === activeId) || companies[0] || null)
 
   return (
-    <CompanyContext.Provider value={{ companies, activeCompany, activeId, setActive, createCompany,
+    <CompanyContext.Provider value={{ companies, activeCompany, activeId, isAll, setActive, createCompany,
         renameCompany, archiveCompany, leaveCompany, restoreCompany, reload: load, modules, role, updateModules }}>
       {children}
     </CompanyContext.Provider>

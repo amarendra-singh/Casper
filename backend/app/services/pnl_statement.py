@@ -30,6 +30,8 @@ from __future__ import annotations
 
 from typing import Optional
 
+from app.services.scope import company_ids
+
 
 def _s(rows: list[dict], key: str) -> float:
     """Sum a field across rows, treating None as 0, magnitude-agnostic callers use abs()."""
@@ -368,7 +370,7 @@ def _statement_query():
 async def compute_pnl_statement(db, report_id: int, company_id: int) -> Optional[dict]:
     """Full income statement for one report."""
     from app.models.pnl import PnlReport
-    q = _statement_query().where(PnlReport.id == report_id, PnlReport.company_id == company_id)
+    q = _statement_query().where(PnlReport.id == report_id, PnlReport.company_id.in_(company_ids(company_id)))
     report = await db.scalar(q)
     if report is None:
         return None
@@ -378,10 +380,10 @@ async def compute_pnl_statement(db, report_id: int, company_id: int) -> Optional
     return stmt
 
 
-async def compute_pnl_trend(db, company_id: int, platform_id: Optional[int] = None) -> dict:
+async def compute_pnl_trend(db, company_id: int | list[int], platform_id: Optional[int] = None) -> dict:
     """Period-over-period trend across a company's reports (optionally one platform)."""
     from app.models.pnl import PnlReport
-    q = _statement_query().where(PnlReport.company_id == company_id).order_by(PnlReport.period_start)
+    q = _statement_query().where(PnlReport.company_id.in_(company_ids(company_id))).order_by(PnlReport.period_start)
     if platform_id:
         q = q.where(PnlReport.platform_id == platform_id)
     reports = (await db.execute(q)).scalars().all()
@@ -523,7 +525,7 @@ def build_pnl_rows(rows: list[dict]) -> dict:
 async def compute_pnl_rows(db, report_id: int, company_id: int) -> Optional[dict]:
     """Per-SKU P&L rows (matched SKUs) with calc breakdowns — backend single source of truth."""
     from app.models.pnl import PnlReport
-    q = _statement_query().where(PnlReport.id == report_id, PnlReport.company_id == company_id)
+    q = _statement_query().where(PnlReport.id == report_id, PnlReport.company_id.in_(company_ids(company_id)))
     report = await db.scalar(q)
     if report is None:
         return None
@@ -574,7 +576,7 @@ async def compute_pnl_rows(db, report_id: int, company_id: int) -> Optional[dict
     return result
 
 
-async def compute_unmatched_skus(db, company_id: int, report_id: Optional[int] = None) -> list[dict]:
+async def compute_unmatched_skus(db, company_id: int | list[int], report_id: Optional[int] = None) -> list[dict]:
     """
     Distinct platform SKU names seen in uploads that have NO cost match in the
     SKU master (sku_pricing_id IS NULL) — the 'hidden' SKUs excluded from P&L.
@@ -591,7 +593,7 @@ async def compute_unmatched_skus(db, company_id: int, report_id: Optional[int] =
             func.coalesce(func.sum(PnlSkuRow.net_units), 0).label("units"),
             func.coalesce(func.sum(PnlSkuRow.bank_settlement_projected), 0).label("payout"),
          )
-         .where(PnlSkuRow.company_id == company_id, PnlSkuRow.sku_pricing_id.is_(None))
+         .where(PnlSkuRow.company_id.in_(company_ids(company_id)), PnlSkuRow.sku_pricing_id.is_(None))
          .group_by(PnlSkuRow.platform_sku_name)
          .order_by(func.coalesce(func.sum(PnlSkuRow.net_units), 0).desc()))
     if report_id is not None:
@@ -630,7 +632,7 @@ async def rematch_report(db, report_id: int, company_id: int) -> int:
     from app.services.pnl import _build_pricing_lookup
 
     report = await db.scalar(
-        _statement_query().where(PnlReport.id == report_id, PnlReport.company_id == company_id)
+        _statement_query().where(PnlReport.id == report_id, PnlReport.company_id.in_(company_ids(company_id)))
     )
     if report is None:
         return 0
@@ -673,7 +675,7 @@ async def quick_add_hidden_sku(db, company_id: int, report_id: int, platform_sku
     from app.core.config import settings
 
     report = await db.scalar(
-        _statement_query().where(PnlReport.id == report_id, PnlReport.company_id == company_id)
+        _statement_query().where(PnlReport.id == report_id, PnlReport.company_id.in_(company_ids(company_id)))
     )
     if report is None:
         return {"created": False, "error": "Report not found"}
@@ -730,7 +732,7 @@ def select_consolidation_period(index: dict[str, set]) -> tuple[Optional[str], l
     return period, sorted(all_platforms - index[period])
 
 
-async def compute_pnl_consolidated(db, company_id: int) -> dict:
+async def compute_pnl_consolidated(db, company_id: int | list[int]) -> dict:
     """
     Blended business-wide P&L for a single aligned period across platforms.
 
@@ -738,7 +740,7 @@ async def compute_pnl_consolidated(db, company_id: int) -> dict:
     is period-comparable.
     """
     from app.models.pnl import PnlReport
-    q = _statement_query().where(PnlReport.company_id == company_id).order_by(PnlReport.period_start.desc())
+    q = _statement_query().where(PnlReport.company_id.in_(company_ids(company_id))).order_by(PnlReport.period_start.desc())
     reports = (await db.execute(q)).scalars().all()
 
     index: dict[str, set] = {}
@@ -747,6 +749,18 @@ async def compute_pnl_consolidated(db, company_id: int) -> dict:
     period, missing_ids = select_consolidation_period(index)
 
     id_to_name = {rep.platform_id: (rep.platform.name if rep.platform else None) for rep in reports}
+
+    # Group mode blends several companies. Platforms are per-company, so deduping
+    # by platform_id already keeps each company's channels separate — but the rows
+    # need a company label, and the caller wants a per-company rollup too.
+    co_names: dict[int, str] = {}
+    cids = company_ids(company_id)
+    if len(cids) > 1:
+        from sqlalchemy import select
+        from app.models.company import Company
+        rows_co = await db.execute(select(Company.id, Company.name).where(Company.id.in_(cids)))
+        co_names = {cid: name for cid, name in rows_co.all()}
+
     seen: set[int] = set()
     statements = []
     for rep in reports:                      # already newest-first
@@ -756,10 +770,28 @@ async def compute_pnl_consolidated(db, company_id: int) -> dict:
         rows, report_d = _rows_and_report(rep)
         st = build_pnl_statement(rows, report_d)
         st["platform"] = rep.platform.name if rep.platform else None
+        st["company"] = co_names.get(rep.company_id)
+        st["company_id"] = rep.company_id
         st["period"] = period
         statements.append(st)
 
     result = build_consolidated(statements)
     result["period"] = period
     result["excluded_platforms"] = [id_to_name.get(pid) for pid in missing_ids]
+
+    if co_names:
+        # Per-company rollup. Margins are recomputed from the summed totals — averaging
+        # per-company percentages would weight a tiny company the same as a large one.
+        by_co: dict[int, dict] = {}
+        for st in statements:
+            b = by_co.setdefault(st["company_id"], {
+                "company": st.get("company"), "net_sales": 0.0, "operating_profit": 0.0, "platforms": 0})
+            b["net_sales"] += st["subtotals"].get("net_sales") or 0
+            b["operating_profit"] += st["subtotals"].get("operating_profit") or 0
+            b["platforms"] += 1
+        for b in by_co.values():
+            b["net_sales"] = _round(b["net_sales"])
+            b["operating_profit"] = _round(b["operating_profit"])
+            b["operating_margin_pct"] = _pct(b["operating_profit"], b["net_sales"])
+        result["companies"] = sorted(by_co.values(), key=lambda x: -(x["net_sales"] or 0))
     return result

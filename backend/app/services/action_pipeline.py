@@ -19,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.fraud import ActorRiskProfile
+from app.services.scope import company_ids
 
 
 # Estimated avg order value (₹) for recovery sizing — matches insight-card basis.
@@ -136,9 +137,10 @@ def build_action_pipeline(actors: list[dict]) -> dict:
     }
 
 
-async def compute_action_pipeline(db: AsyncSession, company_id: int) -> dict:
+async def compute_action_pipeline(db: AsyncSession, company_id: int | list[int]) -> dict:
     """Load actor risk profiles, feed the pure pipeline builder."""
-    result = await db.execute(select(ActorRiskProfile).where(ActorRiskProfile.company_id == company_id))
+    _cids = company_ids(company_id)   # group mode passes several
+    result = await db.execute(select(ActorRiskProfile).where(ActorRiskProfile.company_id.in_(_cids)))
     actors = [
         {
             "actor_key": a.actor_key,

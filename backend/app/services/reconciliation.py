@@ -18,6 +18,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.pnl import PnlReport, PnlSkuRow
+from app.services.scope import company_ids
 from app.models.sku import SkuPricing, Sku
 from app.models.platform import Platform
 
@@ -104,8 +105,9 @@ def build_reconciliation(reports: list[dict], watch_rows: list[dict]) -> dict:
     }
 
 
-async def compute_reconciliation(db: AsyncSession, company_id: int) -> dict:
+async def compute_reconciliation(db: AsyncSession, company_id: int | list[int]) -> dict:
     """Pull per-report settlement + per-SKU expected vs actual, feed pure fn."""
+    _cids = company_ids(company_id)   # group mode passes several
     rep_res = await db.execute(
         select(
             Platform.name,
@@ -116,7 +118,7 @@ async def compute_reconciliation(db: AsyncSession, company_id: int) -> dict:
             func.coalesce(func.sum(PnlReport.total_expenses), 0.0),
         )
         .join(Platform, Platform.id == PnlReport.platform_id)
-        .where(PnlReport.company_id == company_id)
+        .where(PnlReport.company_id.in_(_cids))
         .group_by(Platform.name)
     )
     reports = [
@@ -139,7 +141,7 @@ async def compute_reconciliation(db: AsyncSession, company_id: int) -> dict:
         .join(Sku, Sku.id == SkuPricing.sku_id)
         .join(Platform, Platform.id == SkuPricing.platform_id)
         .where(
-            PnlSkuRow.company_id == company_id,
+            PnlSkuRow.company_id.in_(_cids),
             PnlSkuRow.sku_pricing_id.isnot(None),
             PnlSkuRow.casper_expected_bs.isnot(None),
             PnlSkuRow.bank_settlement_projected.isnot(None),

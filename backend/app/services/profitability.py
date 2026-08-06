@@ -21,6 +21,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.pnl import PnlSkuRow
+from app.services.scope import company_ids
 from app.models.sku import SkuPricing, Sku
 from app.models.platform import Platform
 
@@ -127,8 +128,9 @@ def build_sku_intelligence(rows: list[dict]) -> dict:
     }
 
 
-async def compute_sku_intelligence(db: AsyncSession, company_id: int) -> dict:
+async def compute_sku_intelligence(db: AsyncSession, company_id: int | list[int]) -> dict:
     """Join matched P&L rows → pricing → master SKU/platform, feed pure fn."""
+    _cids = company_ids(company_id)   # group mode passes several
     result = await db.execute(
         select(
             Sku.shringar_sku,
@@ -145,7 +147,7 @@ async def compute_sku_intelligence(db: AsyncSession, company_id: int) -> dict:
         .join(Sku, Sku.id == SkuPricing.sku_id)
         .join(Platform, Platform.id == SkuPricing.platform_id)
         .where(
-            PnlSkuRow.company_id == company_id,
+            PnlSkuRow.company_id.in_(_cids),
             PnlSkuRow.sku_pricing_id.isnot(None),
             PnlSkuRow.bank_settlement_projected.isnot(None),
             SkuPricing.breakeven.isnot(None),

@@ -85,7 +85,7 @@ export default function Layout() {
   const [open,      setOpen]      = useState({ workspace:true, pnl:true, analytics:false, reports:true, settings:false })
   const [openWsItem,setOpenWsItem]= useState({})
   const [treeOpen,  setTreeOpen]  = useState({ my:true, shared:false })
-  const { companies, activeCompany, setActive, createCompany, modules } = useCompany()
+  const { companies, activeCompany, isAll, setActive, createCompany, modules } = useCompany()
   const company = activeCompany || { name: 'Select company', color: 'var(--muted-2)' }
   // Enter/Space activation for role="button" divs (keyboard a11y).
   const onKey = fn => e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn() } }
@@ -184,6 +184,23 @@ export default function Layout() {
           </div>
           {showCo && (
             <div className="co-dd" role="menu">
+              {/* Group mode — consolidated reads across every company. */}
+              {companies.length > 1 && (() => {
+                const pickAll = () => { setShowCo(false); if (!isAll) setActive('all') }
+                return (
+                  <div className={`co-row co-row-all${isAll ? ' on' : ''}`} role="menuitem" tabIndex={0}
+                    aria-label={`All Companies, consolidated${isAll ? ', active' : ''}`}
+                    onClick={pickAll} onKeyDown={onKey(pickAll)}>
+                    <div className="co-rdot co-rdot-all" />
+                    <div>
+                      <div className="co-rname">All Companies</div>
+                      <div className="co-rsub">
+                        Consolidated · {companies.length} companies{isAll ? ' · active' : ''}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
               {companies.map(c => {
                 const pick = () => { setShowCo(false); if (c.id !== activeCompany?.id) setActive(c.id) }
                 return (
@@ -414,6 +431,15 @@ export default function Layout() {
         {/* Canvas */}
         <div className="canvas-wrap">
           <main className="canvas">
+            {/* Group mode is read-only by design: a record must belong to exactly one
+                company (GST and the frozen cost basis are per entity), so the backend
+                refuses writes while the header is `all`. Say so up front. */}
+            {isAll && (
+              <div className="group-banner">
+                <strong>All Companies</strong> — consolidated view across {companies.length} companies.
+                Reports and dashboards are combined; to add or edit anything, switch to a specific company.
+              </div>
+            )}
             <Outlet />
           </main>
         </div>

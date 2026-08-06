@@ -22,7 +22,7 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_any, require_admin_or_above, get_active_company
+from app.core.dependencies import get_current_user, require_any, require_admin_or_above, get_active_company, get_company_scope
 from app.core.logging_config import pnl_logger, app_logger
 from app.models.user import User
 from app.models.pnl import PnlReport, PnlSkuRow
@@ -276,22 +276,24 @@ async def pnl_trend(
     platform_id: int | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
 ):
     """Period-over-period P&L trend across the company's reports."""
     from app.services.pnl_statement import compute_pnl_trend
-    return await compute_pnl_trend(db, company.id, platform_id)
+    return await compute_pnl_trend(db, scope.ids, platform_id)
 
 
 @router.get("/consolidated")
 async def pnl_consolidated(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
 ):
     """Blended business-wide P&L — the latest report of each platform."""
     from app.services.pnl_statement import compute_pnl_consolidated
-    return await compute_pnl_consolidated(db, company.id)
+    data = await compute_pnl_consolidated(db, scope.ids)
+    data["scope"] = {"is_all": scope.is_all, "label": scope.label, "companies": len(scope.ids)}
+    return data
 
 
 @router.get("/unmatched-skus")

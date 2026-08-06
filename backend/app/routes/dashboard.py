@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, get_active_company
+from app.core.dependencies import get_current_user, get_active_company, get_company_scope
 from app.models.fraud import ActorRiskProfile, ReturnReasonCluster
 from app.models.pnl import PnlReport, PnlSkuRow
 from app.models.platform import Platform
@@ -19,6 +19,7 @@ from app.services.profitability import compute_sku_intelligence
 from app.services.reconciliation import compute_reconciliation
 from app.services.action_pipeline import compute_action_pipeline
 from app.services.operations import compute_operations
+from app.services.scope import company_ids
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -167,8 +168,9 @@ def _build_metrics_cells(
     ]
 
 
-async def _compute_metrics(db: AsyncSession, company_id: int) -> list[dict]:
+async def _compute_metrics(db: AsyncSession, company_id: int | list[int]) -> list[dict]:
     """Query P&L and actor aggregates, then delegate math to _build_metrics_cells."""
+    _cids = company_ids(company_id)
 
     # P&L report-level aggregates (sell-through denominator + settlement)
     pnl_res = await db.execute(
@@ -177,7 +179,7 @@ async def _compute_metrics(db: AsyncSession, company_id: int) -> list[dict]:
             func.coalesce(func.sum(PnlReport.net_units),      0),
             func.coalesce(func.sum(PnlReport.bank_settlement),0.0),
             func.coalesce(func.sum(PnlReport.gross_sales),    0.0),
-        ).where(PnlReport.company_id == company_id)
+        ).where(PnlReport.company_id.in_(_cids))
     )
     pnl = pnl_res.one()
     gross_u, net_u, settle, gross_s = (
@@ -191,7 +193,7 @@ async def _compute_metrics(db: AsyncSession, company_id: int) -> list[dict]:
             func.coalesce(func.sum(PnlSkuRow.gross_units), 0),
             func.coalesce(func.sum(PnlSkuRow.rvp_units),   0),
             func.coalesce(func.sum(PnlSkuRow.rto_units),   0),
-        ).where(PnlSkuRow.company_id == company_id)
+        ).where(PnlSkuRow.company_id.in_(_cids))
     )
     sku_ret = sku_ret_res.one()
     sku_gross = int(sku_ret[0])
@@ -209,7 +211,7 @@ async def _compute_metrics(db: AsyncSession, company_id: int) -> list[dict]:
         select(
             func.coalesce(func.sum(ActorRiskProfile.fraud_reason_count), 0),
             func.coalesce(func.sum(ActorRiskProfile.total_orders),        0),
-        ).where(ActorRiskProfile.company_id == company_id)
+        ).where(ActorRiskProfile.company_id.in_(_cids))
     )
     actor = actor_res.one()
     fraud_cnt, total_ord = int(actor[0]), int(actor[1])
@@ -220,7 +222,7 @@ async def _compute_metrics(db: AsyncSession, company_id: int) -> list[dict]:
             func.count(),
             func.avg(ActorRiskProfile.avg_velocity_days),
             func.max(ActorRiskProfile.actor_fraud_score),
-        ).where(ActorRiskProfile.risk_tier == "CRITICAL", ActorRiskProfile.company_id == company_id)
+        ).where(ActorRiskProfile.risk_tier == "CRITICAL", ActorRiskProfile.company_id.in_(_cids))
     )
     crit = crit_res.one()
     crit_count = int(crit[0])
@@ -238,11 +240,12 @@ async def _compute_metrics(db: AsyncSession, company_id: int) -> list[dict]:
 
 # ── Insight generators ─────────────────────────────────────────────────────────
 
-async def _insight_fraud_spike(db: AsyncSession, company_id: int) -> dict | None:
+async def _insight_fraud_spike(db: AsyncSession, company_id: int | list[int]) -> dict | None:
     """Hero card: top CRITICAL fraud actor."""
+    _cids = company_ids(company_id)
     result = await db.execute(
         select(ActorRiskProfile)
-        .where(ActorRiskProfile.risk_tier == "CRITICAL", ActorRiskProfile.company_id == company_id)
+        .where(ActorRiskProfile.risk_tier == "CRITICAL", ActorRiskProfile.company_id.in_(_cids))
         .order_by(ActorRiskProfile.actor_fraud_score.desc())
         .limit(1)
     )
@@ -251,7 +254,7 @@ async def _insight_fraud_spike(db: AsyncSession, company_id: int) -> dict | None
         # Fall back to top AMBER
         result = await db.execute(
             select(ActorRiskProfile)
-            .where(ActorRiskProfile.risk_tier == "AMBER", ActorRiskProfile.company_id == company_id)
+            .where(ActorRiskProfile.risk_tier == "AMBER", ActorRiskProfile.company_id.in_(_cids))
             .order_by(ActorRiskProfile.actor_fraud_score.desc())
             .limit(1)
         )
@@ -294,12 +297,13 @@ async def _insight_fraud_spike(db: AsyncSession, company_id: int) -> dict | None
     }
 
 
-async def _insight_return_breakdown(db: AsyncSession, company_id: int) -> dict | None:
+async def _insight_return_breakdown(db: AsyncSession, company_id: int | list[int]) -> dict | None:
     """Return reason intelligence: top fraud-signal cluster."""
+    _cids = company_ids(company_id)
     # Top FRAUD_SIGNAL cluster
     fraud_result = await db.execute(
         select(ReturnReasonCluster)
-        .where(ReturnReasonCluster.fraud_signal_type == "FRAUD_SIGNAL", ReturnReasonCluster.company_id == company_id)
+        .where(ReturnReasonCluster.fraud_signal_type == "FRAUD_SIGNAL", ReturnReasonCluster.company_id.in_(_cids))
         .order_by(ReturnReasonCluster.order_count.desc())
         .limit(1)
     )
@@ -308,7 +312,7 @@ async def _insight_return_breakdown(db: AsyncSession, company_id: int) -> dict |
     # Totals by signal type
     totals_result = await db.execute(
         select(ReturnReasonCluster.fraud_signal_type, func.sum(ReturnReasonCluster.order_count))
-        .where(ReturnReasonCluster.company_id == company_id)
+        .where(ReturnReasonCluster.company_id.in_(_cids))
         .group_by(ReturnReasonCluster.fraud_signal_type)
     )
     totals = {row[0]: int(row[1]) for row in totals_result.all()}
@@ -343,13 +347,14 @@ async def _insight_return_breakdown(db: AsyncSession, company_id: int) -> dict |
     }
 
 
-async def _insight_platform_health(db: AsyncSession, company_id: int) -> dict | None:
+async def _insight_platform_health(db: AsyncSession, company_id: int | list[int]) -> dict | None:
     """Platform margin spread from latest P&L reports."""
+    _cids = company_ids(company_id)
     # Latest report per platform
     result = await db.execute(
         select(PnlReport, Platform.name)
         .join(Platform, Platform.id == PnlReport.platform_id)
-        .where(PnlReport.net_margin_pct.isnot(None), PnlReport.company_id == company_id)
+        .where(PnlReport.net_margin_pct.isnot(None), PnlReport.company_id.in_(_cids))
         .order_by(PnlReport.uploaded_at.desc())
     )
     rows = result.all()
@@ -402,11 +407,12 @@ async def _insight_platform_health(db: AsyncSession, company_id: int) -> dict | 
     }
 
 
-async def _insight_risk_summary(db: AsyncSession, company_id: int) -> dict | None:
+async def _insight_risk_summary(db: AsyncSession, company_id: int | list[int]) -> dict | None:
     """Actor risk tier summary card."""
+    _cids = company_ids(company_id)
     tier_result = await db.execute(
         select(ActorRiskProfile.risk_tier, func.count(), func.sum(ActorRiskProfile.total_orders))
-        .where(ActorRiskProfile.company_id == company_id)
+        .where(ActorRiskProfile.company_id.in_(_cids))
         .group_by(ActorRiskProfile.risk_tier)
     )
     tier_stats = {row[0]: {"count": int(row[1]), "orders": int(row[2] or 0)} for row in tier_result.all()}
@@ -444,7 +450,7 @@ async def _insight_risk_summary(db: AsyncSession, company_id: int) -> dict | Non
 @router.get("/insights")
 async def get_dashboard_insights(
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     _=Depends(require_any),
 ):
     """
@@ -455,10 +461,10 @@ async def get_dashboard_insights(
     Returns ordered list: hero first, then supporting insights.
     """
     results = await asyncio.gather(
-        _insight_fraud_spike(db, company.id),
-        _insight_return_breakdown(db, company.id),
-        _insight_platform_health(db, company.id),
-        _insight_risk_summary(db, company.id),
+        _insight_fraud_spike(db, scope.ids),
+        _insight_return_breakdown(db, scope.ids),
+        _insight_platform_health(db, scope.ids),
+        _insight_risk_summary(db, scope.ids),
     )
 
     insights = [r for r in results if r is not None]
@@ -466,13 +472,14 @@ async def get_dashboard_insights(
     # Ensure hero is first
     insights.sort(key=lambda x: 0 if x.get("hero") else 1)
 
-    return {"insights": insights, "generated_at": datetime.now(timezone.utc).isoformat()}
+    return {"insights": insights, "generated_at": datetime.now(timezone.utc).isoformat(),
+            "scope": {"is_all": scope.is_all, "label": scope.label, "companies": len(scope.ids)}}
 
 
 @router.get("/metrics")
 async def get_dashboard_metrics(
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     _=Depends(require_any),
 ):
     """
@@ -481,14 +488,15 @@ async def get_dashboard_metrics(
     - actor_risk_profiles  (fraud rate, critical count, velocity, top score)
     Returns '—' for metrics where source data is absent.
     """
-    cells = await _compute_metrics(db, company.id)
-    return {"metrics": cells, "generated_at": datetime.now(timezone.utc).isoformat()}
+    cells = await _compute_metrics(db, scope.ids)
+    return {"metrics": cells, "generated_at": datetime.now(timezone.utc).isoformat(),
+            "scope": {"is_all": scope.is_all, "label": scope.label, "companies": len(scope.ids)}}
 
 
 @router.get("/sku-intelligence")
 async def get_sku_intelligence(
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     _=Depends(require_any),
 ):
     """
@@ -498,14 +506,15 @@ async def get_sku_intelligence(
     - blended margin, profit/loss counts
     Empty payload when no matched SKU rows exist (graceful).
     """
-    data = await compute_sku_intelligence(db, company.id)
-    return {**data, "generated_at": datetime.now(timezone.utc).isoformat()}
+    data = await compute_sku_intelligence(db, scope.ids)
+    return {**data, "generated_at": datetime.now(timezone.utc).isoformat(),
+            "scope": {"is_all": scope.is_all, "label": scope.label, "companies": len(scope.ids)}}
 
 
 @router.get("/reconciliation")
 async def get_reconciliation(
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     _=Depends(require_any),
 ):
     """
@@ -514,14 +523,15 @@ async def get_reconciliation(
     - per-platform fee load with high-fee flags
     - per-SKU underpayment vs Casper-expected settlement (recoverable)
     """
-    data = await compute_reconciliation(db, company.id)
-    return {**data, "generated_at": datetime.now(timezone.utc).isoformat()}
+    data = await compute_reconciliation(db, scope.ids)
+    return {**data, "generated_at": datetime.now(timezone.utc).isoformat(),
+            "scope": {"is_all": scope.is_all, "label": scope.label, "companies": len(scope.ids)}}
 
 
 @router.get("/action-pipeline")
 async def get_action_pipeline(
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     _=Depends(require_any),
 ):
     """
@@ -530,14 +540,15 @@ async def get_action_pipeline(
     - export-ready blocklist of CRITICAL actors
     - estimated recoverable ₹ + repeat-offender flags + claim templates
     """
-    data = await compute_action_pipeline(db, company.id)
-    return {**data, "generated_at": datetime.now(timezone.utc).isoformat()}
+    data = await compute_action_pipeline(db, scope.ids)
+    return {**data, "generated_at": datetime.now(timezone.utc).isoformat(),
+            "scope": {"is_all": scope.is_all, "label": scope.label, "companies": len(scope.ids)}}
 
 
 @router.get("/operations")
 async def get_operations(
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     _=Depends(require_any),
 ):
     """
@@ -546,5 +557,6 @@ async def get_operations(
     - fees waterfall (GMV → fee components + Other → bank settlement)
     - top return-reason clusters + per-channel customer returns / RTO
     """
-    data = await compute_operations(db, company.id)
-    return {**data, "generated_at": datetime.now(timezone.utc).isoformat()}
+    data = await compute_operations(db, scope.ids)
+    return {**data, "generated_at": datetime.now(timezone.utc).isoformat(),
+            "scope": {"is_all": scope.is_all, "label": scope.label, "companies": len(scope.ids)}}
