@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 from typing import List, Optional, Tuple
 
 from app.schemas.entries import EntryRowInput, EntryRowResult
+from app.services.scope import company_ids
 from app.models.sku import Sku, SkuPricing, SkuPlatformConfig
 from app.models.platform import Platform
 from app.models.global_settings import GlobalSettings
@@ -322,14 +323,15 @@ async def upsert_batch(
     return saved, errors
 
 
-async def get_all_entries(session: AsyncSession, company_id: int) -> list:
+async def get_all_entries(session: AsyncSession, company_id: int | list[int]) -> list:
     """
     Load all SKUs with their latest pricing and per-platform configs.
     Uses selectinload to eliminate N+1 queries (5 flat queries regardless of SKU count).
     """
+    _cids = company_ids(company_id)
     sku_result = await session.execute(
         select(Sku)
-        .where(Sku.is_active == True, Sku.company_id == company_id)
+        .where(Sku.is_active == True, Sku.company_id.in_(_cids))
         .options(
             selectinload(Sku.vendor),
             selectinload(Sku.category),

@@ -7,6 +7,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.billing import Invoice
+from app.services.scope import company_ids
 
 
 def derive_status(stored: str, due, today: date) -> str:
@@ -83,10 +84,11 @@ async def next_invoice_number(db: AsyncSession, company_id: int) -> str:
     return f"INV-{year}-{count + 1:04d}"
 
 
-async def compute_billing_summary(db: AsyncSession, company_id: int) -> dict:
+async def compute_billing_summary(db: AsyncSession, company_id: int | list[int]) -> dict:
+    _cids = company_ids(company_id)
     result = await db.execute(
         select(Invoice.status, Invoice.total, Invoice.amount_paid, Invoice.due_date)
-        .where(Invoice.company_id == company_id)
+        .where(Invoice.company_id.in_(_cids))
     )
     rows = [{"status": s, "total": t, "amount_paid": p, "due_date": d} for s, t, p, d in result.all()]
     return build_billing_summary(rows, date.today())

@@ -67,6 +67,35 @@ async def test_group_mode_refuses_writes():
         assert "specific company" in exc.value.detail.lower()
 
 
+def test_write_services_stay_single_company():
+    """
+    Consolidation must cover READS only. The fraud compute_* functions delete then
+    re-insert a company's rows — running them over several companies would wipe
+    one company's profiles while rebuilding another's.
+    """
+    import inspect
+    from app.services import fraud
+
+    for name in ("compute_actor_risk_profiles", "compute_state_risk_profiles",
+                 "compute_return_reason_clusters", "compute_sku_risk_scores",
+                 "generate_fraud_alerts"):
+        sig = inspect.signature(getattr(fraud, name))
+        annotation = str(sig.parameters["company_id"].annotation)
+        assert "list" not in annotation, f"{name} must stay single-company, got {annotation}"
+
+
+def test_read_services_accept_many_companies():
+    import inspect
+    from app.services import fraud, ledger, billing, entries, profitability
+
+    for mod, name in ((fraud, "get_fraud_overview"), (fraud, "get_actor_overview"),
+                      (ledger, "compute_ledger_summary"), (billing, "compute_billing_summary"),
+                      (entries, "get_all_entries"), (profitability, "compute_sku_intelligence")):
+        sig = inspect.signature(getattr(mod, name))
+        annotation = str(sig.parameters["company_id"].annotation)
+        assert "list" in annotation, f"{name} should accept a company list, got {annotation}"
+
+
 @pytest.mark.asyncio
 async def test_group_mode_rejects_garbage_company_header():
     with pytest.raises(HTTPException) as exc:

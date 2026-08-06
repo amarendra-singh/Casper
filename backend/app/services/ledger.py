@@ -9,6 +9,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.ledger import LedgerEntry
+from app.services.scope import company_ids
 from app.models.vendor import Vendor
 from app.models.sku import Sku
 
@@ -42,9 +43,10 @@ def build_ledger_summary(rows: list[dict]) -> dict:
     }
 
 
-async def compute_ledger_summary(db: AsyncSession, company_id: int,
+async def compute_ledger_summary(db: AsyncSession, company_id: int | list[int],
                                  start=None, end=None, direction=None) -> dict:
-    conds = [LedgerEntry.company_id == company_id]
+    _cids = company_ids(company_id)
+    conds = [LedgerEntry.company_id.in_(_cids)]
     if start:     conds.append(LedgerEntry.entry_date >= start)
     if end:       conds.append(LedgerEntry.entry_date <= end)
     if direction: conds.append(LedgerEntry.direction == direction)
@@ -56,8 +58,9 @@ async def compute_ledger_summary(db: AsyncSession, company_id: int,
     return build_ledger_summary(rows)
 
 
-async def resolve_names(db: AsyncSession, company_id: int) -> tuple[dict, dict]:
+async def resolve_names(db: AsyncSession, company_id: int | list[int]) -> tuple[dict, dict]:
     """Return ({vendor_id: name}, {sku_id: shringar_sku}) for the company — for display."""
-    vrows = await db.execute(select(Vendor.id, Vendor.name).where(Vendor.company_id == company_id))
-    srows = await db.execute(select(Sku.id, Sku.shringar_sku).where(Sku.company_id == company_id))
+    _cids = company_ids(company_id)
+    vrows = await db.execute(select(Vendor.id, Vendor.name).where(Vendor.company_id.in_(_cids)))
+    srows = await db.execute(select(Sku.id, Sku.shringar_sku).where(Sku.company_id.in_(_cids)))
     return {i: n for i, n in vrows.all()}, {i: c for i, c in srows.all()}

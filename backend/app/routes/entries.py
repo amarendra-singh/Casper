@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import require_any, get_active_company
+from app.core.dependencies import require_any, get_active_company, get_company_scope
 from app.schemas.entries import UpsertBatchRequest, UpsertBatchResponse, EntryRowResponse
 from app.services.entries import upsert_batch, get_all_entries
 
@@ -31,7 +31,7 @@ async def upsert_entries_batch(
 @router.get("/", response_model=list[EntryRowResponse])
 async def get_entries(
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     _=Depends(require_any),
 ):
-    return await get_all_entries(db, company.id)
+    return await get_all_entries(db, scope.ids)

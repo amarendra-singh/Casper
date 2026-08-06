@@ -41,18 +41,20 @@ export function CompanyProvider({ children }) {
   const [role, setRole] = useState(null)
   useEffect(() => {
     if (!activeId || !localStorage.getItem('access_token')) { setModules({}); setRole(null); return }
-    // Group mode has no single company context; union the modules so every
-    // consolidated screen the user can reach in ANY company stays available.
+    // Master view: every feature is available. Per-company views stay restricted
+    // to that company's own enabled modules (below). Enabling all keys here — not
+    // just the union of what companies happen to have on — keeps the master a
+    // true superset, so a feature never disappears from it because every company
+    // switched it off.
     if (activeId === ALL) {
-      const first = companies[0]
-      if (!first) return
+      if (!companies.length) return
       Promise.all(companies.map(c => getCompanyContext(c.id).catch(() => null)))
         .then(ctxs => {
-          const union = {}
+          const all = {}
           ctxs.filter(Boolean).forEach(ctx => {
-            Object.entries(ctx.modules || {}).forEach(([k, v]) => { union[k] = union[k] || v })
+            Object.keys(ctx.modules || {}).forEach(k => { all[k] = true })
           })
-          setModules(union); setRole(null)
+          setModules(all); setRole(null)
         })
       return
     }

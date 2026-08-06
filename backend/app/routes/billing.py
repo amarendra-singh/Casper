@@ -7,7 +7,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, get_active_company, require_admin_or_above
+from app.core.dependencies import get_current_user, get_active_company, require_admin_or_above, get_company_scope
 from app.models.user import User
 from app.models.billing import Invoice, InvoiceLine
 from app.schemas.billing import (
@@ -46,12 +46,12 @@ async def _get_owned(db, invoice_id, company_id) -> Invoice:
 @router.get("/", response_model=list[InvoiceResponse])
 async def list_invoices(
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     _=Depends(get_current_user),
     status_filter: Optional[str] = Query(None, alias="status"),
 ):
     q = (select(Invoice).options(selectinload(Invoice.lines))
-         .where(Invoice.company_id == company.id)
+         .where(Invoice.company_id == scope.ids)
          .order_by(Invoice.invoice_date.desc(), Invoice.id.desc()))
     invoices = (await db.execute(q)).scalars().all()
     out = [_to_response(i) for i in invoices]
@@ -63,20 +63,20 @@ async def list_invoices(
 @router.get("/summary", response_model=InvoiceSummary)
 async def billing_summary(
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     _=Depends(get_current_user),
 ):
-    return await compute_billing_summary(db, company.id)
+    return await compute_billing_summary(db, scope.ids)
 
 
 @router.get("/{invoice_id}", response_model=InvoiceResponse)
 async def get_invoice(
     invoice_id: int,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     _=Depends(get_current_user),
 ):
-    return _to_response(await _get_owned(db, invoice_id, company.id))
+    return _to_response(await _get_owned(db, invoice_id, scope.ids))
 
 
 @router.post("/", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)

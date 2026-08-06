@@ -18,7 +18,7 @@ from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 
 # Role guards — who can access what
-from app.core.dependencies import require_admin_or_above, require_any, get_active_company
+from app.core.dependencies import require_admin_or_above, require_any, get_active_company, get_company_scope
 
 # DB models
 from app.models.sku import Sku, SkuPricing
@@ -48,13 +48,13 @@ pricing_router = APIRouter(prefix="/pricing", tags=["Pricing"])
 async def list_skus(
     # Depends(get_db) injects a DB session automatically
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     # _ means we don't use the return value, just enforce the auth
     _=Depends(require_any),
 ):
     result = await db.execute(
         select(Sku)
-        .where(Sku.company_id == company.id)
+        .where(Sku.company_id == scope.ids)
         # order_by = ORDER BY shringar_sku ASC
         .order_by(Sku.shringar_sku)
     )
@@ -68,10 +68,10 @@ async def get_sku(
     # {sku_id} in path becomes a function parameter automatically
     sku_id: int,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     _=Depends(require_any),
 ):
-    result = await db.execute(select(Sku).where(Sku.id == sku_id, Sku.company_id == company.id))
+    result = await db.execute(select(Sku).where(Sku.id == sku_id, Sku.company_id == scope.ids))
     sku = result.scalar_one_or_none()
     if not sku:
         # 404 = resource not found HTTP status code
@@ -153,13 +153,13 @@ async def delete_sku(
 async def list_pricing_for_sku(
     sku_id: int,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     _=Depends(require_any),
 ):
     """Get all platform pricing rows for a single SKU."""
     result = await db.execute(
         select(SkuPricing)
-        .where(SkuPricing.sku_id == sku_id, SkuPricing.company_id == company.id)
+        .where(SkuPricing.sku_id == sku_id, SkuPricing.company_id == scope.ids)
         .order_by(SkuPricing.platform_id)
     )
     return result.scalars().all()

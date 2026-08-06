@@ -6,7 +6,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, get_active_company, require_admin_or_above
+from app.core.dependencies import get_current_user, get_active_company, require_admin_or_above, get_company_scope
 from app.models.user import User
 from app.models.ledger import LedgerEntry
 from app.schemas.ledger import (
@@ -27,7 +27,7 @@ def _to_response(e: LedgerEntry, vmap: dict, smap: dict) -> LedgerEntryResponse:
 @router.get("/", response_model=list[LedgerEntryResponse])
 async def list_entries(
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     _=Depends(get_current_user),
     start: Optional[date] = Query(None),
     end: Optional[date] = Query(None),
@@ -36,7 +36,7 @@ async def list_entries(
     vendor_id: Optional[int] = Query(None),
     sku_id: Optional[int] = Query(None),
 ):
-    conds = [LedgerEntry.company_id == company.id]
+    conds = [LedgerEntry.company_id == scope.ids]
     if start:     conds.append(LedgerEntry.entry_date >= start)
     if end:       conds.append(LedgerEntry.entry_date <= end)
     if direction: conds.append(LedgerEntry.direction == direction)
@@ -49,20 +49,20 @@ async def list_entries(
         .order_by(LedgerEntry.entry_date.desc(), LedgerEntry.id.desc())
     )
     entries = result.scalars().all()
-    vmap, smap = await resolve_names(db, company.id)
+    vmap, smap = await resolve_names(db, scope.ids)
     return [_to_response(e, vmap, smap) for e in entries]
 
 
 @router.get("/summary", response_model=LedgerSummary)
 async def ledger_summary(
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     _=Depends(get_current_user),
     start: Optional[date] = Query(None),
     end: Optional[date] = Query(None),
     direction: Optional[str] = Query(None),
 ):
-    return await compute_ledger_summary(db, company.id, start, end, direction)
+    return await compute_ledger_summary(db, scope.ids, start, end, direction)
 
 
 @router.post("/", response_model=LedgerEntryResponse, status_code=status.HTTP_201_CREATED)
