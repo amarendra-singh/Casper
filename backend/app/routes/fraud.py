@@ -78,7 +78,7 @@ async def list_alerts(
     ?platform_id=1 → filter by platform
     ?severity=CRITICAL → filter by severity level
     """
-    q = select(FraudAlert).where(FraudAlert.is_resolved == False, FraudAlert.company_id == scope.ids)
+    q = select(FraudAlert).where(FraudAlert.is_resolved == False, FraudAlert.company_id.in_(scope.ids))
     if platform_id:
         q = q.where(FraudAlert.platform_id == platform_id)
     if severity:

@@ -54,7 +54,7 @@ async def list_skus(
 ):
     result = await db.execute(
         select(Sku)
-        .where(Sku.company_id == scope.ids)
+        .where(Sku.company_id.in_(scope.ids))
         # order_by = ORDER BY shringar_sku ASC
         .order_by(Sku.shringar_sku)
     )
@@ -71,7 +71,7 @@ async def get_sku(
     scope=Depends(get_company_scope),
     _=Depends(require_any),
 ):
-    result = await db.execute(select(Sku).where(Sku.id == sku_id, Sku.company_id == scope.ids))
+    result = await db.execute(select(Sku).where(Sku.id == sku_id, Sku.company_id.in_(scope.ids)))
     sku = result.scalar_one_or_none()
     if not sku:
         # 404 = resource not found HTTP status code
@@ -159,7 +159,7 @@ async def list_pricing_for_sku(
     """Get all platform pricing rows for a single SKU."""
     result = await db.execute(
         select(SkuPricing)
-        .where(SkuPricing.sku_id == sku_id, SkuPricing.company_id == scope.ids)
+        .where(SkuPricing.sku_id == sku_id, SkuPricing.company_id.in_(scope.ids))
         .order_by(SkuPricing.platform_id)
     )
     return result.scalars().all()

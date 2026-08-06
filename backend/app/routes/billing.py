@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_active_company, require_admin_or_above, get_company_scope
+from app.services.scope import company_ids
 from app.models.user import User
 from app.models.billing import Invoice, InvoiceLine
 from app.schemas.billing import (
@@ -34,9 +35,11 @@ def _to_response(inv: Invoice) -> InvoiceResponse:
 
 
 async def _get_owned(db, invoice_id, company_id) -> Invoice:
+    """Fetch one invoice, scoped. `company_id` may be a single id (writes) or the
+    caller's whole scope (a consolidated read), so always match with IN."""
     inv = (await db.execute(
         select(Invoice).options(selectinload(Invoice.lines))
-        .where(Invoice.id == invoice_id, Invoice.company_id == company_id)
+        .where(Invoice.id == invoice_id, Invoice.company_id.in_(company_ids(company_id)))
     )).scalar_one_or_none()
     if not inv:
         raise HTTPException(status_code=404, detail="Invoice not found")
@@ -51,7 +54,7 @@ async def list_invoices(
     status_filter: Optional[str] = Query(None, alias="status"),
 ):
     q = (select(Invoice).options(selectinload(Invoice.lines))
-         .where(Invoice.company_id == scope.ids)
+         .where(Invoice.company_id.in_(scope.ids))
          .order_by(Invoice.invoice_date.desc(), Invoice.id.desc()))
     invoices = (await db.execute(q)).scalars().all()
     out = [_to_response(i) for i in invoices]

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_active_company, require_admin_or_above, get_company_scope
+from app.services.scope import company_ids
 from app.models.user import User
 from app.models.ledger import LedgerEntry
 from app.schemas.ledger import (
@@ -36,7 +37,7 @@ async def list_entries(
     vendor_id: Optional[int] = Query(None),
     sku_id: Optional[int] = Query(None),
 ):
-    conds = [LedgerEntry.company_id == scope.ids]
+    conds = [LedgerEntry.company_id.in_(scope.ids)]
     if start:     conds.append(LedgerEntry.entry_date >= start)
     if end:       conds.append(LedgerEntry.entry_date <= end)
     if direction: conds.append(LedgerEntry.direction == direction)
@@ -81,8 +82,10 @@ async def create_entry(
 
 
 async def _owned(db, entry_id, company_id) -> LedgerEntry:
+    """`company_id` may be a single id (writes) or a whole scope (consolidated read)."""
     e = (await db.execute(
-        select(LedgerEntry).where(LedgerEntry.id == entry_id, LedgerEntry.company_id == company_id)
+        select(LedgerEntry).where(LedgerEntry.id == entry_id,
+                                  LedgerEntry.company_id.in_(company_ids(company_id)))
     )).scalar_one_or_none()
     if not e:
         raise HTTPException(status_code=404, detail="Ledger entry not found")
