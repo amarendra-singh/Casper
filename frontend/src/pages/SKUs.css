@@ -894,3 +894,20 @@ select.ec-input,
 .sku-hidden-row:last-child { border-bottom: none; }
 .sku-hidden-name { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--ink, #111); }
 .sku-hidden-meta { font-size: 11px; color: var(--muted, #9ca3af); }
+
+/* Hidden-SKU trigger — inline on the subtitle line instead of a full-width band. */
+.sku-hidden-pill {
+  display: inline-flex; align-items: center; gap: 6px; margin-left: 10px;
+  padding: 2px 4px 2px 9px; border-radius: 999px; cursor: pointer;
+  background: color-mix(in srgb, var(--amber, #d97706) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--amber, #d97706) 28%, transparent);
+  color: var(--amber-text, #92400e);
+  font-family: var(--font-ui); font-size: 11px; font-weight: 700; vertical-align: middle;
+}
+.sku-hidden-pill:hover { background: color-mix(in srgb, var(--amber, #d97706) 20%, transparent); }
+.sku-hidden-pill-cta {
+  padding: 2px 8px; border-radius: 999px;
+  background: var(--amber, #d97706); color: #fff; font-size: 10px; font-weight: 700;
+}
+/* the expanded list keeps its card, but only exists while open */
+.sku-hidden-banner { margin-bottom: 12px; }

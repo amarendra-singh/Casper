@@ -390,6 +390,16 @@ export default function Layout() {
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M5 3l4 4-4 4"/></svg>
           </div>
 
+          {/* Group-mode indicator. This was a full-width band above every page —
+              it is one short fact, so it belongs in the bar that already exists. */}
+          {isAll && (
+            <span className="group-pill" title={`Consolidated across ${companies.length} companies · read-only; switch to a company to add or edit`}>
+              <span className="group-pill-dot" />
+              All Companies
+              <span className="group-pill-n">{companies.length}</span>
+            </span>
+          )}
+
           <div className="topbar-search-wrap" ref={srRef}>
             <div className="topbar-search">
               <IcSearch />
@@ -431,15 +441,6 @@ export default function Layout() {
         {/* Canvas */}
         <div className="canvas-wrap">
           <main className="canvas">
-            {/* Group mode is read-only by design: a record must belong to exactly one
-                company (GST and the frozen cost basis are per entity), so the backend
-                refuses writes while the header is `all`. Say so up front. */}
-            {isAll && (
-              <div className="group-banner">
-                <strong>All Companies</strong> — consolidated view across {companies.length} companies.
-                Reports and dashboards are combined; to add or edit anything, switch to a specific company.
-              </div>
-            )}
             <Outlet />
           </main>
         </div>

@@ -706,7 +706,18 @@ export default function SKUs() {
       <div className="page-header">
         <div>
           <h1 className="page-title">SKUs</h1>
-          <p className="page-subtitle">{rows.length} rows</p>
+          <p className="page-subtitle">
+            {rows.length} rows
+            {/* The hidden-SKU notice used to be its own full-width band. It is a
+                count plus an action, so it belongs on the subtitle line. */}
+            {unmatched.length > 0 && (
+              <button className="sku-hidden-pill" onClick={() => setShowHidden(s => !s)}
+                title="SKUs seen in uploads with no pricing — excluded from P&L">
+                {unmatched.length} hidden
+                <span className="sku-hidden-pill-cta">{showHidden ? 'Hide' : 'Review'}</span>
+              </button>
+            )}
+          </p>
         </div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           <span className="save-status">
@@ -759,27 +770,18 @@ export default function SKUs() {
         </div>
       </div>
 
-      {/* ── Hidden SKUs (seen in uploads, no cost match yet) ── */}
-      {unmatched.length > 0 && (
+      {/* Only the LIST takes space, and only while open — the trigger lives in the header. */}
+      {showHidden && unmatched.length > 0 && (
         <div className="sku-hidden-banner">
-          <div className="sku-hidden-head" onClick={() => setShowHidden(s => !s)}>
-            <span className="sku-hidden-title">
-              {unmatched.length} hidden SKU{unmatched.length !== 1 ? 's' : ''} from uploads
-              <span className="sku-hidden-sub"> — no pricing yet, so excluded from P&amp;L</span>
-            </span>
-            <span className="sku-hidden-toggle">{showHidden ? 'Hide' : 'Review & add'}</span>
+          <div className="sku-hidden-list">
+            {unmatched.map(u => (
+              <div key={u.platform_sku_name} className="sku-hidden-row">
+                <span className="sku-hidden-name">{u.platform_sku_name}</span>
+                <span className="sku-hidden-meta">{u.units} units · {u.reports} report{u.reports !== 1 ? 's' : ''}</span>
+                <button className="btn btn-ghost btn-sm" onClick={() => addHiddenSku(u.platform_sku_name)}>+ Add</button>
+              </div>
+            ))}
           </div>
-          {showHidden && (
-            <div className="sku-hidden-list">
-              {unmatched.map(u => (
-                <div key={u.platform_sku_name} className="sku-hidden-row">
-                  <span className="sku-hidden-name">{u.platform_sku_name}</span>
-                  <span className="sku-hidden-meta">{u.units} units · {u.reports} report{u.reports !== 1 ? 's' : ''}</span>
-                  <button className="btn btn-ghost btn-sm" onClick={() => addHiddenSku(u.platform_sku_name)}>+ Add</button>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
 
@@ -811,22 +813,23 @@ export default function SKUs() {
             </button>
           ))}
         </div>
-      </div>
 
-      {/* ── Column visibility ── */}
-      <div className="col-toggle-bar">
-        <span className="col-toggle-label">Columns:</span>
-        {Object.entries(COL_GROUPS).map(([key, group]) => (
-          <button key={key}
-            className={`col-toggle-btn ${colVis[key] ? 'on' : 'off'}`}
-            onClick={() => toggleGroup(key)}>
-            <div className="shine"/>
-            <div className="inner"/>
-            <span>{colVis[key] ? '✓' : '○'} {group.label}</span>
-          </button>
-        ))}
-        <div className="col-toggle-sep"/>
-        <button className="col-reset" onClick={resetVisibility}>↺ Reset</button>
+        {/* Columns live on the SAME row as platforms — this used to be a second
+            full-width band, and stacked bands push the data below the fold. */}
+        <div className="e-bar-sep"/>
+        <label className="e-bar-label">Columns:</label>
+        <div className="e-chips">
+          {Object.entries(COL_GROUPS).map(([key, group]) => (
+            <button key={key}
+              className={`col-toggle-btn ${colVis[key] ? 'on' : 'off'}`}
+              onClick={() => toggleGroup(key)}>
+              <div className="shine"/>
+              <div className="inner"/>
+              <span>{colVis[key] ? '✓' : '○'} {group.label}</span>
+            </button>
+          ))}
+          <button className="col-reset" onClick={resetVisibility} title="Reset columns">↺</button>
+        </div>
       </div>
 
       {/* ── Desktop Table ── */}
