@@ -13,7 +13,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8766',
+        target: 'http://localhost:8767',
         changeOrigin: true,
       },
       '/india_states.geojson': {
