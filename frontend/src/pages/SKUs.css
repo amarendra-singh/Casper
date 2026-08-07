@@ -920,3 +920,29 @@ select.ec-input,
   content: ''; position: absolute; left: 0; top: 0; bottom: 0;
   width: 3px; background: var(--co-mark, transparent);
 }
+
+/* Company legend + filter — the key to the row rails, and the filter, in one control */
+.co-legend {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 8px 5px 9px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--border-2, #d9d6d2); background: var(--canvas, #fff);
+  font-family: var(--font-ui); font-size: 11px; font-weight: 600; color: var(--text-2, #4b5563);
+  white-space: nowrap; transition: border-color .12s, background .12s;
+}
+.co-legend:hover { background: var(--shell, #f7f6f4); }
+.co-legend.on { border-color: var(--ink, #111); background: var(--ink, #111); color: #fff; }
+.co-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.co-legend-n {
+  padding: 1px 6px; border-radius: 999px; font-size: 9.5px; font-weight: 700;
+  background: var(--chip, #f2f0ec); color: var(--text-2, #4b5563);
+}
+.co-legend.on .co-legend-n { background: rgba(255,255,255,.22); color: #fff; }
+
+/* Sort selector */
+.e-sort {
+  padding: 5px 9px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--border-2, #d9d6d2); background: var(--canvas, #fff);
+  font-family: var(--font-ui); font-size: 11px; font-weight: 600; color: var(--ink, #111);
+  outline: none;
+}
+.e-sort:focus { border-color: var(--pink, #EC2D6E); }

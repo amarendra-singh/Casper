@@ -294,6 +294,10 @@ export default function SKUs() {
   const [rows,        setRows]        = useState(() => [newRow(), newRow(), newRow()])
   const [unmatched,   setUnmatched]   = useState([])
   const [showHidden,  setShowHidden]  = useState(false)
+  // Ordering + company filter. Default SKU-asc; id-desc order looked arbitrary.
+  const [sortKey,   setSortKey]   = useState('sku')
+  const [sortDir,   setSortDir]   = useState('asc')
+  const [coFilter,  setCoFilter]  = useState(null)   // company_id, or null = all
   const [colVis,      setColVis]      = useState(loadVisibility)
   const [density,     setDensity]     = useState(() => localStorage.getItem('skuDensity') || 'normal')
   const [importOpen,      setImportOpen]      = useState(false)
@@ -348,6 +352,20 @@ export default function SKUs() {
     setRows(prev => prev.map(r =>
       r.id === id ? { ...r, ...patch, status: STATUS.DIRTY } : r
     )), [])
+
+  // Companies present in the loaded rows, with their colour and count. Empty in
+  // single-company mode (the backend omits company fields there), which is what
+  // keeps the legend from taking space when it would say the same thing on every row.
+  const companyLegend = (() => {
+    const by = new Map()
+    rows.forEach(r => {
+      if (!r.companyId) return
+      const e = by.get(r.companyId) || { id: r.companyId, name: r.companyName, color: r.companyColor, count: 0 }
+      e.count += 1
+      by.set(r.companyId, e)
+    })
+    return [...by.values()].sort((a, b) => b.count - a.count)
+  })()
 
   const addRow = () => setRows(p => [...p, newRow()])
 
@@ -822,6 +840,43 @@ export default function SKUs() {
           ))}
         </div>
 
+        {/* Company legend + filter (consolidated mode only). The coloured dot is the
+            key to the row rails — a colour with no legend tells you nothing — and
+            clicking it filters, so legend and filter are one control, not two rows. */}
+        {companyLegend.length > 1 && (
+          <>
+            <div className="e-bar-sep"/>
+            <label className="e-bar-label">Companies:</label>
+            <div className="e-chips">
+              <button className={`co-legend${coFilter === null ? ' on' : ''}`}
+                onClick={() => setCoFilter(null)}>
+                All<span className="co-legend-n">{rows.length}</span>
+              </button>
+              {companyLegend.map(c => (
+                <button key={c.id}
+                  className={`co-legend${coFilter === c.id ? ' on' : ''}`}
+                  onClick={() => setCoFilter(coFilter === c.id ? null : c.id)}
+                  title={`Show only ${c.name}`}>
+                  <span className="co-legend-dot" style={{ background: c.color }} />
+                  {c.name}<span className="co-legend-n">{c.count}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        <div className="e-bar-sep"/>
+        <label className="e-bar-label">Sort:</label>
+        <select className="e-sort" value={`${sortKey}:${sortDir}`}
+          onChange={e => { const [k, d] = e.target.value.split(':'); setSortKey(k); setSortDir(d) }}
+          aria-label="Sort SKUs">
+          <option value="sku:asc">SKU A→Z</option>
+          <option value="sku:desc">SKU Z→A</option>
+          <option value="price:desc">Price high→low</option>
+          <option value="price:asc">Price low→high</option>
+          {companyLegend.length > 1 && <option value="company:asc">Company</option>}
+        </select>
+
         {/* Columns live on the SAME row as platforms — this used to be a second
             full-width band, and stacked bands push the data below the fold. */}
         <div className="e-bar-sep"/>
@@ -924,9 +979,25 @@ export default function SKUs() {
 
           <tbody>
             {(() => {
+              // Order before grouping. Default is SKU name with numeric-aware
+              // compare, so N5 · N8 · N9 · N10 reads naturally — the old id-desc
+              // order looked arbitrary on screen.
+              const cmp = (a, b) => {
+                const dir = sortDir === 'asc' ? 1 : -1
+                if (sortKey === 'sku')
+                  return dir * String(a.sku || '').localeCompare(String(b.sku || ''), undefined, { numeric: true })
+                if (sortKey === 'company')
+                  return dir * String(a.companyName || '').localeCompare(String(b.companyName || ''))
+                const n = k => parseFloat(a[k]) || 0, m = k => parseFloat(b[k]) || 0
+                return dir * (n(sortKey) - m(sortKey))
+              }
+              const visibleRows = (coFilter
+                ? rows.filter(r => !r.companyId || r.companyId === coFilter)
+                : rows).slice().sort(cmp)
+
               // Group rows by series — ungrouped rows go under ''
               const groups = {}
-              rows.forEach(row => {
+              visibleRows.forEach(row => {
                 const key = row.series || ''
                 if (!groups[key]) groups[key] = []
                 groups[key].push(row)
