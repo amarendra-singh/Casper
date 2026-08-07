@@ -911,3 +911,12 @@ select.ec-input,
 }
 /* the expanded list keeps its card, but only exists while open */
 .sku-hidden-banner { margin-bottom: 12px; }
+
+/* Owning-company mark (consolidated mode only — the field is null otherwise).
+   A left rail rather than a Company column: zero extra width, and a single
+   differently-coloured row is obvious without reading anything. */
+.e-row-co > td:first-child { position: relative; }
+.e-row-co > td:first-child::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px; background: var(--co-mark, transparent);
+}

@@ -90,6 +90,9 @@ function newRow(data = {}) {
     errorMsg:     data.errorMsg     || '',
     vendor:       data.vendor       || '',
     vendorId:     data.vendorId     || null,
+    companyId:    data.companyId    || null,
+    companyName:  data.companyName  || '',
+    companyColor: data.companyColor || '',
     vshort:       data.vshort       || '',
     vsku:         data.vsku         || '',
     series:       data.series       || '',
@@ -136,6 +139,11 @@ function backendRowToFrontend(r) {
   return newRow({
     skuId:      r.id,
     status:     STATUS.SAVED,
+    // Owning company — only sent when the scope spans several companies, and used
+    // to mark the row so you can see whose record you are editing.
+    companyId:    r.company_id    || null,
+    companyName:  r.company_name  || '',
+    companyColor: r.company_color || '',
     vendor:     r.vendor_name   || '',
     vendorId:   r.vendor_id     || null,
     vshort:     r.vendor_short  || '',
@@ -954,7 +962,12 @@ export default function SKUs() {
                 const dataRows = collapsed ? [] : groupRows.map(row => {
                   const c = compute(row, miscDef, profDef, platforms)
                   return (
-                <tr key={row.id} className={`e-row ${row.status === STATUS.ERROR ? 'row-error' : ''}`}>
+                <tr key={row.id}
+                    className={`e-row ${row.status === STATUS.ERROR ? 'row-error' : ''}${row.companyColor ? ' e-row-co' : ''}`}
+                    // Owning-company mark: a coloured left rail. Costs no column
+                    // width, and reads peripherally — one odd colour stands out.
+                    style={row.companyColor ? { '--co-mark': row.companyColor } : undefined}
+                    title={row.companyName ? `Company: ${row.companyName}` : undefined}>
 
                   {/* Vendor */}
                   <td className="ec ec-smart w-vendor sh-sku sticky-col">
