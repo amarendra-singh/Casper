@@ -946,3 +946,30 @@ select.ec-input,
   outline: none;
 }
 .e-sort:focus { border-color: var(--pink, #EC2D6E); }
+
+/* Bulk-fill undo — floating so it takes no layout space, and persistent rather
+   than auto-dismissing: a timeout that removes the only way back from a 71-row
+   edit is worse than no undo at all. */
+.bulk-undo {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  z-index: 300; display: flex; align-items: center; gap: 14px;
+  padding: 10px 12px 10px 18px; border-radius: 999px;
+  background: var(--ink, #0e0e10); color: #fff;
+  box-shadow: 0 12px 32px -10px rgba(0,0,0,.5);
+  font-family: var(--font-ui); font-size: 12.5px;
+  animation: bulkUndoIn .16s ease;
+}
+@keyframes bulkUndoIn { from { opacity: 0; transform: translate(-50%, 8px); } }
+.bulk-undo strong { font-weight: 700; }
+.bulk-undo-hint { color: rgba(255,255,255,.55); }
+.bulk-undo-btn {
+  padding: 6px 14px; border-radius: 999px; border: none; cursor: pointer;
+  background: var(--pink, #EC2D6E); color: #fff;
+  font-family: var(--font-ui); font-size: 12px; font-weight: 700;
+}
+.bulk-undo-btn:hover { background: var(--pink-2, #F23A77); }
+.bulk-undo-x {
+  background: none; border: none; cursor: pointer; padding: 0 4px;
+  color: rgba(255,255,255,.5); font-size: 18px; line-height: 1;
+}
+.bulk-undo-x:hover { color: #fff; }

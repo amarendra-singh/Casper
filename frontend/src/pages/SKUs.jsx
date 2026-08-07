@@ -298,6 +298,8 @@ export default function SKUs() {
   const [sortKey,   setSortKey]   = useState('sku')
   const [sortDir,   setSortDir]   = useState('asc')
   const [coFilter,  setCoFilter]  = useState(null)   // company_id, or null = all
+  // Snapshot of the last bulk edit so it can be reversed in one click.
+  const [lastBulk,  setLastBulk]  = useState(null)   // snapshot for undoing a bulk fill
   const [colVis,      setColVis]      = useState(loadVisibility)
   const [density,     setDensity]     = useState(() => localStorage.getItem('skuDensity') || 'normal')
   const [importOpen,      setImportOpen]      = useState(false)
@@ -381,11 +383,25 @@ export default function SKUs() {
       `Set category "${cat.name}" on ${ids.size} SKU${ids.size !== 1 ? 's' : ''} that currently have none?\n\n` +
       `Rows that already have a category are left untouched. Nothing is written until you press Save All.`
     )) return
+
+    // Snapshot exactly what is about to change, so the action is reversible. A bulk
+    // edit across 71 rows is not something to make someone unpick by hand.
+    const before = rows.filter(r => ids.has(r.id))
+      .map(r => ({ id: r.id, category: r.category, categoryId: r.categoryId, status: r.status }))
+
     // Category defaults are deliberately NOT applied here — they would overwrite
     // prices and cost inputs across every affected row. This sets the category only.
     setRows(prev => prev.map(r => ids.has(r.id)
       ? { ...r, category: cat.name, categoryId: cat.id, status: STATUS.DIRTY }
       : r))
+    setLastBulk({ count: ids.size, catName: cat.name, before })
+  }
+
+  const undoBulk = () => {
+    if (!lastBulk) return
+    const prevById = new Map(lastBulk.before.map(p => [p.id, p]))
+    setRows(prev => prev.map(r => prevById.has(r.id) ? { ...r, ...prevById.get(r.id) } : r))
+    setLastBulk(null)
   }
 
   const addRow = () => setRows(p => [...p, newRow()])
@@ -523,6 +539,9 @@ export default function SKUs() {
       (r.status === STATUS.DIRTY || r.status === STATUS.NEW) && r.sku && r.price
     )
     saveRows(dirty)
+    // Once saved, the in-memory snapshot no longer represents "not yet written",
+    // so offering Undo would be misleading.
+    setLastBulk(null)
   }, [rows, saveRows])
 
   // ── Debounce save: 2s after last change ────────────────────────────────────
@@ -1371,6 +1390,20 @@ export default function SKUs() {
       </div>
 
       <div className="e-addrow" onClick={addRow}>+ Add row</div>
+
+      {/* Undo for the bulk fill. Floating, so it costs no layout space, and it
+          stays until acted on rather than timing out — losing the only way back
+          from a 71-row edit because a toast expired would be worse than useless. */}
+      {lastBulk && (
+        <div className="bulk-undo" role="status">
+          <span>
+            Set <strong>{lastBulk.catName}</strong> on {lastBulk.count} SKU{lastBulk.count !== 1 ? 's' : ''}
+            <span className="bulk-undo-hint"> · not saved yet</span>
+          </span>
+          <button className="bulk-undo-btn" onClick={undoBulk}>Undo</button>
+          <button className="bulk-undo-x" onClick={() => setLastBulk(null)} aria-label="Dismiss">×</button>
+        </div>
+      )}
 
       {/* ── Mobile cards ── */}
       <div className="e-mobile">
