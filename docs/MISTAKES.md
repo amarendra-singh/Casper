@@ -109,7 +109,25 @@ company). One blunt rule blocked something that was always safe.
 
 ---
 
-## 9. Space-wasting UI
+## 9. Native browser dialogs — made twice
+
+**What happened:** Replaced `window.prompt` for company creation *because* the raw
+browser box looked unfinished — then used `window.confirm` for the bulk category
+fill days later. The user sent a screenshot of "localhost:5173 says".
+
+**Why:** The first fix was treated as a one-off repair rather than a rule, so the
+same reasoning was not applied the next time a dialog was needed.
+
+> **Rule:** No `window.alert` / `confirm` / `prompt` in app flows — use
+> `components/ConfirmDialog`. When a fix is made for a reason, apply the reason,
+> not just the fix.
+
+**Still outstanding:** Billing, Ledger, Users, Settings and Companies each still
+call `window.confirm` for delete/archive. They should move to the shared dialog.
+
+---
+
+## 10. Space-wasting UI
 
 **What happened:** Feature banners were added one under another until four
 full-width rows sat above the first row of data.

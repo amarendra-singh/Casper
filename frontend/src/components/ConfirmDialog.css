@@ -1,0 +1,49 @@
+/* In-app confirmation — replaces the browser's "localhost:5173 says" box. */
+.cd-overlay {
+  position: fixed; inset: 0; z-index: 400;
+  background: rgba(14, 14, 16, .42); backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  animation: cdFade .12s ease;
+}
+@keyframes cdFade { from { opacity: 0 } }
+
+.cd-box {
+  width: 100%; max-width: 440px;
+  background: var(--canvas, #fff); border: 1px solid var(--rule, #edeae6);
+  border-radius: var(--r-card, 16px); padding: 22px 24px 18px;
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, .45);
+  animation: cdIn .14s ease;
+}
+@keyframes cdIn { from { opacity: 0; transform: translateY(8px) } }
+
+.cd-title {
+  font-family: var(--font-display, inherit);
+  font-size: 18px; font-weight: 600; letter-spacing: -0.01em;
+  color: var(--ink, #111); margin-bottom: 8px;
+}
+.cd-body {
+  font-size: 13px; line-height: 1.6; color: var(--text-2, #4b5563);
+}
+.cd-body strong { color: var(--ink, #111); font-weight: 700; }
+.cd-note {
+  display: block; margin-top: 10px; padding-top: 10px;
+  border-top: 1px solid var(--rule, #edeae6);
+  font-size: 11.5px; color: var(--muted, #9a9a9f);
+}
+
+.cd-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.cd-btn {
+  padding: 8px 16px; border-radius: 10px; cursor: pointer;
+  font-family: var(--font-ui); font-size: 12.5px; font-weight: 600;
+  transition: background .12s, border-color .12s;
+}
+.cd-cancel {
+  background: var(--canvas, #fff); color: var(--text-2, #4b5563);
+  border: 1px solid var(--border-2, #d9d6d2);
+}
+.cd-cancel:hover { background: var(--shell, #f4f2ef); }
+.cd-confirm { background: var(--ink, #0e0e10); color: #fff; border: 1px solid var(--ink, #0e0e10); }
+.cd-confirm:hover { background: var(--ink-2, #1a1a1d); }
+.cd-confirm:focus-visible { outline: 2px solid var(--pink, #EC2D6E); outline-offset: 2px; }
+.cd-confirm.danger { background: var(--red, #dc2626); border-color: var(--red, #dc2626); }
+.cd-confirm.danger:hover { background: #b91c1c; }

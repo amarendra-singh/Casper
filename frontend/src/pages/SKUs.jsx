@@ -14,6 +14,7 @@ import ManageCategoriesModal from '../components/ManageCategoriesModal'
 import BidirectionalPctAmount from '../components/BidirectionalPctAmount'
 import AddTierQuickModal from '../components/AddTierQuickModal'
 import UploadAdReportModal from '../components/UploadAdReportModal'
+import ConfirmDialog from '../components/ConfirmDialog'
 import './SKUs.css'
 
 // ─── Row status constants ─────────────────────────────────────────────────────
@@ -300,6 +301,7 @@ export default function SKUs() {
   const [coFilter,  setCoFilter]  = useState(null)   // company_id, or null = all
   // Snapshot of the last bulk edit so it can be reversed in one click.
   const [lastBulk,  setLastBulk]  = useState(null)   // snapshot for undoing a bulk fill
+  const [pendingBulk, setPendingBulk] = useState(null)   // category awaiting confirmation
   const [colVis,      setColVis]      = useState(loadVisibility)
   const [density,     setDensity]     = useState(() => localStorage.getItem('skuDensity') || 'normal')
   const [importOpen,      setImportOpen]      = useState(false)
@@ -375,14 +377,17 @@ export default function SKUs() {
   const uncategorised = rows.filter(r =>
     (!coFilter || !r.companyId || r.companyId === coFilter) && !r.categoryId && r.sku)
 
-  const bulkSetCategory = (catId) => {
+  // Two steps: the select arms the confirmation, the dialog performs it. Keeps the
+  // browser's own confirm box (and its "localhost:5173 says" chrome) out of the app.
+  const askBulkCategory = (catId) => {
     const cat = categories.find(c => c.id === Number(catId))
+    if (cat && uncategorised.length) setPendingBulk(cat)
+  }
+
+  const applyBulkCategory = (cat) => {
+    setPendingBulk(null)
     if (!cat || !uncategorised.length) return
     const ids = new Set(uncategorised.map(r => r.id))
-    if (!window.confirm(
-      `Set category "${cat.name}" on ${ids.size} SKU${ids.size !== 1 ? 's' : ''} that currently have none?\n\n` +
-      `Rows that already have a category are left untouched. Nothing is written until you press Save All.`
-    )) return
 
     // Snapshot exactly what is about to change, so the action is reversible. A bulk
     // edit across 71 rows is not something to make someone unpick by hand.
@@ -911,7 +916,7 @@ export default function SKUs() {
           <>
             <div className="e-bar-sep"/>
             <label className="e-bar-label">{uncategorised.length} without category:</label>
-            <select className="e-sort" value="" onChange={e => { bulkSetCategory(e.target.value); e.target.value = '' }}
+            <select className="e-sort" value="" onChange={e => { askBulkCategory(e.target.value); e.target.value = '' }}
               aria-label={`Set a category on ${uncategorised.length} SKUs that have none`}>
               <option value="">Set category…</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -1390,6 +1395,24 @@ export default function SKUs() {
       </div>
 
       <div className="e-addrow" onClick={addRow}>+ Add row</div>
+
+      <ConfirmDialog
+        open={!!pendingBulk}
+        title="Set category in bulk"
+        confirmLabel={`Set on ${uncategorised.length} SKU${uncategorised.length !== 1 ? 's' : ''}`}
+        onCancel={() => setPendingBulk(null)}
+        onConfirm={() => applyBulkCategory(pendingBulk)}>
+        Set <strong>{pendingBulk?.name}</strong> on the{' '}
+        <strong>{uncategorised.length}</strong> SKU{uncategorised.length !== 1 ? 's' : ''} that
+        currently have no category
+        {coFilter && companyLegend.find(c => c.id === coFilter) &&
+          <> in <strong>{companyLegend.find(c => c.id === coFilter).name}</strong></>}.
+        <span className="cd-note">
+          Rows that already have a category are left untouched, and cost defaults are
+          not applied. Nothing is written until you press Save All — and you can undo
+          straight afterwards.
+        </span>
+      </ConfirmDialog>
 
       {/* Undo for the bulk fill. Floating, so it costs no layout space, and it
           stays until acted on rather than timing out — losing the only way back
