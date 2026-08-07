@@ -367,6 +367,27 @@ export default function SKUs() {
     return [...by.values()].sort((a, b) => b.count - a.count)
   })()
 
+  // Rows currently shown that have no category. 71 of 72 SKUs arrived without one
+  // (upload matching and hidden-SKU quick-add never asked), so filling them one at
+  // a time is not realistic.
+  const uncategorised = rows.filter(r =>
+    (!coFilter || !r.companyId || r.companyId === coFilter) && !r.categoryId && r.sku)
+
+  const bulkSetCategory = (catId) => {
+    const cat = categories.find(c => c.id === Number(catId))
+    if (!cat || !uncategorised.length) return
+    const ids = new Set(uncategorised.map(r => r.id))
+    if (!window.confirm(
+      `Set category "${cat.name}" on ${ids.size} SKU${ids.size !== 1 ? 's' : ''} that currently have none?\n\n` +
+      `Rows that already have a category are left untouched. Nothing is written until you press Save All.`
+    )) return
+    // Category defaults are deliberately NOT applied here — they would overwrite
+    // prices and cost inputs across every affected row. This sets the category only.
+    setRows(prev => prev.map(r => ids.has(r.id)
+      ? { ...r, category: cat.name, categoryId: cat.id, status: STATUS.DIRTY }
+      : r))
+  }
+
   const addRow = () => setRows(p => [...p, newRow()])
 
   // Hidden SKUs: names seen in uploads that have no cost match yet.
@@ -862,6 +883,20 @@ export default function SKUs() {
                 </button>
               ))}
             </div>
+          </>
+        )}
+
+        {/* Bulk-fill categories. Only offered while there is something to fill, so it
+            disappears once the gap is closed rather than sitting there forever. */}
+        {uncategorised.length > 0 && categories.length > 0 && (
+          <>
+            <div className="e-bar-sep"/>
+            <label className="e-bar-label">{uncategorised.length} without category:</label>
+            <select className="e-sort" value="" onChange={e => { bulkSetCategory(e.target.value); e.target.value = '' }}
+              aria-label={`Set a category on ${uncategorised.length} SKUs that have none`}>
+              <option value="">Set category…</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
           </>
         )}
 

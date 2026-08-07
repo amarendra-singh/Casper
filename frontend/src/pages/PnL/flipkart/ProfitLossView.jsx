@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fmt, fmtN, fmtPct } from './utils'
-import { getPnlRows, getUnmatchedSkus, addHiddenSkuPricing, getVendors } from '../../../api/client'
+import { getPnlRows, getUnmatchedSkus, addHiddenSkuPricing, getVendors, getCategories } from '../../../api/client'
 
 /**
  * Profit & Loss tab — per-SKU actual-vs-target reconciliation.
@@ -64,7 +64,8 @@ function C({ row, k, children }) {
  */
 const BLANK_COSTS = {
   price: '', package: '', logistics: '', addons: '', misc_total: '',
-  cr_percentage: '', cr_cost: '', damage_percentage: '', damage_cost: '', vendor_id: '',
+  cr_percentage: '', cr_cost: '', damage_percentage: '', damage_cost: '',
+  vendor_id: '', category_id: '',
 }
 
 // Same cost stack as the SKUs grid. Blank = fall back to the company default,
@@ -85,12 +86,16 @@ function HiddenSkuPanel({ reportId, onClose, onMatched }) {
   const [openSku, setOpen]  = useState(null)
   const [form, setForm]     = useState(BLANK_COSTS)
   const [vendors, setVendors] = useState([])
+  const [categories, setCategories] = useState([])
   const [busy, setBusy]     = useState(false)
   const [err, setErr]       = useState('')
 
   useEffect(() => {
     getUnmatchedSkus(reportId).then(setItems).catch(() => setItems([]))
     getVendors().then(setVendors).catch(() => setVendors([]))
+    // Asked for here so SKUs added this way arrive categorised — adding them
+    // without a category is what left 71 of 72 SKUs uncategorised.
+    getCategories().then(setCategories).catch(() => setCategories([]))
   }, [reportId])
 
   // % and ₹ are two ways to say the same thing — entering one clears its partner
@@ -150,10 +155,16 @@ function HiddenSkuPanel({ reportId, onClose, onMatched }) {
               {openSku === u.platform_sku_name && (
                 <div className="hs-form">
                   <div className="hs-grid">
-                    <label className="hs-f hs-f-wide">Vendor
+                    <label className="hs-f">Vendor
                       <select value={form.vendor_id} onChange={e => setField('vendor_id', e.target.value)}>
                         <option value="">— none —</option>
                         {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                      </select>
+                    </label>
+                    <label className="hs-f">Category
+                      <select value={form.category_id} onChange={e => setField('category_id', e.target.value)}>
+                        <option value="">— none —</option>
+                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
                     </label>
                     <label className="hs-f hs-f-req">Price ₹
