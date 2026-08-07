@@ -341,8 +341,19 @@ async def get_all_entries(session: AsyncSession, company_id: int | list[int]) ->
     )
     skus = sku_result.scalars().all()
 
+    # Company name/colour, so a consolidated list can show which company owns each
+    # row. Only looked up when the scope spans more than one company.
+    co_meta: dict[int, tuple] = {}
+    if len(_cids) > 1:
+        from app.models.company import Company
+        co_rows = await session.execute(
+            select(Company.id, Company.name, Company.color).where(Company.id.in_(_cids))
+        )
+        co_meta = {cid: (name, color) for cid, name, color in co_rows.all()}
+
     rows = []
     for sku in skus:
+        co_name, co_color = co_meta.get(sku.company_id, (None, None))
         # Pick latest pricing record without extra query
         pricing = max(sku.pricing, key=lambda p: p.id) if sku.pricing else None
         platform_configs = pricing.platform_configs if pricing else []
@@ -357,6 +368,9 @@ async def get_all_entries(session: AsyncSession, company_id: int | list[int]) ->
         rows.append({
             'id':               sku.id,
             'shringar_sku':     sku.shringar_sku,
+            'company_id':       sku.company_id,
+            'company_name':     co_name,
+            'company_color':    co_color,
             'series':           sku.series,
             'vendor_id':        sku.vendor_id,
             'vendor_name':      vendor_name,

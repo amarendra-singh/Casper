@@ -78,6 +78,12 @@ class EntryRowResult(BaseModel):
 class EntryRowResponse(BaseModel):
     id:            int
     shringar_sku:  str
+    # Which company owns this row. Required in consolidated ("All Companies") mode:
+    # without it a merged list is indistinguishable, and you cannot tell whose
+    # record you are about to edit.
+    company_id:    Optional[int] = None
+    company_name:  Optional[str] = None
+    company_color: Optional[str] = None
     vendor_id:     Optional[int] = None
     vendor_name:   Optional[str] = None
     vendor_short:  Optional[str] = None
