@@ -172,6 +172,35 @@ async def get_company_scope(
     return CompanyScope([company], is_all=False)
 
 
+async def require_role_in_company(db, user: User, company_id: int, *roles) -> None:
+    """
+    Authorise a write against the role the caller holds in **the record's own**
+    company — not a global role, and not whichever company they happen to be
+    viewing.
+
+    This is what makes editing from master mode safe: a user can be owner of one
+    company and only a viewer of another, so a record edited from the consolidated
+    list must be judged by their standing in the company that owns it.
+
+    It also closes a gap that predates group mode — record writes previously checked
+    a global role plus bare membership, never the membership's role.
+    """
+    from app.services.company import get_membership
+    from app.models.company import CompanyRole
+
+    row = await get_membership(db, user.id, company_id)
+    if not row:
+        # 404 rather than 403: do not confirm the record exists to someone outside it.
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    _company, role = row
+    allowed = roles or (CompanyRole.owner, CompanyRole.admin)
+    if role not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Your role in that company ({role.value}) cannot make this change",
+        )
+
+
 def require_company_role(*roles):
     """Factory — dependency that enforces the caller's role within the active company."""
     async def guard(

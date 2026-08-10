@@ -67,6 +67,58 @@ async def test_group_mode_refuses_writes():
         assert "specific company" in exc.value.detail.lower()
 
 
+@pytest.mark.asyncio
+async def test_role_is_checked_in_the_records_own_company(monkeypatch):
+    """
+    Editing from master mode must be judged by the caller's role in the company
+    that owns the record — not a global role, and not the company they are viewing.
+    """
+    from app.core import dependencies as deps
+    from app.models.company import CompanyRole
+
+    async def membership(db, user_id, company_id):
+        # owner of company 1, viewer of company 2, not a member of company 3
+        return {1: (object(), CompanyRole.owner),
+                2: (object(), CompanyRole.viewer)}.get(company_id)
+
+    import app.services.company as company_svc
+    monkeypatch.setattr(company_svc, "get_membership", membership)
+
+    user = SimpleNamespace(id=1)
+
+    # owner in company 1 → allowed
+    await deps.require_role_in_company(None, user, 1)
+
+    # only a viewer in company 2 → refused, even though they own company 1
+    with pytest.raises(HTTPException) as exc:
+        await deps.require_role_in_company(None, user, 2)
+    assert exc.value.status_code == 403
+    assert "viewer" in exc.value.detail
+
+    # not a member of company 3 → 404, so the record's existence is not confirmed
+    with pytest.raises(HTTPException) as exc:
+        await deps.require_role_in_company(None, user, 3)
+    assert exc.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_viewer_can_be_allowed_explicitly(monkeypatch):
+    from app.core import dependencies as deps
+    from app.models.company import CompanyRole
+    import app.services.company as company_svc
+
+    async def membership(db, user_id, company_id):
+        return (object(), CompanyRole.viewer)
+    monkeypatch.setattr(company_svc, "get_membership", membership)
+
+    # default set excludes viewer …
+    with pytest.raises(HTTPException):
+        await deps.require_role_in_company(None, SimpleNamespace(id=1), 1)
+    # … but callers can widen it
+    await deps.require_role_in_company(None, SimpleNamespace(id=1), 1,
+                                       CompanyRole.viewer, CompanyRole.admin, CompanyRole.owner)
+
+
 def test_write_services_stay_single_company():
     """
     Consolidation must cover READS only. The fraud compute_* functions delete then

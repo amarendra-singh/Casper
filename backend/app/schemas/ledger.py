@@ -58,6 +58,11 @@ class LedgerEntryUpdate(BaseModel):
 
 
 class LedgerEntryResponse(LedgerEntryBase):
+    # Owning company — populated only when the scope spans several companies,
+    # so a consolidated list can show whose record each row is.
+    company_id:    Optional[int] = None
+    company_name:  Optional[str] = None
+    company_color: Optional[str] = None
     id: int
     vendor_name: Optional[str] = None   # resolved for display
     sku_code: Optional[str] = None      # resolved for display

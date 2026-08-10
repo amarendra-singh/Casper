@@ -7,7 +7,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, get_active_company, require_admin_or_above, get_company_scope
+from app.core.dependencies import get_current_user, get_active_company, require_admin_or_above, get_company_scope, require_role_in_company, require_any
 from app.services.scope import company_ids
 from app.models.user import User
 from app.models.billing import Invoice, InvoiceLine
@@ -21,8 +21,8 @@ from app.services.billing import (
 router = APIRouter(prefix="/billing", tags=["Billing"])
 
 
-def _to_response(inv: Invoice) -> InvoiceResponse:
-    return InvoiceResponse(
+def _to_response(inv: Invoice, co: dict | None = None) -> InvoiceResponse:
+    r = InvoiceResponse(
         id=inv.id, number=inv.number, invoice_date=inv.invoice_date, due_date=inv.due_date,
         customer_name=inv.customer_name, customer_gstin=inv.customer_gstin,
         status=derive_status(inv.status, inv.due_date, date.today()),
@@ -32,6 +32,21 @@ def _to_response(inv: Invoice) -> InvoiceResponse:
         lines=[InvoiceLineOut.model_validate(ln) for ln in inv.lines],
         created_at=inv.created_at,
     )
+    if co:
+        r.company_id = inv.company_id
+        r.company_name, r.company_color = co.get(inv.company_id, (None, None))
+    return r
+
+async def _company_meta(db, cids) -> dict:
+    """{id: (name, colour)} — only looked up when the scope spans several companies,
+    so single-company responses carry no company fields and no extra query."""
+    if len(cids) < 2:
+        return {}
+    from sqlalchemy import select as _select
+    from app.models.company import Company
+    rows = await db.execute(_select(Company.id, Company.name, Company.color).where(Company.id.in_(cids)))
+    return {cid: (name, color) for cid, name, color in rows.all()}
+
 
 
 async def _get_owned(db, invoice_id, company_id) -> Invoice:
@@ -57,7 +72,8 @@ async def list_invoices(
          .where(Invoice.company_id.in_(scope.ids))
          .order_by(Invoice.invoice_date.desc(), Invoice.id.desc()))
     invoices = (await db.execute(q)).scalars().all()
-    out = [_to_response(i) for i in invoices]
+    co = await _company_meta(db, scope.ids)
+    out = [_to_response(i, co) for i in invoices]
     if status_filter:
         out = [r for r in out if r.status == status_filter]
     return out
@@ -111,10 +127,12 @@ async def update_invoice(
     invoice_id: int,
     payload: InvoiceUpdate,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    _: User = Depends(require_admin_or_above),
+    scope=Depends(get_company_scope),
+    user: User = Depends(require_any),
 ):
-    inv = await _get_owned(db, invoice_id, company.id)
+    # The invoice carries its own company, so this is unambiguous in master mode.
+    inv = await _get_owned(db, invoice_id, scope.ids)
+    await require_role_in_company(db, user, inv.company_id)
     data = payload.model_dump(exclude_unset=True)
     lines = data.pop("lines", None)
     for k, v in data.items():
@@ -126,7 +144,7 @@ async def update_invoice(
                                          quantity=l.get("quantity", 1), unit_price=l.get("unit_price", 0)))
     recalc_totals(inv)
     await db.commit()
-    inv = await _get_owned(db, invoice_id, company.id)
+    inv = await _get_owned(db, invoice_id, inv.company_id)
     return _to_response(inv)
 
 
@@ -134,9 +152,10 @@ async def update_invoice(
 async def delete_invoice(
     invoice_id: int,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    _: User = Depends(require_admin_or_above),
+    scope=Depends(get_company_scope),
+    user: User = Depends(require_any),
 ):
-    inv = await _get_owned(db, invoice_id, company.id)
+    inv = await _get_owned(db, invoice_id, scope.ids)
+    await require_role_in_company(db, user, inv.company_id)
     await db.delete(inv)
     await db.commit()
