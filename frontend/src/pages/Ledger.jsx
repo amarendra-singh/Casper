@@ -5,8 +5,9 @@ import {
 import { useConfirm } from '../components/ConfirmDialog'
 import {
   getLedger, getLedgerSummary, createLedgerEntry, updateLedgerEntry, deleteLedgerEntry,
-  getVendors, getSkus,
+  getVendors, getSkus, inCompany, errText,
 } from '../api/client'
+import { useCompany } from '../context/CompanyContext'
 import './Ledger.css'
 
 const EXPENSE_CATS = ['inventory', 'logistics', 'packaging', 'ads', 'salary', 'rent', 'utilities', 'tax', 'platform_fee', 'refund', 'misc']
@@ -40,6 +41,10 @@ function StatCard({ label, value, tone, sub, icon }) {
 
 export default function Ledger() {
   const { ask, dialog } = useConfirm()
+  // A new record has no company to infer, so in All Companies the form has to ask.
+  // Editing does not: the existing row already carries its own company.
+  const { companies, isAll } = useCompany()
+  const [newIn, setNewIn]     = useState('')
   const [entries, setEntries] = useState([])
   const [summary, setSummary] = useState({ total_income: 0, total_expense: 0, net: 0, count: 0, by_category: [] })
   const [vendors, setVendors] = useState([])
@@ -116,6 +121,7 @@ export default function Ledger() {
   }
   const save = async () => {
     if (!draft.amount || Number(draft.amount) <= 0) { setError('Enter an amount greater than 0'); return }
+    if (isAll && !editId && !newIn) { setError('Choose which company this entry belongs to'); return }
     setBusy(true); setError('')
     const payload = {
       ...draft, amount: Number(draft.amount),
@@ -125,9 +131,11 @@ export default function Ledger() {
       reference_no: draft.reference_no.trim() || null, note: draft.note.trim() || null,
     }
     try {
-      if (editId) await updateLedgerEntry(editId, payload); else await createLedgerEntry(payload)
-      setShowForm(false); setEditId(null); setDraft(blank()); await load()
-    } catch (err) { setError(err.response?.data?.detail || 'Save failed') }
+      if (editId) await updateLedgerEntry(editId, payload)
+      // In All Companies the picked company overrides the 'all' header for this request.
+      else await createLedgerEntry(payload, isAll ? inCompany(newIn) : undefined)
+      setShowForm(false); setEditId(null); setDraft(blank()); setNewIn(''); await load()
+    } catch (err) { setError(errText(err, 'Save failed')) }
     finally { setBusy(false) }
   }
   const doRemove = async e => {
@@ -262,6 +270,12 @@ export default function Ledger() {
           {showForm && (
             <div className="lg-form">
               <div className="lg-form-grid">
+                {isAll && !editId && (
+                  <label>Company<select value={newIn} onChange={e => setNewIn(e.target.value)}>
+                    <option value="">— choose —</option>
+                    {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select></label>
+                )}
                 <label>Date<input type="date" value={draft.entry_date} onChange={e => set('entry_date', e.target.value)} /></label>
                 <label>Type<select value={draft.direction} onChange={e => set('direction', e.target.value)}><option value="expense">Expense (out)</option><option value="income">Income (in)</option></select></label>
                 <label>Category<select value={draft.category} onChange={e => set('category', e.target.value)}>{cats.map(c => <option key={c} value={c}>{label(c)}</option>)}</select></label>

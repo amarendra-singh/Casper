@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
-import api, { getSkus } from '../api/client'
+import api, { getSkus, inCompany, errText } from '../api/client'
 import { useCompany } from '../context/CompanyContext'
 import './Ledger.css'
 import './Billing.css'
@@ -15,7 +15,7 @@ const cap  = s => (s || '').charAt(0).toUpperCase() + (s || '').slice(1)
 
 const getInvoices = (params) => api.get('/billing/', { params }).then(r => r.data)
 const getSummary  = () => api.get('/billing/summary').then(r => r.data)
-const createInv   = (d) => api.post('/billing/', d).then(r => r.data)
+const createInv   = (d, cfg) => api.post('/billing/', d, cfg).then(r => r.data)
 const updateInv   = (id, d) => api.patch(`/billing/${id}`, d).then(r => r.data)
 const deleteInv   = (id) => api.delete(`/billing/${id}`)
 
@@ -50,7 +50,9 @@ export default function Billing() {
   const [error, setError]       = useState('')
   const [printInv, setPrintInv] = useState(null)
   const [search, setSearch]     = useState('')
-  const { activeCompany } = useCompany()
+  // A new invoice has no company to infer, so All Companies must ask for one.
+  const { activeCompany, companies, isAll } = useCompany()
+  const [newIn, setNewIn] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -108,6 +110,7 @@ export default function Billing() {
   const save = async () => {
     if (!draft.customer_name.trim()) { setError('Customer name is required'); return }
     if (!draft.lines.some(l => l.description.trim())) { setError('Add at least one line item'); return }
+    if (isAll && !editId && !newIn) { setError('Choose which company this invoice belongs to'); return }
     setBusy(true); setError('')
     const payload = {
       invoice_date: draft.invoice_date, due_date: draft.due_date || null,
@@ -120,9 +123,11 @@ export default function Billing() {
       })),
     }
     try {
-      if (editId) await updateInv(editId, payload); else await createInv(payload)
-      setShowForm(false); setEditId(null); setDraft(blankDraft()); await load()
-    } catch (e) { setError(e.response?.data?.detail || 'Save failed') }
+      if (editId) await updateInv(editId, payload)
+      // The picked company overrides the 'all' header for this one request.
+      else await createInv(payload, isAll ? inCompany(newIn) : undefined)
+      setShowForm(false); setEditId(null); setDraft(blankDraft()); setNewIn(''); await load()
+    } catch (e) { setError(errText(e, 'Save failed')) }
     finally { setBusy(false) }
   }
 
@@ -211,6 +216,12 @@ export default function Billing() {
           {showForm && (
             <div className="lg-form">
               <div className="lg-form-grid">
+                {isAll && !editId && (
+                  <label>Company<select value={newIn} onChange={e => setNewIn(e.target.value)}>
+                    <option value="">— choose —</option>
+                    {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select></label>
+                )}
                 <label>Invoice date<input type="date" value={draft.invoice_date} onChange={e => setF('invoice_date', e.target.value)} /></label>
                 <label>Due date<input type="date" value={draft.due_date} onChange={e => setF('due_date', e.target.value)} /></label>
                 <label>Customer<input value={draft.customer_name} onChange={e => setF('customer_name', e.target.value)} placeholder="Customer name" /></label>

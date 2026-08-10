@@ -14,10 +14,16 @@ const api = axios.create({
 api.interceptors.request.use(cfg => {
   const token = localStorage.getItem('access_token')
   if (token) cfg.headers.Authorization = `Bearer ${token}`
+  // A caller-supplied header wins. That is how creating from All Companies works:
+  // the form picks a company and sends it for that one request, instead of 'all',
+  // which the backend refuses for writes because a record must belong to one entity.
   const cid = localStorage.getItem('active_company_id')
-  if (cid) cfg.headers['X-Company-Id'] = cid
+  if (cid && !cfg.headers['X-Company-Id']) cfg.headers['X-Company-Id'] = cid
   return cfg
 })
+
+/** Request config that targets one company, whatever the switcher is set to. */
+export const inCompany = id => ({ headers: { 'X-Company-Id': String(id) } })
 
 // If token expired (401), try refresh token automatically
 api.interceptors.response.use(
@@ -141,7 +147,7 @@ export const getPnlRows                 = (reportId)   => api.get(`/pnl/rows/${r
 // Billing / expense ledger
 export const getLedger        = (params) => api.get('/ledger/', { params }).then(r => r.data)
 export const getLedgerSummary = (params) => api.get('/ledger/summary', { params }).then(r => r.data)
-export const createLedgerEntry= (data)   => api.post('/ledger/', data).then(r => r.data)
+export const createLedgerEntry= (data, cfg) => api.post('/ledger/', data, cfg).then(r => r.data)
 export const updateLedgerEntry= (id, data) => api.patch(`/ledger/${id}`, data).then(r => r.data)
 export const deleteLedgerEntry= (id)     => api.delete(`/ledger/${id}`).then(r => r.data)
 
