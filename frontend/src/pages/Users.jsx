@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { getMembers, inviteMember, updateMemberRole, removeMember } from '../api/client'
-import { useCompany } from '../context/CompanyContext'
+import { getMembers, inviteMember, updateMemberRole, removeMember, errText } from '../api/client'
+import { useCompany, ALL } from '../context/CompanyContext'
 import './Users.css'
 import { useConfirm } from '../components/ConfirmDialog'
 
@@ -22,14 +22,20 @@ export default function Users() {
   const [showAdd, setShowAdd] = useState(false)
   const [draft, setDraft] = useState(BLANK)
 
+  // A team is a property of one company — roles differ per company, so there is no
+  // meaningful combined member list. In group mode the id is the string 'all',
+  // which the members endpoint rejects with a 422 whose body is an array of error
+  // objects; rendering that crashed the page. Skip the call and say why instead.
+  const isAll = cid === ALL
+
   useEffect(() => {
-    if (!cid) return
+    if (!cid || isAll) { setLoading(false); return }
     setLoading(true)
     getMembers(cid)
       .then(setMembers)
-      .catch(e => setError(e.response?.data?.detail || 'Failed to load team'))
+      .catch(e => setError(errText(e, 'Failed to load team')))
       .finally(() => setLoading(false))
-  }, [cid])
+  }, [cid, isAll])
 
   const add = async () => {
     if (!draft.email.trim()) { setError('Email is required'); return }
@@ -38,7 +44,7 @@ export default function Users() {
       const m = await inviteMember(cid, { ...draft, email: draft.email.trim(), name: draft.name.trim() })
       setMembers(p => [...p, m])
       setDraft(BLANK); setShowAdd(false)
-    } catch (e) { setError(e.response?.data?.detail || 'Invite failed') }
+    } catch (e) { setError(errText(e, 'Invite failed')) }
     finally { setBusy(null) }
   }
 
@@ -47,7 +53,7 @@ export default function Users() {
     try {
       const updated = await updateMemberRole(cid, m.id, newRole)
       setMembers(p => p.map(x => x.id === m.id ? updated : x))
-    } catch (e) { setError(e.response?.data?.detail || 'Update failed') }
+    } catch (e) { setError(errText(e, 'Update failed')) }
     finally { setBusy(null) }
   }
 
@@ -56,7 +62,7 @@ export default function Users() {
     try {
       await removeMember(cid, m.id)
       setMembers(p => p.filter(x => x.id !== m.id))
-    } catch (e) { setError(e.response?.data?.detail || 'Remove failed') }
+    } catch (e) { setError(errText(e, 'Remove failed')) }
     finally { setBusy(null) }
   }
   const remove = m => ask({
@@ -85,6 +91,13 @@ export default function Users() {
       </header>
 
       {error && <div className="usr-error" role="alert">{error}</div>}
+
+      {isAll && (
+        <p className="usr-note">
+          A team belongs to one company — roles are granted per company, so there is no
+          combined member list. Pick a company in the switcher to manage its team.
+        </p>
+      )}
 
       {canManage && showAdd && (
         <div className="usr-add-form">

@@ -146,3 +146,18 @@ export const updateLedgerEntry= (id, data) => api.patch(`/ledger/${id}`, data).t
 export const deleteLedgerEntry= (id)     => api.delete(`/ledger/${id}`).then(r => r.data)
 
 export default api
+/**
+ * Safe message from an axios error.
+ *
+ * FastAPI returns `detail` as a plain string for HTTPException but as an ARRAY of
+ * {type, loc, msg, input} objects for validation errors. Passing that array
+ * straight into state and rendering it crashes React with "Objects are not valid
+ * as a React child" — which is exactly how the Team page went blank in group mode.
+ */
+export function errText(e, fallback = 'Something went wrong') {
+  const d = e?.response?.data?.detail
+  if (typeof d === 'string') return d
+  if (Array.isArray(d)) return d.map(x => x?.msg).filter(Boolean).join('; ') || fallback
+  if (d && typeof d === 'object') return d.msg || d.detail || fallback
+  return e?.message || fallback
+}
