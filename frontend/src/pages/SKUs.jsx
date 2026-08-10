@@ -1093,7 +1093,7 @@ export default function SKUs() {
                   const c = compute(row, miscDef, profDef, platforms)
                   return (
                 <tr key={row.id}
-                    className={`e-row ${row.status === STATUS.ERROR ? 'row-error' : ''}${row.companyColor ? ' e-row-co' : ''}`}
+                    className={`e-row ${row.status === STATUS.ERROR ? 'row-error' : ''}${row.companyColor ? ' co-rail' : ''}`}
                     // Owning-company mark: a coloured left rail. Costs no column
                     // width, and reads peripherally — one odd colour stands out.
                     style={row.companyColor ? { '--co-mark': row.companyColor } : undefined}

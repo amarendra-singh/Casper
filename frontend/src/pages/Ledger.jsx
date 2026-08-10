@@ -137,7 +137,9 @@ export default function Ledger() {
   const remove = e => ask({
     title: 'Delete ledger entry',
     body: <>Delete this <strong>{e.direction}</strong> of <strong>{fmtP(e.amount)}</strong>
-      {e.category ? <> in {e.category}</> : null}?
+      {e.category ? <> in {e.category}</> : null}
+      {/* In All Companies a row's owner is not obvious from context — say it before deleting. */}
+      {e.company_name ? <> from <strong>{e.company_name}</strong></> : null}?
       <span className="cd-note">This cannot be undone.</span></>,
     confirmLabel: 'Delete entry', tone: 'danger',
     onConfirm: () => doRemove(e),
@@ -287,7 +289,12 @@ export default function Ledger() {
                 <thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Party</th><th>SKU</th><th className="num">Amount</th><th>Bank</th><th>Method</th><th>Ref</th><th>Note</th><th></th></tr></thead>
                 <tbody>
                   {entries.map(e => (
-                    <tr key={e.id}>
+                    // company_name is sent only when the list spans several companies,
+                    // so the rail appears exactly when rows could be confused.
+                    <tr key={e.id}
+                        className={e.company_name ? 'co-rail' : undefined}
+                        title={e.company_name || undefined}
+                        style={e.company_color ? { '--co-mark': e.company_color } : undefined}>
                       <td className="mono">{e.entry_date}</td>
                       <td><span className={`lg-dir ${e.direction}`}>{e.direction === 'income' ? 'In' : 'Out'}</span></td>
                       <td>{label(e.category)}</td>

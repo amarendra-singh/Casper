@@ -227,3 +227,15 @@ tr:hover td { background: var(--shell); color: var(--ink); }
 @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: translateY(0) } }
 @keyframes spin    { to { transform: rotate(360deg) } }
+
+/* ── Company ownership rail ──
+   In All Companies mode a list mixes rows from several entities, so each row
+   carries a coloured edge matching the switcher's colour for its owner. Shared
+   by every consolidated list (SKUs, ledger, billing) so the colour language is
+   identical wherever rows are mixed. Colour is never the only cue — the row's
+   title attribute names the company for screen readers and colour-blind users. */
+.co-rail > td:first-child { position: relative; }
+.co-rail > td:first-child::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px; background: var(--co-mark, transparent);
+}

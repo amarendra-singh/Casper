@@ -130,7 +130,8 @@ export default function Billing() {
   const doRemove = async inv => { try { await deleteInv(inv.id); await load() } catch { /* noop */ } }
   const remove = inv => ask({
     title: 'Delete invoice',
-    body: <>Delete invoice <strong>{inv.number}</strong>{inv.customer_name ? <> for <strong>{inv.customer_name}</strong></> : null}?
+    body: <>Delete invoice <strong>{inv.number}</strong>{inv.customer_name ? <> for <strong>{inv.customer_name}</strong></> : null}
+      {inv.company_name ? <> from <strong>{inv.company_name}</strong></> : null}?
       <span className="cd-note">This cannot be undone.</span></>,
     confirmLabel: 'Delete invoice', tone: 'danger',
     onConfirm: () => doRemove(inv),
@@ -257,7 +258,11 @@ export default function Billing() {
                 <thead><tr><th>Number</th><th>Date</th><th>Due</th><th>Customer</th><th className="num">Total</th><th className="num">Paid</th><th className="num">Balance</th><th>Status</th><th></th></tr></thead>
                 <tbody>
                   {shown.map(inv => (
-                    <tr key={inv.id}>
+                    // Set only in All Companies mode — see the .co-rail note in index.css.
+                    <tr key={inv.id}
+                        className={inv.company_name ? 'co-rail' : undefined}
+                        title={inv.company_name || undefined}
+                        style={inv.company_color ? { '--co-mark': inv.company_color } : undefined}>
                       <td className="mono">{inv.number}</td>
                       <td className="mono">{inv.invoice_date}</td>
                       <td className="mono">{inv.due_date || '—'}</td>
