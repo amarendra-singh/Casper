@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useCompany } from '../context/CompanyContext'
 import { getCompanies } from '../api/client'
 import './Companies.css'
+import { useConfirm } from '../components/ConfirmDialog'
 
 /**
  * Companies — one home for company CRUD.
@@ -15,6 +16,7 @@ import './Companies.css'
 const SWATCHES = ['#EC2D6E', '#7A5BFF', '#0EA5E9', '#16A34A', '#F59E0B', '#DC2626', '#0E0E10']
 
 export default function Companies() {
+  const { ask, dialog } = useConfirm()
   const { activeId, setActive, createCompany, renameCompany,
           archiveCompany, leaveCompany, restoreCompany } = useCompany()
 
@@ -32,12 +34,15 @@ export default function Companies() {
   }, [])
   useEffect(() => { load() }, [load])
 
-  const run = async (fn, confirmMsg) => {
-    if (confirmMsg && !window.confirm(confirmMsg)) return
-    setBusy(true); setErr('')
-    try { await fn(); load() }
-    catch (e) { setErr(e?.response?.data?.detail || 'Action failed') }
-    finally { setBusy(false) }
+  const run = async (fn, confirmOpts) => {
+    const go = async () => {
+      setBusy(true); setErr('')
+      try { await fn(); load() }
+      catch (e) { setErr(e?.response?.data?.detail || 'Action failed') }
+      finally { setBusy(false) }
+    }
+    if (confirmOpts) ask({ ...confirmOpts, onConfirm: go })
+    else await go()
   }
 
   const submitCreate = async () => {
@@ -63,6 +68,7 @@ export default function Companies() {
 
   return (
     <div className="co-page">
+      {dialog}
       <header className="co-head">
         <div>
           <h1 className="co-h1">Companies</h1>
@@ -108,10 +114,19 @@ export default function Companies() {
             onCancel={() => setEditing(null)}
             onSave={() => saveEdit(c.id)}
             onSwitch={() => setActive(c.id)}
-            onArchive={() => run(() => archiveCompany(c.id),
-              `Archive "${c.name}"? It leaves the switcher but all its data is kept, and you can restore it here.`)}
-            onLeave={() => run(() => leaveCompany(c.id),
-              `Leave "${c.name}"? You'll lose access unless someone re-invites you.`)}
+            onArchive={() => run(() => archiveCompany(c.id), {
+              title: 'Archive company',
+              body: <>Archive <strong>{c.name}</strong>?
+                <span className="cd-note">It leaves the switcher but all its data is kept — you can restore
+                  it from this page at any time.</span></>,
+              confirmLabel: 'Archive', tone: 'danger',
+            })}
+            onLeave={() => run(() => leaveCompany(c.id), {
+              title: 'Leave company',
+              body: <>Leave <strong>{c.name}</strong>?
+                <span className="cd-note">You lose access unless someone re-invites you.</span></>,
+              confirmLabel: 'Leave', tone: 'danger',
+            })}
             canRemove={active.length > 1} />
         ))}
       </div>

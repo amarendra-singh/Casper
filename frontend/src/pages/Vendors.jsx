@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { getVendors, updateVendor, deleteVendor, createVendor, getEntries } from '../api/client'
 import './Vendors.css'
+import { useConfirm } from '../components/ConfirmDialog'
 
 export default function Vendors() {
+  const { ask, dialog } = useConfirm()
   const [vendors,  setVendors]  = useState([])
   const [skuCounts, setSkuCounts] = useState({}) // { vendorId: count }
   const [loading,  setLoading]  = useState(true)
@@ -40,12 +42,21 @@ export default function Vendors() {
     } finally { setBusy(null) }
   }
 
-  const handleDelete = async v => {
+  const handleDelete = v => {
     if ((skuCounts[v.id] || 0) > 0) {
       setError(`Cannot delete "${v.name}" — it has ${skuCounts[v.id]} active SKU(s). Remove or reassign them first.`)
       return
     }
-    if (!confirm(`Delete vendor "${v.name}"?`)) return
+    ask({
+      title: 'Delete vendor',
+      body: <>Delete vendor <strong>{v.name}</strong>?
+        <span className="cd-note">This cannot be undone.</span></>,
+      confirmLabel: 'Delete vendor', tone: 'danger',
+      onConfirm: () => doDelete(v),
+    })
+  }
+
+  const doDelete = async v => {
     setBusy(v.id)
     try {
       await deleteVendor(v.id)
@@ -71,6 +82,7 @@ export default function Vendors() {
 
   return (
     <div className="vnd-page">
+      {dialog}
       <div className="vnd-header">
         <div>
           <h1 className="vnd-title">Vendors</h1>

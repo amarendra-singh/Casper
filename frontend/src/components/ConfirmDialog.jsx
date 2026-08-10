@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './ConfirmDialog.css'
 
 /**
@@ -45,4 +45,41 @@ export default function ConfirmDialog({
       </div>
     </div>
   )
+}
+
+/**
+ * Convenience wrapper so a call site is two lines instead of its own state block.
+ *
+ *   const { ask, dialog } = useConfirm()
+ *   ...
+ *   <button onClick={() => ask({
+ *     title: 'Delete invoice',
+ *     body: <>Delete <strong>{inv.number}</strong>? This cannot be undone.</>,
+ *     confirmLabel: 'Delete', tone: 'danger',
+ *     onConfirm: () => remove(inv),
+ *   })}>Delete</button>
+ *   ...
+ *   {dialog}
+ *
+ * The action runs after the dialog closes, so an async handler cannot leave the
+ * dialog open behind a request.
+ */
+export function useConfirm() {
+  const [pending, setPending] = useState(null)
+
+  const dialog = (
+    <ConfirmDialog
+      open={!!pending}
+      title={pending?.title}
+      confirmLabel={pending?.confirmLabel}
+      cancelLabel={pending?.cancelLabel}
+      tone={pending?.tone}
+      onCancel={() => setPending(null)}
+      onConfirm={() => { const p = pending; setPending(null); p?.onConfirm?.() }}
+    >
+      {pending?.body}
+    </ConfirmDialog>
+  )
+
+  return { ask: setPending, dialog }
 }

@@ -3,6 +3,7 @@ import { getPlatforms, updatePlatform, createPlatform } from '../api/client'
 import api from '../api/client'
 import { useCompany } from '../context/CompanyContext'
 import './Settings.css'
+import { useConfirm } from '../components/ConfirmDialog'
 
 const MODULE_META = [
   { key: 'skus',       label: 'SKUs & Catalog' },
@@ -59,6 +60,7 @@ function CompanyModules() {
 }
 
 function CompanyManage() {
+  const { ask, dialog } = useConfirm()
   const { activeCompany, companies, role, renameCompany, archiveCompany, leaveCompany } = useCompany()
   const isOwner = role === 'owner'
   const id = activeCompany?.id
@@ -75,19 +77,34 @@ function CompanyManage() {
     try { await renameCompany(id, n) } catch (e) { setErr(e?.response?.data?.detail || 'Rename failed') }
     finally { setBusy(false) }
   }
-  const doArchive = async () => {
-    if (!confirm(`Archive "${activeCompany?.name}"? It's hidden from the switcher but its data is kept.`)) return
+  const runArchive = async () => {
     setBusy(true); setErr('')
     try { await archiveCompany(id) } catch (e) { setErr(e?.response?.data?.detail || 'Archive failed'); setBusy(false) }
   }
-  const doLeave = async () => {
-    if (!confirm(`Leave "${activeCompany?.name}"? You'll lose access unless re-invited.`)) return
+  const doArchive = () => ask({
+    title: 'Archive company',
+    body: <>Archive <strong>{activeCompany?.name}</strong>?
+      <span className="cd-note">It leaves the switcher but none of its data is deleted — you can restore it
+        from the Companies page.</span></>,
+    confirmLabel: 'Archive company', tone: 'danger',
+    onConfirm: runArchive,
+  })
+
+  const runLeave = async () => {
     setBusy(true); setErr('')
     try { await leaveCompany(id) } catch (e) { setErr(e?.response?.data?.detail || 'Leave failed'); setBusy(false) }
   }
+  const doLeave = () => ask({
+    title: 'Leave company',
+    body: <>Leave <strong>{activeCompany?.name}</strong>?
+      <span className="cd-note">You lose access to its data unless someone re-invites you.</span></>,
+    confirmLabel: 'Leave company', tone: 'danger',
+    onConfirm: runLeave,
+  })
 
   return (
     <div className="st-add-card" style={{ marginBottom: 16 }}>
+      {dialog}
       <div style={{ marginBottom: 12, display: 'flex', alignItems: 'flex-start',
                     justifyContent: 'space-between', gap: 12 }}>
         <div>
@@ -132,6 +149,7 @@ function Toast({ msg, type }) {
 }
 
 function TierRow({ tier, platformId, onUpdated, onDeleted, onError }) {
+  const { ask, dialog } = useConfirm()
   const [editing, setEditing] = useState(false)
   const [name,    setName]    = useState(tier.tier_name)
   // Determine current mode from existing data: pct if fee_pct is set, else amt
@@ -163,7 +181,6 @@ function TierRow({ tier, platformId, onUpdated, onDeleted, onError }) {
   }
 
   const del = async () => {
-    if (!confirm(`Delete tier "${tier.tier_name}"?`)) return
     setBusy(true)
     try {
       await api.delete(`/platforms/${platformId}/tiers/${tier.id}`)
@@ -205,7 +222,14 @@ function TierRow({ tier, platformId, onUpdated, onDeleted, onError }) {
       <span className="st-tier-name">{tier.tier_name}</span>
       <span className="st-tier-fee-val">{displayValue}</span>
       <button className="st-tier-edit-btn" onClick={() => setEditing(true)}>Edit</button>
-      <button className="st-tier-del-btn" onClick={del} disabled={busy}>✕</button>
+      <button className="st-tier-del-btn" disabled={busy}
+        onClick={() => ask({
+          title: 'Delete tier',
+          body: <>Delete tier <strong>{tier.tier_name}</strong>?<span className="cd-note">This cannot be undone.</span></>,
+          confirmLabel: 'Delete tier', tone: 'danger',
+          onConfirm: del,
+        })}>✕</button>
+      {dialog}
     </div>
   )
 }

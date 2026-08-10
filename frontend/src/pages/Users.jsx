@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { getMembers, inviteMember, updateMemberRole, removeMember } from '../api/client'
 import { useCompany } from '../context/CompanyContext'
 import './Users.css'
+import { useConfirm } from '../components/ConfirmDialog'
 
 const ASSIGNABLE = ['admin', 'viewer']              // owner is fixed to the creator
 const ROLE_LABEL = { owner: 'Owner', admin: 'Admin', viewer: 'Viewer' }
@@ -9,6 +10,7 @@ const ROLE_CLS   = { owner: 'role-super', admin: 'role-admin', viewer: 'role-vie
 const BLANK = { name: '', email: '', password: '', role: 'viewer' }
 
 export default function Users() {
+  const { ask, dialog } = useConfirm()
   const { activeCompany, role } = useCompany()
   const canManage = role === 'owner'
   const cid = activeCompany?.id
@@ -49,8 +51,7 @@ export default function Users() {
     finally { setBusy(null) }
   }
 
-  const remove = async m => {
-    if (!window.confirm(`Remove ${m.name || m.email} from ${activeCompany?.name}?`)) return
+  const doRemove = async m => {
     setBusy(m.id); setError('')
     try {
       await removeMember(cid, m.id)
@@ -58,11 +59,19 @@ export default function Users() {
     } catch (e) { setError(e.response?.data?.detail || 'Remove failed') }
     finally { setBusy(null) }
   }
+  const remove = m => ask({
+    title: 'Remove member',
+    body: <>Remove <strong>{m.name || m.email}</strong> from <strong>{activeCompany?.name}</strong>?
+      <span className="cd-note">They lose access to this company's data unless re-invited.</span></>,
+    confirmLabel: 'Remove member', tone: 'danger',
+    onConfirm: () => doRemove(m),
+  })
 
   if (loading) return <div className="usr-loading"><div className="loader" style={{ width: 28, height: 28 }} /></div>
 
   return (
     <div className="usr">
+      {dialog}
       <header className="usr-head">
         <div>
           <h1 className="usr-title">Team</h1>

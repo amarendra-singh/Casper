@@ -122,8 +122,10 @@ same reasoning was not applied the next time a dialog was needed.
 > `components/ConfirmDialog`. When a fix is made for a reason, apply the reason,
 > not just the fix.
 
-**Still outstanding:** Billing, Ledger, Users, Settings and Companies each still
-call `window.confirm` for delete/archive. They should move to the shared dialog.
+**Now closed:** every native dialog is gone — Billing, Ledger, Users, Settings,
+Companies, Vendors and both P&L report lists use `useConfirm()` from
+`components/ConfirmDialog`. Grep for `window.confirm|alert|prompt` should return
+nothing but comments.
 
 ---
 

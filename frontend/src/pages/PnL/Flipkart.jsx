@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getPlatforms, getPnlReports, uploadPnlReport, deletePnlReport } from '../../api/client'
 import './Flipkart.css'
+import { useConfirm } from '../../components/ConfirmDialog'
 
 const TABS = ['Reports', 'All Time P&L', 'By SKU']
 
@@ -21,6 +22,7 @@ const fmtPeriod = (start, end) => {
 }
 
 export default function FlipkartPnL() {
+  const { ask, dialog } = useConfirm()
   const navigate = useNavigate()
   const fileRef  = useRef(null)
 
@@ -82,9 +84,18 @@ export default function FlipkartPnL() {
     setShowUpload(false); setUploadError(''); setFile(null)
   }
 
-  async function handleDelete(reportId, e) {
+  function handleDelete(reportId, e) {
     e.stopPropagation()
-    if (!window.confirm('Delete this report and all its data?')) return
+    ask({
+      title: 'Delete report',
+      body: <>Delete this report and every SKU row in it?
+        <span className="cd-note">Its P&amp;L, settlement and fraud data go with it. This cannot be undone.</span></>,
+      confirmLabel: 'Delete report', tone: 'danger',
+      onConfirm: () => doDelete(reportId),
+    })
+  }
+
+  async function doDelete(reportId) {
     try {
       await deletePnlReport(reportId)
       setReports(r => r.filter(x => x.id !== reportId))
@@ -107,6 +118,7 @@ export default function FlipkartPnL() {
 
   return (
     <div className="pnl-page">
+      {dialog}
 
       {toast && <div className={`pnl-toast pnl-toast-${toast.type}`}>{toast.msg}</div>}
 

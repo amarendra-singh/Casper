@@ -4,6 +4,7 @@ import api, { getSkus } from '../api/client'
 import { useCompany } from '../context/CompanyContext'
 import './Ledger.css'
 import './Billing.css'
+import { useConfirm } from '../components/ConfirmDialog'
 
 const STATUSES = ['draft', 'sent', 'paid', 'cancelled']
 const STATUS_COLOR = { draft: '#9A9A9F', sent: '#2874F0', paid: '#1FA968', overdue: '#EC2D6E', cancelled: '#B8B6B2' }
@@ -35,6 +36,7 @@ function Stat({ label, value, tone, sub }) {
 }
 
 export default function Billing() {
+  const { ask, dialog } = useConfirm()
   const [invoices, setInvoices] = useState([])
   const [summary, setSummary]   = useState({ total_invoiced: 0, total_paid: 0, outstanding: 0, overdue: 0, count: 0, by_status: [], aging: {} })
   const [skus, setSkus]         = useState([])
@@ -125,10 +127,18 @@ export default function Billing() {
   }
 
   const markPaid = async inv => { try { await updateInv(inv.id, { status: 'paid', amount_paid: inv.total }); await load() } catch { /* noop */ } }
-  const remove = async inv => { if (window.confirm(`Delete invoice ${inv.number}?`)) { try { await deleteInv(inv.id); await load() } catch { /* noop */ } } }
+  const doRemove = async inv => { try { await deleteInv(inv.id); await load() } catch { /* noop */ } }
+  const remove = inv => ask({
+    title: 'Delete invoice',
+    body: <>Delete invoice <strong>{inv.number}</strong>{inv.customer_name ? <> for <strong>{inv.customer_name}</strong></> : null}?
+      <span className="cd-note">This cannot be undone.</span></>,
+    confirmLabel: 'Delete invoice', tone: 'danger',
+    onConfirm: () => doRemove(inv),
+  })
 
   return (
     <div className="lg">
+      {dialog}
       <header className="lg-head">
         <div>
           <h1 className="lg-title">Billing &amp; Invoices</h1>

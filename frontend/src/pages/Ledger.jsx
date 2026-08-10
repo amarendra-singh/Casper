@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
+import { useConfirm } from '../components/ConfirmDialog'
 import {
   getLedger, getLedgerSummary, createLedgerEntry, updateLedgerEntry, deleteLedgerEntry,
   getVendors, getSkus,
@@ -38,6 +39,7 @@ function StatCard({ label, value, tone, sub, icon }) {
 }
 
 export default function Ledger() {
+  const { ask, dialog } = useConfirm()
   const [entries, setEntries] = useState([])
   const [summary, setSummary] = useState({ total_income: 0, total_expense: 0, net: 0, count: 0, by_category: [] })
   const [vendors, setVendors] = useState([])
@@ -128,11 +130,18 @@ export default function Ledger() {
     } catch (err) { setError(err.response?.data?.detail || 'Save failed') }
     finally { setBusy(false) }
   }
-  const remove = async e => {
-    if (!window.confirm(`Delete this ${e.direction} of ${fmtP(e.amount)}?`)) return
+  const doRemove = async e => {
     try { await deleteLedgerEntry(e.id); await load() }
     catch (err) { setError(err.response?.data?.detail || 'Delete failed') }
   }
+  const remove = e => ask({
+    title: 'Delete ledger entry',
+    body: <>Delete this <strong>{e.direction}</strong> of <strong>{fmtP(e.amount)}</strong>
+      {e.category ? <> in {e.category}</> : null}?
+      <span className="cd-note">This cannot be undone.</span></>,
+    confirmLabel: 'Delete entry', tone: 'danger',
+    onConfirm: () => doRemove(e),
+  })
 
   const exportCSV = () => {
     const cols = ['entry_date', 'direction', 'category', 'vendor_name', 'party_name', 'sku_code', 'amount', 'bank_name', 'payment_method', 'reference_no', 'note']
@@ -149,6 +158,7 @@ export default function Ledger() {
 
   return (
     <div className="lg">
+      {dialog}
       <header className="lg-head">
         <div>
           <h1 className="lg-title">Expense Ledger</h1>
