@@ -22,7 +22,7 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_any, require_admin_or_above, get_active_company, get_company_scope
+from app.core.dependencies import get_current_user, require_any, require_admin_or_above, get_active_company, get_company_scope, require_role_in_company
 from app.core.logging_config import pnl_logger, app_logger
 from app.models.user import User
 from app.models.pnl import PnlReport, PnlSkuRow
@@ -562,11 +562,25 @@ async def get_report(
 async def remove_report(
     report_id: int,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    _=Depends(require_admin_or_above),
+    scope=Depends(get_company_scope),
+    user=Depends(require_any),
 ):
-    """Delete a P&L report and all its SKU rows. Admin+ only."""
-    deleted = await delete_report(db, report_id, company.id)
+    """
+    Delete a P&L report and all its SKU rows.
+
+    The report carries its own company, so this works from master mode too — but
+    the caller must hold admin+ **in that company**, not merely in the one they
+    happen to be viewing.
+    """
+    owner = (await db.execute(
+        select(PnlReport.company_id).where(PnlReport.id == report_id,
+                                           PnlReport.company_id.in_(scope.ids))
+    )).scalar_one_or_none()
+    if owner is None:
+        raise HTTPException(status_code=404, detail="Report not found.")
+    await require_role_in_company(db, user, owner)
+
+    deleted = await delete_report(db, report_id, owner)
     if not deleted:
         pnl_logger.warning(f"Delete failed — report_id={report_id} not found")
         raise HTTPException(status_code=404, detail="Report not found.")

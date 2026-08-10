@@ -18,7 +18,7 @@ from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 
 # Role guards — who can access what
-from app.core.dependencies import require_admin_or_above, require_any, get_active_company, get_company_scope
+from app.core.dependencies import require_admin_or_above, require_any, get_active_company, get_company_scope, require_role_in_company
 
 # DB models
 from app.models.sku import Sku, SkuPricing
@@ -105,18 +105,24 @@ async def create_sku(
     return sku
 
 
+# Editing an EXISTING record is unambiguous even in master mode — the row carries
+# its own company_id — so these resolve the caller's whole scope, then authorise
+# against the company that actually owns the row. Creating still needs one active
+# company, so the POST routes above keep get_active_company.
+
 @sku_router.patch("/{sku_id}", response_model=SkuResponse)
 async def update_sku(
     sku_id: int,
     payload: SkuUpdate,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    _=Depends(require_admin_or_above),
+    scope=Depends(get_company_scope),
+    user=Depends(require_any),
 ):
-    result = await db.execute(select(Sku).where(Sku.id == sku_id, Sku.company_id == company.id))
+    result = await db.execute(select(Sku).where(Sku.id == sku_id, Sku.company_id.in_(scope.ids)))
     sku = result.scalar_one_or_none()
     if not sku:
         raise HTTPException(status_code=404, detail="SKU not found")
+    await require_role_in_company(db, user, sku.company_id)
 
     # model_dump(exclude_none=True) = only fields the user actually sent
     # exclude_none=True skips fields that are None (not provided)
@@ -133,13 +139,14 @@ async def update_sku(
 async def delete_sku(
     sku_id: int,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    _=Depends(require_admin_or_above),
+    scope=Depends(get_company_scope),
+    user=Depends(require_any),
 ):
-    result = await db.execute(select(Sku).where(Sku.id == sku_id, Sku.company_id == company.id))
+    result = await db.execute(select(Sku).where(Sku.id == sku_id, Sku.company_id.in_(scope.ids)))
     sku = result.scalar_one_or_none()
     if not sku:
         raise HTTPException(status_code=404, detail="SKU not found")
+    await require_role_in_company(db, user, sku.company_id)
     await db.delete(sku)  # stage the delete
     await db.commit()     # execute it
     # 204 = No Content — success but nothing to return
@@ -243,19 +250,20 @@ async def update_pricing(
     pricing_id: int,
     payload: PricingUpdate,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    _=Depends(require_admin_or_above),
+    scope=Depends(get_company_scope),
+    user=Depends(require_any),
 ):
     """
     Update any pricing field.
     All calculations automatically recompute after any change.
     """
     result = await db.execute(
-        select(SkuPricing).where(SkuPricing.id == pricing_id, SkuPricing.company_id == company.id)
+        select(SkuPricing).where(SkuPricing.id == pricing_id, SkuPricing.company_id.in_(scope.ids))
     )
     pricing = result.scalar_one_or_none()
     if not pricing:
         raise HTTPException(status_code=404, detail="Pricing not found")
+    await require_role_in_company(db, user, pricing.company_id)
 
     # Apply user-provided updates to the existing pricing object
     updates = payload.model_dump(exclude_none=True)
@@ -305,12 +313,13 @@ async def update_pricing(
 async def delete_pricing(
     pricing_id: int,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    _=Depends(require_admin_or_above),
+    scope=Depends(get_company_scope),
+    user=Depends(require_any),
 ):
-    result = await db.execute(select(SkuPricing).where(SkuPricing.id == pricing_id, SkuPricing.company_id == company.id))
+    result = await db.execute(select(SkuPricing).where(SkuPricing.id == pricing_id, SkuPricing.company_id.in_(scope.ids)))
     pricing = result.scalar_one_or_none()
     if not pricing:
         raise HTTPException(status_code=404, detail="Pricing not found")
+    await require_role_in_company(db, user, pricing.company_id)
     await db.delete(pricing)
     await db.commit()
