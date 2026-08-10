@@ -958,8 +958,17 @@ select.ec-input,
   box-shadow: 0 12px 32px -10px rgba(0,0,0,.5);
   font-family: var(--font-ui); font-size: 12.5px;
   animation: bulkUndoIn .16s ease;
+  opacity: 1;
 }
-@keyframes bulkUndoIn { from { opacity: 0; transform: translate(-50%, 8px); } }
+@keyframes bulkUndoIn {
+  /* Transform only. Opacity is deliberately NOT animated: an element whose
+     visibility depends on an animation completing is invisible whenever the
+     animation does not run (reduced motion, a backgrounded/non-compositing tab).
+     That left the only way back from a 71-row edit fully transparent. */
+  from { transform: translate(-50%, 8px); }
+  to   { transform: translate(-50%, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .bulk-undo { animation: none; } }
 .bulk-undo strong { font-weight: 700; }
 .bulk-undo-hint { color: rgba(255,255,255,.55); }
 .bulk-undo-btn {
