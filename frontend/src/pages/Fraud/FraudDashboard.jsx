@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { uploadShopdeckCustomers } from '../../api/client'
+import { uploadShopdeckCustomers, errText } from '../../api/client'
 import ActorIntelligenceTab from './components/ActorIntelligenceTab'
 import StateRiskTab         from './components/StateRiskTab'
 import ReturnReasonTab      from './components/ReturnReasonTab'
@@ -35,7 +35,7 @@ export default function FraudDashboard() {
       setActiveTab('actors')
       setReloadKey(k => k + 1)                 // remount the Actor tab so it refetches
     } catch (err) {
-      setMsg({ ok: false, text: err.response?.data?.detail || 'Upload failed' })
+      setMsg({ ok: false, text: errText(err, 'Upload failed') })
     } finally {
       setBusy(false)
     }

@@ -59,7 +59,7 @@ export default function Billing() {
     try {
       const [inv, s] = await Promise.all([getInvoices(filter ? { status: filter } : {}), getSummary()])
       setInvoices(inv); setSummary(s)
-    } catch (e) { setError(e.response?.data?.detail || 'Failed to load invoices') }
+    } catch (e) { setError(errText(e, 'Failed to load invoices')) }
     finally { setLoading(false) }
   }, [filter])
   useEffect(() => { load() }, [load])

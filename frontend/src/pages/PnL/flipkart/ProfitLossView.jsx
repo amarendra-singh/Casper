@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fmt, fmtN, fmtPct } from './utils'
-import { getPnlRows, getUnmatchedSkus, addHiddenSkuPricing, getVendors, getCategories } from '../../../api/client'
+import { getPnlRows, getUnmatchedSkus, addHiddenSkuPricing, getVendors, getCategories, errText } from '../../../api/client'
 
 /**
  * Profit & Loss tab — per-SKU actual-vs-target reconciliation.
@@ -121,7 +121,7 @@ function HiddenSkuPanel({ reportId, onClose, onMatched }) {
       setOpen(null); setForm(BLANK_COSTS)
       onMatched(r)
     } catch (e) {
-      setErr(e.response?.data?.detail || 'Could not add SKU')
+      setErr(errText(e, 'Could not add SKU'))
     } finally { setBusy(false) }
   }
 

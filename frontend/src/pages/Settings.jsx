@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getPlatforms, updatePlatform, createPlatform } from '../api/client'
+import { getPlatforms, updatePlatform, createPlatform, errText } from '../api/client'
 import api from '../api/client'
 import { useCompany } from '../context/CompanyContext'
 import './Settings.css'
@@ -74,12 +74,12 @@ function CompanyManage() {
     const n = name.trim()
     if (!n || n === activeCompany?.name) return
     setBusy(true); setErr('')
-    try { await renameCompany(id, n) } catch (e) { setErr(e?.response?.data?.detail || 'Rename failed') }
+    try { await renameCompany(id, n) } catch (e) { setErr(errText(e, 'Rename failed')) }
     finally { setBusy(false) }
   }
   const runArchive = async () => {
     setBusy(true); setErr('')
-    try { await archiveCompany(id) } catch (e) { setErr(e?.response?.data?.detail || 'Archive failed'); setBusy(false) }
+    try { await archiveCompany(id) } catch (e) { setErr(errText(e, 'Archive failed')); setBusy(false) }
   }
   const doArchive = () => ask({
     title: 'Archive company',
@@ -92,7 +92,7 @@ function CompanyManage() {
 
   const runLeave = async () => {
     setBusy(true); setErr('')
-    try { await leaveCompany(id) } catch (e) { setErr(e?.response?.data?.detail || 'Leave failed'); setBusy(false) }
+    try { await leaveCompany(id) } catch (e) { setErr(errText(e, 'Leave failed')); setBusy(false) }
   }
   const doLeave = () => ask({
     title: 'Leave company',
@@ -176,7 +176,7 @@ function TierRow({ tier, platformId, onUpdated, onDeleted, onError }) {
       const r = await api.patch(`/platforms/${platformId}/tiers/${tier.id}`, payload)
       onUpdated(r.data)
       setEditing(false)
-    } catch(e) { onError?.(e.response?.data?.detail || 'Failed to save tier') }
+    } catch(e) { onError?.(errText(e, 'Failed to save tier')) }
     finally { setBusy(false) }
   }
 
@@ -185,7 +185,7 @@ function TierRow({ tier, platformId, onUpdated, onDeleted, onError }) {
     try {
       await api.delete(`/platforms/${platformId}/tiers/${tier.id}`)
       onDeleted(tier.id)
-    } catch(e) { onError?.(e.response?.data?.detail || 'Failed to delete tier') }
+    } catch(e) { onError?.(errText(e, 'Failed to delete tier')) }
     finally { setBusy(false) }
   }
 
@@ -273,7 +273,7 @@ function PlatformCard({ platform, onUpdated, onError }) {
       })
       onUpdated(updated)
       setEditing(false)
-    } catch(e) { onError?.(e.response?.data?.detail || 'Failed to save platform') }
+    } catch(e) { onError?.(errText(e, 'Failed to save platform')) }
     finally { setBusy(false) }
   }
 
@@ -282,7 +282,7 @@ function PlatformCard({ platform, onUpdated, onError }) {
     try {
       const updated = await updatePlatform(platform.id, { is_active: !platform.is_active })
       onUpdated(updated)
-    } catch(e) { onError?.(e.response?.data?.detail || 'Failed to toggle status') }
+    } catch(e) { onError?.(errText(e, 'Failed to toggle status')) }
     finally { setBusy(false) }
   }
 
@@ -302,7 +302,7 @@ function PlatformCard({ platform, onUpdated, onError }) {
       setTiers(p => [...p, r.data])
       setNewTier(TIER_DEFAULTS)
       setAddTier(false)
-    } catch(e) { onError?.(e.response?.data?.detail || 'Failed to add tier') }
+    } catch(e) { onError?.(errText(e, 'Failed to add tier')) }
     finally { setBusy(false) }
   }
 
@@ -471,7 +471,7 @@ export default function Settings() {
       setShowAdd(false)
       showToast('Platform created')
     } catch(e) {
-      showToast(e.response?.data?.detail || 'Create failed', 'error')
+      showToast(errText(e, 'Create failed'), 'error')
     } finally { setBusy(false) }
   }
 

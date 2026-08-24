@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import api from '../api/client'
+import api, { errText } from '../api/client'
 
 /**
  * AddTierQuickModal
@@ -33,7 +33,7 @@ export default function AddTierQuickModal({ platform, onSaved, onClose }) {
       const r = await api.post(`/platforms/${platform.id}/tiers`, payload)
       onSaved(r.data)
     } catch (e) {
-      setError(e?.response?.data?.detail || 'Error saving tier')
+      setError(errText(e, 'Error saving tier'))
     } finally {
       setBusy(false)
     }

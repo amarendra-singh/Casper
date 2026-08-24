@@ -67,7 +67,7 @@ export default function Ledger() {
     try {
       const [e, s] = await Promise.all([getLedger(params), getLedgerSummary(params)])
       setEntries(e); setSummary(s)
-    } catch (err) { setError(err.response?.data?.detail || 'Failed to load ledger') }
+    } catch (err) { setError(errText(err, 'Failed to load ledger')) }
     finally { setLoading(false) }
   }, [filter])
 
@@ -140,7 +140,7 @@ export default function Ledger() {
   }
   const doRemove = async e => {
     try { await deleteLedgerEntry(e.id); await load() }
-    catch (err) { setError(err.response?.data?.detail || 'Delete failed') }
+    catch (err) { setError(errText(err, 'Delete failed')) }
   }
   const remove = e => ask({
     title: 'Delete ledger entry',

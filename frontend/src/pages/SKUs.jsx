@@ -7,6 +7,7 @@ import {
   getEntries, upsertBatch, deleteSku,
   updateCategory, deleteCategory, getUnmatchedSkus
 } from '../api/client'
+import { useCompany } from '../context/CompanyContext'
 import SmartCell from '../components/SmartCell'
 import AddVendorModal from '../components/AddVendorModal'
 import AddCategoryModal from '../components/AddCategoryModal'
@@ -286,6 +287,10 @@ export function computePlatform(row, pl, base, miscDef) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function SKUs() {
+  // upsert-batch writes to exactly one company (see api docstring), but rows in
+  // this grid can come from several companies once All Companies is selected —
+  // so autosave has no single target and must not fire silently.
+  const { isAll } = useCompany()
   const [vendors,     setVendors]     = useState([])
   const [categories,  setCategories]  = useState([])
   const [platforms,   setPlatforms]   = useState([])
@@ -468,6 +473,17 @@ export default function SKUs() {
   // ── Save logic ─────────────────────────────────────────────────────────────
   const saveRows = useCallback(async (rowsToSave) => {
     if (!rowsToSave.length) return
+    if (isAll) {
+      // The server refuses this write (a batch has one company, 'all' has none to
+      // pick), so failing fast here — with a message — beats a 400 that used to
+      // get swallowed and silently re-queued by autosave every 2s forever.
+      setRows(prev => prev.map(r =>
+        rowsToSave.find(s => s.id === r.id)
+          ? { ...r, status: STATUS.ERROR, errorMsg: 'Switch to one company to save — All Companies is view-only here.' }
+          : r
+      ))
+      return
+    }
     setRows(prev => prev.map(r =>
       rowsToSave.find(s => s.id === r.id) ? { ...r, status: STATUS.SAVING } : r
     ))
@@ -537,7 +553,7 @@ export default function SKUs() {
         rowsToSave.find(s => s.id === r.id) ? { ...r, status: STATUS.DIRTY } : r
       ))
     }
-  }, [])
+  }, [isAll])
 
   const saveAll = useCallback(() => {
     const dirty = rows.filter(r =>
@@ -792,11 +808,19 @@ export default function SKUs() {
         </div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           <span className="save-status">
-            {isSaving && <span className="save-saving">⟳ Saving...</span>}
-            {!isSaving && dirtyCount > 0 && (
-              <span className="save-dirty">● {dirtyCount} unsaved</span>
+            {isAll ? (
+              <span className="save-dirty" title="Edits typed here are not sent — switch the company switcher to one company to save.">
+                View-only in All Companies
+              </span>
+            ) : (
+              <>
+                {isSaving && <span className="save-saving">⟳ Saving...</span>}
+                {!isSaving && dirtyCount > 0 && (
+                  <span className="save-dirty">● {dirtyCount} unsaved</span>
+                )}
+                {allSaved && <span className="save-saved">✓ All saved</span>}
+              </>
             )}
-            {allSaved && <span className="save-saved">✓ All saved</span>}
           </span>
           <div className="density-btn">
             {['compact','normal','spacious'].map(d => (

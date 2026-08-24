@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getVendors, updateVendor, deleteVendor, createVendor, getEntries } from '../api/client'
+import { getVendors, updateVendor, deleteVendor, createVendor, getEntries, errText } from '../api/client'
 import './Vendors.css'
 import { useConfirm } from '../components/ConfirmDialog'
 
@@ -38,7 +38,7 @@ export default function Vendors() {
       setVendors(p => p.map(x => x.id === v.id ? updated : x))
       cancelEdit()
     } catch(e) {
-      setError(e.response?.data?.detail || 'Update failed')
+      setError(errText(e, 'Update failed'))
     } finally { setBusy(null) }
   }
 
@@ -62,7 +62,7 @@ export default function Vendors() {
       await deleteVendor(v.id)
       setVendors(p => p.filter(x => x.id !== v.id))
     } catch(e) {
-      setError(e.response?.data?.detail || 'Delete failed')
+      setError(errText(e, 'Delete failed'))
     } finally { setBusy(null) }
   }
 
@@ -74,7 +74,7 @@ export default function Vendors() {
       setVendors(p => [...p, created])
       setNewName(''); setNewCode(''); setShowAdd(false)
     } catch(e) {
-      setError(e.response?.data?.detail || 'Create failed')
+      setError(errText(e, 'Create failed'))
     } finally { setBusy(null) }
   }
 

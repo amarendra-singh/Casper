@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getSkus, getPlatforms, getPricingForSku, createPricing, updatePricing, deletePricing } from '../api/client'
+import { getSkus, getPlatforms, getPricingForSku, createPricing, updatePricing, deletePricing, inCompany, errText } from '../api/client'
+import { useCompany } from '../context/CompanyContext'
 import './Pricing.css'
 
 function Toast({ msg, type, onClose }) {
@@ -65,6 +66,11 @@ function PricingCard({ row, platform, onEdit, onDelete }) {
 export default function Pricing() {
   const { skuId }    = useParams()
   const navigate     = useNavigate()
+  // A SKU already belongs to one company, so once it's picked, creating pricing
+  // for it can target that company directly — no separate picker needed, unlike
+  // ledger/billing where a blank record has nothing to infer a company from.
+  const { companies, isAll } = useCompany()
+  const companyName = id => companies.find(c => c.id === id)?.name
   const [skus, setSkus]           = useState([])
   const [platforms, setPlatforms] = useState([])
   const [rows, setRows]           = useState([])
@@ -128,7 +134,9 @@ export default function Pricing() {
         ...(form.misc_total  !== '' && { misc_total:  parseFloat(form.misc_total) }),
       }
       if (modal === 'create') {
-        await createPricing(payload)
+        // In All Companies the request header is 'all', which the backend refuses
+        // for writes — override it with the company the selected SKU already belongs to.
+        await createPricing(payload, isAll ? inCompany(currentSku.company_id) : undefined)
         showToast('Pricing created — auto-calculated!')
       } else {
         await updatePricing(editId, payload)
@@ -137,7 +145,7 @@ export default function Pricing() {
       setModal(null)
       loadPricing(selectedSku)
     } catch (err) {
-      showToast(err.response?.data?.detail || 'Error saving', 'error')
+      showToast(errText(err, 'Error saving'), 'error')
     } finally {
       setSaving(false)
     }
@@ -150,7 +158,7 @@ export default function Pricing() {
       setDeleteConfirm(null)
       loadPricing(selectedSku)
     } catch (err) {
-      showToast(err.response?.data?.detail || 'Error deleting', 'error')
+      showToast(errText(err, 'Error deleting'), 'error')
     }
   }
 
@@ -183,6 +191,9 @@ export default function Pricing() {
             {skus.filter(s => s.is_active).map(s => (
               <option key={s.id} value={s.id}>
                 {s.shringar_sku}{s.description ? ` — ${s.description}` : ''}
+                {/* In All Companies the same SKU code can exist in more than one
+                    company — name which one this row is, so picking is unambiguous. */}
+                {isAll && companyName(s.company_id) ? ` (${companyName(s.company_id)})` : ''}
               </option>
             ))}
           </select>

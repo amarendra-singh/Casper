@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { changePassword } from '../api/client'
+import { changePassword, errText } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import './Account.css'
 
@@ -26,7 +26,7 @@ export default function Account() {
       setForm({ current: '', next: '', confirm: '' })
       setMsg({ type: 'ok', text: 'Password changed successfully' })
     } catch (err) {
-      setMsg({ type: 'err', text: err.response?.data?.detail || 'Could not change password' })
+      setMsg({ type: 'err', text: errText(err, 'Could not change password') })
     } finally {
       setBusy(false)
     }

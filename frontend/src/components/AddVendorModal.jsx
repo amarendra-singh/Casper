@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createVendor } from '../api/client'
+import { createVendor, errText } from '../api/client'
 
 /**
  * AddVendorModal
@@ -38,7 +38,7 @@ export default function AddVendorModal({ name, onSave, onClose }) {
       })
       onSave(vendor) // pass saved vendor back to parent
     } catch (err) {
-      setError(err.response?.data?.detail || 'Error saving vendor')
+      setError(errText(err, 'Error saving vendor'))
     } finally {
       setSaving(false)
     }

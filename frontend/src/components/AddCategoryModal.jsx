@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createCategory } from '../api/client'
+import { createCategory, errText } from '../api/client'
 
 /**
  * AddCategoryModal
@@ -39,7 +39,7 @@ export default function AddCategoryModal({ name, onSave, onClose }) {
       })
       onSave(category)
     } catch (err) {
-      setError(err.response?.data?.detail || 'Error saving category')
+      setError(errText(err, 'Error saving category'))
     } finally {
       setSaving(false)
     }

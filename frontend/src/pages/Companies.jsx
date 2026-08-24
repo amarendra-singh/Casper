@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useCompany } from '../context/CompanyContext'
-import { getCompanies } from '../api/client'
+import { getCompanies, errText } from '../api/client'
 import './Companies.css'
 import { useConfirm } from '../components/ConfirmDialog'
 
@@ -38,7 +38,7 @@ export default function Companies() {
     const go = async () => {
       setBusy(true); setErr('')
       try { await fn(); load() }
-      catch (e) { setErr(e?.response?.data?.detail || 'Action failed') }
+      catch (e) { setErr(errText(e, 'Action failed')) }
       finally { setBusy(false) }
     }
     if (confirmOpts) ask({ ...confirmOpts, onConfirm: go })

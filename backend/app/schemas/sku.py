@@ -39,6 +39,7 @@ class SkuUpdate(BaseModel):
 
 class SkuResponse(BaseModel):
     id: int
+    company_id: Optional[int] = None  # nullable on the model — legacy pre-tenancy rows
     shringar_sku: str
     vendor_sku:  Optional[str] = None
     vendor_id:   Optional[int] = None
