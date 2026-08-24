@@ -38,26 +38,30 @@ Status of the work, and what is queued. Kept short on purpose — see
   fraud. Each company still sees only its own data and modules.
 - Writes stay per-company; group mode refuses non-GET.
 
+**Editing from master mode**
+- Edit/delete of an existing record works from All Companies — ledger, billing,
+  SKUs, pricing, P&L reports. The record carries its own `company_id`, so it's
+  unambiguous; `require_role_in_company` authorises against the role the caller
+  holds in **that** company, not a global role or whichever company they're
+  viewing. Non-members get 404, not 403 — existence isn't confirmed.
+- Create still needs one company. Ledger and billing forms show a Company field
+  in All Companies and send it for that one request. Pricing needs no picker —
+  the SKU it's for already belongs to one company, so create derives the target
+  from `currentSku.company_id`.
+- Ledger and invoice rows carry `company_id/name/color` (SKU rows already did);
+  a coloured left rail marks ownership everywhere rows can be mixed, and delete
+  confirmations name the company.
+- The SKU spreadsheet's inline-edit grid is the one surface still view-only in
+  All Companies — it autosaves to `/entries/upsert-batch`, which targets one
+  company per call, and a grid row's company can't be picked per-cell. A visible
+  banner says so; it used to fail silently and retry forever (`docs/MISTAKES.md`
+  #11's sibling bug).
+
 ---
 
 ## Next — agreed, not yet built
 
-**1. Editing from master mode** *(design agreed, blocked on 2)*
-- Allow edit/delete of an existing record while in All Companies — the record
-  carries its own `company_id`, so there is no ambiguity.
-- Create still picks a company (form gets a Company selector that sets the header
-  for that request).
-- **Authorisation:** check the caller's role in the **record's own** company. This
-  also closes a current gap where a global admin role can write to a company they
-  are only a viewer in.
-
-**2. Show record ownership** *(prerequisite for 1)*
-- Expose `company_id` / `company_name` / `company_color` on read responses — they
-  are not returned today, so master lists cannot show ownership at all.
-- Coloured left rail per row (zero extra width) + company named in edit forms and
-  delete confirmations.
-
-**3. UI density pass**
+**1. UI density pass**
 - Merge the stacked full-width banners into the page header.
 - Merge `GLOBAL PROFIT % / DEFAULT MISC / PLATFORMS` and `COLUMNS` into one
   toolbar row (~150–200px of vertical space recovered).

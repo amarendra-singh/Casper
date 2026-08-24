@@ -136,3 +136,24 @@ full-width rows sat above the first row of data.
 
 > **Rule:** New status/notice UI merges into an existing row or header. Never a new
 > full-width band above a data table. Data density is the point of this tool.
+
+---
+
+## 11. A fix that never reaches the server — silently dropped argument
+
+**What happened:** Added a per-request company override (`inCompany()`) so
+creating pricing from master mode would target the SKU's own company. Wired it
+through the page correctly — but `createPricing` in `api/client.js` was still
+`(data) => api.post('/pricing/', data)`. JS does not error on an extra argument;
+it just discards it. The override was computed, passed, and silently dropped.
+Tests stayed green because nothing tests that a specific header reaches axios.
+
+**Why:** Fixed the call site without checking the wrapper's signature. A
+one-argument function accepting a second argument silently is invisible in a
+diff — nothing about it looks wrong.
+
+> **Rule:** When threading a new parameter (config override, extra field) through
+> a call chain, check the **last** function in the chain — the one that actually
+> makes the request — not just the call site you're editing. Then prove it with a
+> live request, not a passing test: it takes ~30 seconds and this bug shipped
+> past a full green suite.
