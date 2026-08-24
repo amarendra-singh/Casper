@@ -110,7 +110,7 @@ export const deleteSku     = (id)      => api.delete(`/skus/${id}`).then(r => r.
 
 // Pricing
 export const getPricingForSku = (skuId)   => api.get(`/pricing/sku/${skuId}`).then(r => r.data)
-export const createPricing    = (data)    => api.post('/pricing/', data).then(r => r.data)
+export const createPricing    = (data, cfg) => api.post('/pricing/', data, cfg).then(r => r.data)
 export const updatePricing    = (id,data) => api.patch(`/pricing/${id}`, data).then(r => r.data)
 export const deletePricing    = (id)      => api.delete(`/pricing/${id}`).then(r => r.data)
 
