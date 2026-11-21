@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 from app.models.user import UserRole
 
@@ -6,7 +6,7 @@ from app.models.user import UserRole
 class UserCreate(BaseModel):
     name: str
     email: EmailStr
-    password: str
+    password: str = Field(min_length=8, max_length=1024)
     role: UserRole = UserRole.viewer
 
 

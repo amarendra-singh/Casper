@@ -30,7 +30,7 @@ export default function FlipkartReport() {
   const [error,   setError]   = useState(null)
 
   const fetchReport = useCallback((showLoader = true) => {
-    if (showLoader) setLoading(true)
+    if (showLoader) {setLoading(true)}
     setError(null)
     getPnlReport(Number(reportId))
       .then(data => { setReport(data); setLoading(false) })
@@ -42,7 +42,7 @@ export default function FlipkartReport() {
   // Refetch on tab visibility change — catches SKU edits made in another tab
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === 'visible') fetchReport(false)
+      if (document.visibilityState === 'visible') {fetchReport(false)}
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
@@ -52,10 +52,10 @@ export default function FlipkartReport() {
 
   const setView = v => setSearchParams({ view: v }, { replace: true })
 
-  if (loading) return (
+  if (loading) {return (
     <div className="pnl-page"><div className="pnl-empty">Loading report…</div></div>
-  )
-  if (error) return (
+  )}
+  if (error) {return (
     <div className="pnl-page">
       <div className="pnl-empty-state">
         <div className="pnl-empty-icon">⚠</div>
@@ -63,7 +63,7 @@ export default function FlipkartReport() {
         <button className="pnl-btn-ghost" onClick={() => navigate('/pnl/flipkart')}>← Back to Reports</button>
       </div>
     </div>
-  )
+  )}
 
   return (
     <div className="pnl-page">

@@ -1,10 +1,13 @@
+from app.core.dependencies import require_company_role
+from app.models.company import CompanyRole
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
-from app.core.dependencies import require_admin_or_above, require_any, get_active_company
+from app.core.dependencies import require_admin_or_above, require_any, get_active_company, get_company_scope
 from app.models.platform import Platform, PlatformTier
 from app.schemas.platform import (
     PlatformCreate, PlatformUpdate, PlatformResponse,
@@ -17,13 +20,13 @@ router = APIRouter(prefix="/platforms", tags=["Platforms"])
 @router.get("/", response_model=list[PlatformResponse])
 async def list_platforms(
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     _=Depends(require_any),
 ):
     result = await db.execute(
         select(Platform)
         .options(selectinload(Platform.tiers))
-        .where(Platform.company_id == company.id)
+        .where(Platform.company_id.in_(scope.ids))
         .order_by(Platform.name)
     )
     return result.scalars().all()
@@ -33,8 +36,8 @@ async def list_platforms(
 async def create_platform(
     payload: PlatformCreate,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    _=Depends(require_admin_or_above),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin)),
+    _=Depends(require_any),
 ):
     existing = await db.execute(
         select(Platform).where(Platform.name == payload.name, Platform.company_id == company.id)
@@ -96,8 +99,8 @@ async def update_platform(
     platform_id: int,
     payload: PlatformUpdate,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    _=Depends(require_admin_or_above),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin)),
+    _=Depends(require_any),
 ):
     result = await db.execute(
         select(Platform)
@@ -120,8 +123,8 @@ async def update_platform(
 async def delete_platform(
     platform_id: int,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    _=Depends(require_admin_or_above),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin)),
+    _=Depends(require_any),
 ):
     result = await db.execute(
         select(Platform).where(Platform.id == platform_id, Platform.company_id == company.id)
@@ -130,7 +133,11 @@ async def delete_platform(
     if not platform:
         raise HTTPException(status_code=404, detail="Platform not found")
     await db.delete(platform)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail='This platform is used by saved records. Deactivate it instead of deleting it.')
 
 
 # ── Tier sub-routes ───────────────────────────────────────
@@ -150,8 +157,8 @@ async def add_tier(
     platform_id: int,
     payload: PlatformTierCreate,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    _=Depends(require_admin_or_above),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin)),
+    _=Depends(require_any),
 ):
     await _owned_platform(db, platform_id, company.id)
 
@@ -174,8 +181,8 @@ async def update_tier(
     tier_id: int,
     payload: PlatformTierCreate,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    _=Depends(require_admin_or_above),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin)),
+    _=Depends(require_any),
 ):
     await _owned_platform(db, platform_id, company.id)
     result = await db.execute(
@@ -201,8 +208,8 @@ async def delete_tier(
     platform_id: int,
     tier_id: int,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    _=Depends(require_admin_or_above),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin)),
+    _=Depends(require_any),
 ):
     await _owned_platform(db, platform_id, company.id)
     result = await db.execute(

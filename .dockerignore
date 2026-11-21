@@ -1,0 +1,37 @@
+# Node / frontend
+**/node_modules
+frontend/dist
+
+# Python
+**/__pycache__
+**/*.pyc
+backend/env
+backend/.venv
+backend/logs
+backend/uploads
+backend/backups
+
+# Local SQLite DBs and backups — never bake data into the image
+backend/*.db
+backend/*.db.bak*
+
+# Git / editor / OS
+.git
+.github
+.claude
+*.md
+!backend/README*.md
+
+# Misc project scratch
+archive
+content
+docs
+frontend_audit
+tracker
+note
+
+# Runtime secrets and audit artifacts
+**/.env
+**/.env.*
+!**/.env.example
+audit

@@ -1,7 +1,11 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy import text
 
 from app.core.config import settings
@@ -12,7 +16,7 @@ from app.routes import entries, auth, users, platforms, vendors, categories, mis
 from app.routes.skus import sku_router, pricing_router
 from app.routes import pnl
 from app.routes import fraud
-from app.routes import dashboard
+from app.routes import dashboard, change_history, catalogue
 
 # Initialise logging before anything else
 setup_logging(log_dir="logs", dev=(settings.APP_ENV == "development"))
@@ -52,6 +56,7 @@ def create_app() -> FastAPI:
 
     prefix = "/api/v1"
 
+    app.include_router(change_history.router, prefix=prefix)
     app.include_router(auth.router, prefix=prefix)
     app.include_router(users.router, prefix=prefix)
     app.include_router(platforms.router, prefix=prefix)
@@ -69,12 +74,36 @@ def create_app() -> FastAPI:
     app.include_router(companies.router, prefix=prefix)
     app.include_router(ledger.router, prefix=prefix)
     app.include_router(billing.router, prefix=prefix)
+    app.include_router(catalogue.router, prefix=prefix)
 
     app_logger.info(f"Routes registered under {prefix}")
 
     @app.get("/health", tags=["Health"])
     async def health_check():
         return {"status": "ok", "app": settings.APP_NAME, "env": settings.APP_ENV}
+
+    # ── Serve the built React SPA (production single-service deploy) ──────────
+    # In the Docker image the frontend build is copied to backend/static. When
+    # that folder exists, serve its hashed assets and fall back to index.html for
+    # any non-API route so client-side routing (deep links, refresh) works.
+    static_dir = Path(__file__).resolve().parent.parent / "static"
+    index_file = static_dir / "index.html"
+    if index_file.is_file():
+        assets_dir = static_dir / "assets"
+        if assets_dir.is_dir():
+            app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def spa_fallback(full_path: str):
+            # Never shadow the API or docs — let those 404 as JSON.
+            if full_path.startswith(("api/", "docs", "redoc", "openapi.json")):
+                raise StarletteHTTPException(status_code=404)
+            candidate = (static_dir / full_path).resolve()
+            if not candidate.is_relative_to(static_dir.resolve()):
+                raise StarletteHTTPException(status_code=404)
+            if full_path and candidate.is_file():
+                return FileResponse(candidate)
+            return FileResponse(index_file)
 
     return app
 

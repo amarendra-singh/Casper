@@ -86,20 +86,22 @@ Every SKU → every platform → breakeven, profit, bank settlement — in real 
 |-----------|--------|--------|
 | M1 — Core pricing engine live | Done | ✅ |
 | M2 — Per-platform AD + responsive table | Done | ✅ |
-| M3 — Platform Settings UI + Dashboard complete | Next | 🔄 |
-| M4 — Full QA + first real user (SHJ) | TBD | ❌ |
-| M5 — Multi-tenant + user roles | TBD | ❌ |
-| M6 — Platform integrations (1 platform) | TBD | ❌ |
+| M3 — Platform Settings UI + Dashboard complete | Done | ✅ |
+| M4 — Full QA + first real user (SHJ) | In progress | 🔄 |
+| M5 — Multi-tenant + user roles | Done | ✅ (multi-company + owner/member roles) |
+| M6 — Platform integrations (1 platform) | TBD | ❌ (data via Excel upload for now) |
+| M7 — Production deploy (Railway) | Ready | 🔄 (config done; awaiting first deploy) |
 
 ---
 
-## TECH DEBT TO RESOLVE
+## TECH DEBT — STATUS (updated 2026-09-28)
 
-| Item | Impact | Effort |
-|------|--------|--------|
-| `node_modules` tracked in git | High — bloats repo | Low — add to .gitignore |
-| `casper.db` tracked in git | High — data leaks | Low — add to .gitignore |
-| Worktree vs main project confusion | High — edits go to wrong place | Medium — document clearly |
-| No `.env` validation on startup | Medium | Low |
-| No automated tests | High | High |
-| SQLite → Postgres for production | Medium | High |
+| Item | Status |
+|------|--------|
+| `node_modules` tracked in git | ✅ Resolved — gitignored |
+| `casper.db` tracked in git | ✅ Resolved — `*.db` gitignored |
+| No automated tests | ✅ Resolved — 294 backend + 103 frontend tests |
+| `.env` validation on startup | ✅ Resolved — app aborts if `SECRET_KEY` missing |
+| Pydantic v1-style schemas | ✅ Resolved — migrated to v2 (`ConfigDict`/`field_validator`) |
+| SQLite → Postgres for production | 🔄 Optional — app supports both via `DATABASE_URL`; Railway can use a SQLite volume or Postgres (see RAILWAY.md) |
+| Worktree vs main project confusion | ⚠️ Ongoing — always edit the main project; worktrees get recycled |

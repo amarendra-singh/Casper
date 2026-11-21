@@ -28,7 +28,7 @@ const netVariance    = (fkTotal, exp)  => (fkTotal != null && exp != null) ? fkT
 // ── fmt helper (same as Flipkart.jsx) ────────────────────────────────────────
 
 const fmt = (v, d = 0) => {
-  if (v == null) return '—'
+  if (v == null) {return '—'}
   const n = Number(v)
   const abs = Math.abs(n).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d })
   return (n < 0 ? '-' : '') + '₹' + abs

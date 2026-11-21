@@ -1,6 +1,9 @@
+from app.core.dependencies import require_company_role
+from app.models.company import CompanyRole
 from datetime import date
 from typing import Optional
 
+from app.services.tenant_refs import validate_references
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,8 +21,10 @@ from app.services.ledger import compute_ledger_summary, resolve_names
 router = APIRouter(prefix="/ledger", tags=["Ledger"])
 
 
-def _to_response(e: LedgerEntry, vmap: dict, smap: dict, co: dict | None = None) -> LedgerEntryResponse:
+def _to_response(e: LedgerEntry, vmap: dict, smap: dict, co: dict | None = None,
+                 source_type: str = "manual") -> LedgerEntryResponse:
     r = LedgerEntryResponse.model_validate(e)
+    r.source_type = source_type
     r.vendor_name = vmap.get(e.vendor_id)
     r.sku_code = smap.get(e.sku_id)
     if co:
@@ -66,7 +71,25 @@ async def list_entries(
     entries = result.scalars().all()
     vmap, smap = await resolve_names(db, scope.ids)
     co = await _company_meta(db, scope.ids)
-    return [_to_response(e, vmap, smap, co) for e in entries]
+    sources = {}
+    entry_ids = [e.id for e in entries]
+    if entry_ids:
+        entry_id_set = set(entry_ids)
+        from app.models.receipt import InvoiceReceipt
+        from app.models.purchase import PurchaseBill
+        receipts = await db.execute(select(InvoiceReceipt.ledger_entry_id,
+                                           InvoiceReceipt.reversal_entry_id).where(
+            (InvoiceReceipt.ledger_entry_id.in_(entry_ids)) |
+            (InvoiceReceipt.reversal_entry_id.in_(entry_ids))))
+        for original_id, reversal_id in receipts:
+            if original_id in entry_id_set:
+                sources[original_id] = "invoice_receipt"
+            if reversal_id in entry_id_set:
+                sources[reversal_id] = "invoice_receipt"
+        bills = await db.execute(select(PurchaseBill.ledger_entry_id).where(
+            PurchaseBill.ledger_entry_id.in_(entry_ids)))
+        sources.update({entry_id: "purchase_bill" for (entry_id,) in bills})
+    return [_to_response(e, vmap, smap, co, sources.get(e.id, "manual")) for e in entries]
 
 
 @router.get("/summary", response_model=LedgerSummary)
@@ -85,9 +108,13 @@ async def ledger_summary(
 async def create_entry(
     payload: LedgerEntryCreate,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    user: User = Depends(require_admin_or_above),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin)),
+    user: User = Depends(require_any),
 ):
+    try:
+        await validate_references(db, company.id, payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
     entry = LedgerEntry(**payload.model_dump(), company_id=company.id, created_by=user.id)
     db.add(entry)
     await db.commit()
@@ -107,6 +134,16 @@ async def _owned(db, entry_id, company_id) -> LedgerEntry:
     return e
 
 
+async def _require_manual_entry(db, entry_id):
+    from app.services.receipts import receipt_source
+    if await receipt_source(db, entry_id):
+        raise HTTPException(409, 'Reverse this receipt from its invoice; linked ledger postings cannot be edited directly')
+    from app.models.purchase import PurchaseBill
+    source = await db.scalar(select(PurchaseBill.id).where(PurchaseBill.ledger_entry_id == entry_id).limit(1))
+    if source is not None:
+        raise HTTPException(status_code=409, detail='This entry comes from a supplier bill. Correct and re-upload the supplier statement instead.')
+
+
 # Editing an EXISTING record is unambiguous even in master mode — the row carries
 # its own company_id — so these resolve the caller's whole scope and then authorise
 # against the company that actually owns the record. Creating is different (a new
@@ -122,6 +159,11 @@ async def update_entry(
 ):
     entry = await _owned(db, entry_id, scope.ids)
     await require_role_in_company(db, user, entry.company_id)
+    await _require_manual_entry(db, entry_id)
+    try:
+        await validate_references(db, entry.company_id, payload.model_dump(exclude_unset=True))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(entry, field, value)
     await db.commit()
@@ -139,5 +181,6 @@ async def delete_entry(
 ):
     entry = await _owned(db, entry_id, scope.ids)
     await require_role_in_company(db, user, entry.company_id)
+    await _require_manual_entry(db, entry_id)
     await db.delete(entry)
     await db.commit()

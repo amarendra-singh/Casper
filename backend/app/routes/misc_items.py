@@ -1,3 +1,5 @@
+from app.core.dependencies import require_company_role
+from app.models.company import CompanyRole
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -41,8 +43,8 @@ async def get_misc_total(
 async def create_misc_item(
     payload: MiscItemCreate,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    _=Depends(require_admin_or_above),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin)),
+    _=Depends(require_any),
 ):
     item = MiscItem(name=payload.name, amount=payload.amount, company_id=company.id)
     db.add(item)
@@ -56,8 +58,8 @@ async def update_misc_item(
     item_id: int,
     payload: MiscItemUpdate,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    _=Depends(require_admin_or_above),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin)),
+    _=Depends(require_any),
 ):
     result = await db.execute(select(MiscItem).where(MiscItem.company_id == company.id, MiscItem.id == item_id))
     item = result.scalar_one_or_none()
@@ -76,8 +78,8 @@ async def update_misc_item(
 async def delete_misc_item(
     item_id: int,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    _=Depends(require_admin_or_above),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin)),
+    _=Depends(require_any),
 ):
     result = await db.execute(select(MiscItem).where(MiscItem.company_id == company.id, MiscItem.id == item_id))
     item = result.scalar_one_or_none()

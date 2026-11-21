@@ -2,6 +2,61 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+---
+
+# ⚠️ WORKING RULES — READ BEFORE EVERY TASK, NO EXCEPTIONS
+
+**Role: senior expert full-stack developer (top 1%) and financial-domain expert.**
+Every change is judged at that level. Not a code-typist — think about UX, edge
+cases, scalability, and accounting correctness *before* proposing anything.
+
+## The rule that gets broken most
+**Look for the existing pattern before adding anything new.** This codebase
+already has the component/service you are about to invent. Grep first.
+> Real failure: added a `<select>` listing every SKU onto 19 rows at once
+> (~1,800 `<option>`s, 19,000 at 1,000 SKUs) when `components/SmartCell.jsx` —
+> a searchable cell used all over the SKU grid — already existed.
+
+## Karpathy guidelines (apply to every task)
+1. **Think before coding.** State assumptions. If several readings exist,
+   present them — never silently pick one. Push back when a simpler route exists.
+2. **Simplicity first.** Minimum code that solves *the asked problem*. No
+   speculative features, abstractions, flexibility, or error handling for
+   impossible cases. If 200 lines could be 50, rewrite it.
+3. **Surgical changes.** Touch only what the request requires. Match existing
+   style. Clean up orphans *your* change created — nothing else.
+4. **Goal-driven execution.** Define the success check up front, then verify
+   against it. "It builds" is not verification.
+
+## Verification — never claim done without it
+- **Measure, don't guess.** Profile before optimising; reproduce before fixing.
+- **Synthetic events are not proof.** Dispatching `mouseover`/`KeyboardEvent`
+  bypasses real browser behaviour. Drive real input, or say plainly that you could not.
+- **Hard-restart before debugging.** Confirm the port is free and the running
+  process has your code (`MISTAKES.md` #4).
+- **Check the last function in the chain.** Setting an attribute that does not
+  exist on a SQLAlchemy model fails *silently* (`reference` vs `reference_no`).
+- **Green tests ≠ working.** Hit the real endpoint / look at the real screen.
+
+## Money and data
+- Never fabricate a financial figure, a reconciliation, or a relationship
+  between two documents that share no key. Show facts; flag gaps.
+- Units must be explicit. A ₹90 box of 6 is ₹15/unit — never infer pack size.
+- **Never test destructive flows on live company data.** Use a scratch row or
+  a throwaway company. Autosave means grid edits persist.
+
+## UI
+- Data density is the point. No redundant columns, no column that repeats
+  another, no full-width banner above a data table (`MISTAKES.md` #10).
+- Long lists need search, not a dropdown.
+- No `window.alert/confirm/prompt` — use `components/ConfirmDialog`.
+
+## Communication
+- Correct the user's English in one line when it has errors, then answer.
+- Terse by default. Own mistakes plainly; no grovelling, no overclaiming.
+
+---
+
 ## What this is
 
 Casper is a marketplace P&L / pricing / fraud-intelligence tool for an Indian jewellery seller (Shringar). It ingests platform settlement exports (Flipkart, Meesho, Snapdeal, ShopDeck), reconciles them against a per-SKU cost model, and surfaces profitability, settlement leakage, and return-fraud signals on a dashboard.
@@ -24,10 +79,25 @@ SECRET_KEY=test-key python -m pytest -q
 SECRET_KEY=test-key python -m pytest tests/test_operations.py -q          # one file
 SECRET_KEY=test-key python -m pytest tests/test_operations.py::test_empty # one test
 
-# Migrations
+# Migrations — the ONLY way the schema may change
 alembic upgrade head
-alembic revision -m "add column x"
+alembic revision --autogenerate -m "add column x"
+
+# The guard. Run it after any model change; it builds an empty DB from the
+# chain and diffs it against the models.
+SECRET_KEY=test-key python -m pytest tests/test_schema_migrations.py -q
 ```
+
+**Never `Base.metadata.create_all` outside tests.** It builds the tables but writes no
+`alembic_version` row, so the chain silently falls behind and the next deploy from an empty
+database fails. Four ad-hoc scripts doing this left the DB nine tables and twenty-three columns
+ahead of its own migrations, with `alembic current` broken outright. `scripts/bootstrap_db.py`
+runs `alembic upgrade head` — keep it that way.
+
+**On any table with `company_id`, a business key is `UniqueConstraint("company_id", <col>)`,
+never `unique=True` on the column.** A global unique means the *second* company is simply
+refused: one company held the only `global_settings.damage_percent` row and every other tenant
+silently fell back to the hardcoded default.
 
 **Frontend** (run from `frontend/`):
 ```bash

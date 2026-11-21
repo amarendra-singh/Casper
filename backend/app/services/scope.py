@@ -17,3 +17,25 @@ def company_ids(company_id: int | list[int] | tuple | set) -> list[int]:
     if isinstance(company_id, (list, tuple, set)):
         return [int(c) for c in company_id]
     return [int(company_id)]
+
+
+def unambiguous_report_ids(company_id):
+    """Exclude ambiguous overlapping coverage rather than double-count money.
+
+    No arbitrary winning report is selected. Original reports remain readable;
+    the dashboard discloses exclusions so operators can resolve their coverage.
+    """
+    from sqlalchemy import select, exists
+    from sqlalchemy.orm import aliased
+    from app.models.pnl import PnlReport
+    other = aliased(PnlReport)
+    overlap = exists(select(other.id).where(
+        other.id != PnlReport.id,
+        other.company_id == PnlReport.company_id,
+        other.platform_id == PnlReport.platform_id,
+        other.period_start <= PnlReport.period_end,
+        other.period_end >= PnlReport.period_start,
+    ))
+    return select(PnlReport.id).where(
+        PnlReport.company_id.in_(company_ids(company_id)), ~overlap,
+    )

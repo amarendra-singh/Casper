@@ -3,18 +3,18 @@
 // compact=false → SVG semi-arc meter with label
 
 function scoreColor(score) {
-  if (score == null) return '#6b7280'
-  if (score >= 70) return '#ef4444'
-  if (score >= 40) return '#f97316'
-  if (score >= 20) return '#f59e0b'
+  if (score == null) {return '#6b7280'}
+  if (score >= 70) {return '#ef4444'}
+  if (score >= 40) {return '#f97316'}
+  if (score >= 20) {return '#f59e0b'}
   return '#22c55e'
 }
 
 function scoreLabel(score) {
-  if (score == null) return '—'
-  if (score >= 70) return 'CRITICAL'
-  if (score >= 40) return 'HIGH'
-  if (score >= 20) return 'MEDIUM'
+  if (score == null) {return '—'}
+  if (score >= 70) {return 'CRITICAL'}
+  if (score >= 40) {return 'HIGH'}
+  if (score >= 20) {return 'MEDIUM'}
   return 'LOW'
 }
 

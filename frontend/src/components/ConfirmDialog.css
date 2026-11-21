@@ -47,3 +47,27 @@
 .cd-confirm:focus-visible { outline: 2px solid var(--pink, #EC2D6E); outline-offset: 2px; }
 .cd-confirm.danger { background: var(--red, #dc2626); border-color: var(--red, #dc2626); }
 .cd-confirm.danger:hover { background: #b91c1c; }
+
+.cd-box { max-height: calc(100dvh - 48px); overflow-y: auto; }
+.cd-confirm:disabled { opacity: .6; cursor: wait; }
+.pricing-dialog { max-width: 560px; }
+
+.import-dialog { max-width: 1200px; }
+.invoice-preview { max-width: 840px; }
+@media print { .cd-overlay { position: static; padding: 0; display: block; background: none; backdrop-filter: none; } .cd-box.invoice-preview { max-height: none; overflow: visible; padding: 0; border: 0; box-shadow: none; max-width: none; } .invoice-preview .cd-title, .invoice-preview .cd-actions { display: none; } }
+
+/* Forms hosted in the shared dialog use the same field rhythm as page forms. */
+.workflow-dialog .cd-body > p { margin-bottom: 12px; }
+.workflow-dialog .cd-body > label { display: block; margin-top: 12px; font-weight: 600; }
+.workflow-dialog .cd-body > label > input,
+.workflow-dialog .cd-body > label > select {
+  display: block; width: 100%; min-width: 0; box-sizing: border-box;
+  margin-top: 4px; padding: 9px 10px; min-height: 38px;
+  border: 1px solid var(--border-2, #d9d6d2); border-radius: 8px;
+  background: var(--canvas, #fff); color: var(--ink, #111); font: inherit; font-weight: 400;
+}
+.workflow-dialog .cd-body > label > input:focus-visible,
+.workflow-dialog .cd-body > label > select:focus-visible { outline: 2px solid var(--pink, #ec2d6e); outline-offset: 2px; }
+.workflow-dialog .cd-body ul { margin-top: 16px; padding: 0; list-style: none; }
+.workflow-dialog .cd-body li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--rule, #edeae6); }
+.workflow-dialog .cd-body li button { padding: 5px 8px; border: 1px solid var(--border-2, #d9d6d2); border-radius: 6px; cursor: pointer; }

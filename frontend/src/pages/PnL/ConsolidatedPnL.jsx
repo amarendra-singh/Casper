@@ -20,15 +20,15 @@ export default function ConsolidatedPnL() {
     return () => { alive = false }
   }, [])
 
-  if (loading) return <div className="pnl-page"><div className="pnl-empty">Building business P&L…</div></div>
-  if (err || !data || !data.platforms?.length) return (
+  if (loading) {return <div className="pnl-page"><div className="pnl-empty">Building business P&L…</div></div>}
+  if (err || !data || !data.platforms?.length) {return (
     <div className="pnl-page">
       <div className="pnl-empty-state">
-        <div className="pnl-empty-title">{err || 'No platform reports yet'}</div>
+        <div className="pnl-empty-title">{err || (data?.excluded_report_ids?.length ? 'Overlapping report coverage must be resolved' : 'No platform reports yet')}</div>
         <div className="pnl-empty-sub">Upload settlement reports per platform to see a consolidated business P&L.</div>
       </div>
     </div>
-  )
+  )}
 
   const st = data.subtotals, m = data.margins
   const profitTone = (st.operating_profit || 0) >= 0 ? 'pos' : 'neg'
@@ -36,7 +36,9 @@ export default function ConsolidatedPnL() {
   return (
     <div className="pnl-page">
       <div className="pnl-header">
-        <h1 className="pnl-title">Business P&amp;L</h1>
+        <h1 className="pnl-title">Marketplace P&amp;L</h1>
+        <p>Settlement reports and recorded SKU costs only. Direct invoices, cash receipts, and ledger expenses are not included. Review those separately before assessing total business profit.</p>
+        {data.excluded_report_ids?.length > 0 && <p role="alert">{data.excluded_report_ids.length} overlapping reports excluded. Resolve their coverage before relying on totals.</p>}
         <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
           {data.period ? `Period ${data.period} · ` : ''}
           blended across {data.platforms.length} platform{data.platforms.length !== 1 ? 's' : ''}
@@ -65,6 +67,10 @@ export default function ConsolidatedPnL() {
             <Row label="Net Sales" amount={st.net_sales} kind="subtotal" margin={100} />
             <Row label="Platform Fees" amount={-(st.total_platform_fees || 0)} kind="expense" />
             <Row label="Net Payout" amount={st.net_payout} kind="subtotal" />
+            <Row label="Payout without cost data (excluded)" amount={-(st.uncosted_payout || 0)} kind="expense" />
+            <Row label="Costed Net Payout" amount={st.costed_payout} kind="subtotal" />
+            <Row label="Fulfillment" amount={-(st.fulfillment || 0)} kind="expense" />
+            <Row label="Return Cost" amount={-(st.return_cost || 0)} kind="expense" />
             <Row label="COGS (Product Cost)" amount={-(st.cogs || 0)} kind="expense" />
             <Row label="Contribution Margin" amount={st.contribution} kind="subtotal" margin={m.contribution_margin_pct} />
             <Row label="Overhead Absorption" amount={-(st.overhead || 0)} kind="expense" />

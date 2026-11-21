@@ -42,18 +42,18 @@ export default function PnLReport() {
   const [error,   setError]   = useState(null)
 
   const fetchReport = useCallback((showLoader = true) => {
-    if (showLoader) setLoading(true)
+    if (showLoader) {setLoading(true)}
     setError(null)
     getPnlReport(Number(reportId))
       .then(data => { setReport(data); setLoading(false) })
-      .catch(() => { setError('Report not found'); setLoading(false) })
+      .catch(e => { setError(e.response?.status === 404 ? 'Report not found' : 'Could not load report. Please retry.'); setLoading(false) })
   }, [reportId])
 
   useEffect(() => { fetchReport() }, [fetchReport])
 
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === 'visible') fetchReport(false)
+      if (document.visibilityState === 'visible') {fetchReport(false)}
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
@@ -63,21 +63,24 @@ export default function PnLReport() {
 
   const setView = v => setSearchParams({ view: v }, { replace: true })
 
-  if (loading) return (
+  if (loading) {return (
     <div className="pnl-page"><div className="pnl-empty">Loading report…</div></div>
-  )
-  if (error) return (
+  )}
+  if (error) {return (
     <div className="pnl-page">
       <div className="pnl-empty-state">
         <div className="pnl-empty-icon">⚠</div>
-        <div className="pnl-empty-title">{error}</div>
+        <div className="pnl-empty-title">{error} <button className="btn btn-ghost" onClick={() => window.location.reload()}>Retry</button></div>
         <button className="pnl-btn-ghost" onClick={() => navigate(`/pnl/${platform}`)}>← Back to Reports</button>
       </div>
     </div>
-  )
+  )}
 
   return (
     <div className="pnl-page">
+      {report?.processing_warnings?.length > 0 && <div role="alert" className="pnl-warning">
+        {report.processing_warnings.map(warning => <p key={warning}>{warning}</p>)}
+      </div>}
 
       {/* ── Header ── */}
       <div className="pnl-header">

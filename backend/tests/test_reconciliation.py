@@ -63,7 +63,8 @@ def test_underpayment_detected():
     # expected 200/unit, actual 1800/10 = 180/unit → gap -20/unit × 10 = -200
     out = build_reconciliation([], [_watch("UP", expected_pu=200.0, actual_total=1800.0, net_units=10)])
     assert out["summary"]["underpaid_skus"] == 1
-    assert out["summary"]["recoverable"] == 200.0     # positive magnitude
+    assert out["summary"]["recoverable"] is None
+    assert out["summary"]["target_shortfall"] == 200.0     # positive magnitude
     u = out["underpaid"][0]
     assert u["gap_per_unit"] == -20.0
     assert u["gap_total"] == -200.0

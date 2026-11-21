@@ -16,6 +16,13 @@ def test_empty():
     assert out["aging"] == {"0-30": 0, "31-60": 0, "60+": 0}
 
 
+def test_unissued_draft_is_not_overdue_or_a_receivable():
+    result = build_billing_summary([_inv('draft', 1000, 0, -10)], TODAY)
+    assert derive_status('draft', TODAY - timedelta(days=10), TODAY) == 'draft'
+    assert result['total_invoiced'] == result['outstanding'] == result['overdue'] == 0
+    assert result['by_status'] == [{'status': 'draft', 'count': 1, 'total': 1000}]
+
+
 def test_derive_status_overdue():
     assert derive_status("sent", date(2026, 7, 1), TODAY) == "overdue"
     assert derive_status("sent", date(2026, 8, 1), TODAY) == "sent"

@@ -1,0 +1,4 @@
+{
+  "description": "All recorded warnings are fixed. Any new lint warning fails CI.",
+  "counts": {}
+}

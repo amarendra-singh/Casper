@@ -1,10 +1,11 @@
 from datetime import date, datetime
 from typing import Optional
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ConfigDict
 from app.models.billing import INVOICE_STATUSES
 
 
 class InvoiceLineIn(BaseModel):
+    model_config = ConfigDict(allow_inf_nan=False)
     description: str
     sku_id: Optional[int] = None
     quantity: float = 1
@@ -13,7 +14,9 @@ class InvoiceLineIn(BaseModel):
     @field_validator("quantity", "unit_price")
     @classmethod
     def _nonneg(cls, v):
-        return round(float(v or 0), 2)
+        if v < 0:
+            raise ValueError('Amount and quantity must be nonnegative')
+        return round(float(v), 2)
 
 
 class InvoiceLineOut(InvoiceLineIn):
@@ -23,6 +26,15 @@ class InvoiceLineOut(InvoiceLineIn):
 
 
 class InvoiceCreate(BaseModel):
+    model_config = ConfigDict(allow_inf_nan=False)
+
+    @field_validator('gst_pct', 'amount_paid')
+    @classmethod
+    def validate_amount(cls, value):
+        if value is not None and value < 0:
+            raise ValueError('Amount/rate must be nonnegative')
+        return value
+
     number: Optional[str] = None       # auto-generated if omitted
     invoice_date: date
     due_date: Optional[date] = None
@@ -44,6 +56,29 @@ class InvoiceCreate(BaseModel):
 
 
 class InvoiceUpdate(BaseModel):
+    @field_validator('number', 'invoice_date', 'customer_name', 'status', 'gst_pct', 'amount_paid', 'lines')
+    @classmethod
+    def required_when_present(cls, value):
+        if value is None:
+            raise ValueError('This field cannot be cleared')
+        return value
+
+    @field_validator('status')
+    @classmethod
+    def validate_status(cls, value):
+        if value is not None and value not in INVOICE_STATUSES:
+            raise ValueError('Invalid invoice status')
+        return value
+
+    model_config = ConfigDict(allow_inf_nan=False)
+
+    @field_validator('gst_pct', 'amount_paid')
+    @classmethod
+    def validate_amount(cls, value):
+        if value is not None and value < 0:
+            raise ValueError('Amount/rate must be nonnegative')
+        return value
+
     number: Optional[str] = None
     invoice_date: Optional[date] = None
     due_date: Optional[date] = None

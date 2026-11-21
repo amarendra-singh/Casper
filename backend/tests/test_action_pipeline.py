@@ -1,6 +1,6 @@
 """Unit tests for fraud action pipeline pure function."""
 import pytest
-from app.services.action_pipeline import build_action_pipeline, AVG_ORDER_VALUE
+from app.services.action_pipeline import build_action_pipeline
 
 
 def _actor(key, tier="GREEN", score=10.0, orders=5, returns=1, fraud_reasons=0,
@@ -16,33 +16,34 @@ def _actor(key, tier="GREEN", score=10.0, orders=5, returns=1, fraud_reasons=0,
 def test_empty():
     out = build_action_pipeline([])
     assert out["summary"]["total_actors"] == 0
-    assert out["summary"]["est_recovery"] == 0.0
+    assert out["summary"]["est_recovery"] is None
     assert out["queue"] == []
     assert out["blocklist"] == []
 
 
 # ── BLOCK action for CRITICAL ────────────────────────────────────────────────────
 
-def test_critical_actor_blocked():
+def test_critical_cohort_requires_investigation():
     out = build_action_pipeline([_actor("C1", tier="CRITICAL", score=99.0, returns=10)])
-    assert out["summary"]["block"] == 1
+    assert out["summary"]["investigate"] == 1
+    assert out["summary"]["block"] == 0
     assert out["summary"]["critical"] == 1
-    assert out["blocklist"][0]["actor_key"] == "C1"
-    assert out["queue"][0]["action"] == "BLOCK"
+    assert out["blocklist"] == []
+    assert out["queue"][0]["action"] == "INVESTIGATE"
 
 
-def test_high_score_blocked_without_critical_tier():
+def test_high_score_does_not_authorize_blocking():
     # score 90 ≥ BLOCK_SCORE(85) but tier AMBER → still BLOCK
     out = build_action_pipeline([_actor("H1", tier="AMBER", score=90.0)])
-    assert out["queue"][0]["action"] == "BLOCK"
+    assert out["queue"][0]["action"] == "INVESTIGATE"
 
 
 # ── DISPUTE action ───────────────────────────────────────────────────────────────
 
-def test_fraud_signal_disputed():
+def test_fraud_signal_requires_claim_review():
     out = build_action_pipeline([_actor("D1", tier="AMBER", score=50.0, signal="FRAUD_SIGNAL", fraud_reasons=3)])
-    assert out["queue"][0]["action"] == "DISPUTE"
-    assert out["summary"]["dispute"] == 1
+    assert out["queue"][0]["action"] == "INVESTIGATE"
+    assert out["summary"]["investigate"] == 1
     assert out["blocklist"] == []
 
 
@@ -63,28 +64,28 @@ def test_recovery_estimate():
         _actor("W", tier="GREEN", score=5.0, returns=3),        # watch → excluded
     ]
     out = build_action_pipeline(actors)
-    assert out["summary"]["est_recovery"] == (10 + 5) * AVG_ORDER_VALUE
+    assert out["summary"]["est_recovery"] is None
 
 
 # ── Template selection ───────────────────────────────────────────────────────────
 
 def test_template_by_reason():
     out = build_action_pipeline([_actor("T1", tier="CRITICAL", score=99.0, reason="MISSHIPMENT")])
-    assert "SAFE-T" in out["queue"][0]["template"]
+    assert "SAFE-T" not in out["queue"][0]["template"]
 
 
 def test_template_default():
     out = build_action_pipeline([_actor("T2", tier="CRITICAL", score=99.0, reason="SOMETHING_ELSE")])
-    assert out["queue"][0]["template"].startswith("Return dispute")
+    assert out["queue"][0]["template"].startswith("Review source orders")
 
 
 # ── Repeat offender flag ─────────────────────────────────────────────────────────
 
-def test_repeat_offender_flagged():
+def test_cohort_frequency_does_not_establish_repeat_customer():
     # 10 orders, 8 returns = 80% ≥ 60% and orders ≥ 3
     out = build_action_pipeline([_actor("R1", tier="AMBER", score=50.0, orders=10, returns=8, signal="FRAUD_SIGNAL")])
-    assert out["queue"][0]["repeat_offender"] is True
-    assert out["summary"]["repeat_offenders"] == 1
+    assert out["queue"][0]["repeat_offender"] is False
+    assert out["summary"]["repeat_offenders"] == 0
 
 
 def test_not_repeat_when_few_orders():

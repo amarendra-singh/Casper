@@ -9,7 +9,7 @@ from app.main import app
 
 
 def _paths() -> set[str]:
-    return {getattr(r, "path", None) for r in app.routes}
+    return set(app.openapi()["paths"])
 
 
 def test_dashboard_router_mounted():

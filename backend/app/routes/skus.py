@@ -1,3 +1,5 @@
+from app.core.dependencies import require_company_role
+from app.models.company import CompanyRole
 """
 CasperV2 — SKU and Pricing routes
 """
@@ -5,6 +7,7 @@ CasperV2 — SKU and Pricing routes
 # APIRouter groups related routes together
 # Depends = FastAPI's dependency injection system
 # HTTPException = raises HTTP errors with proper status codes
+from app.services.tenant_refs import validate_references
 from fastapi import APIRouter, Depends, HTTPException, status
 
 # AsyncSession = async database session type
@@ -21,7 +24,8 @@ from app.core.database import get_db
 from app.core.dependencies import require_admin_or_above, require_any, get_active_company, get_company_scope, require_role_in_company
 
 # DB models
-from app.models.sku import Sku, SkuPricing
+from app.models.sku import Sku, SkuPricing, SkuReverseShipping
+from app.models.platform import Platform
 
 # Pydantic schemas for request/response
 from app.schemas.sku import (
@@ -85,8 +89,8 @@ async def create_sku(
     # payload = the request body, automatically parsed by Pydantic
     payload: SkuCreate,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    _=Depends(require_admin_or_above),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin)),
+    _=Depends(require_any),
 ):
     # Check if shringar_sku already exists in THIS company — must be unique
     existing = await db.execute(
@@ -98,8 +102,24 @@ async def create_sku(
 
     # ** unpacks dict into keyword arguments
     # model_dump() converts Pydantic model to plain dict
-    sku = Sku(**payload.model_dump(), company_id=company.id)
+    try:
+        await validate_references(db, company.id, payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    if (payload.reverse_shipping_platform_id is None) != (payload.reverse_shipping_charge is None):
+        raise HTTPException(422, "Select a platform and charge together")
+    if payload.reverse_shipping_platform_id is not None and not await db.scalar(
+        select(Platform.id).where(Platform.id == payload.reverse_shipping_platform_id,
+                                  Platform.company_id == company.id)):
+        raise HTTPException(404, "Platform not found in this company")
+    sku = Sku(**payload.model_dump(exclude={"reverse_shipping_platform_id", "reverse_shipping_charge"}),
+              company_id=company.id)
     db.add(sku)       # stage the insert (not committed yet)
+    await db.flush()
+    if payload.reverse_shipping_platform_id is not None:
+        db.add(SkuReverseShipping(company_id=company.id, sku_id=sku.id,
+            platform_id=payload.reverse_shipping_platform_id,
+            charge=payload.reverse_shipping_charge))
     await db.commit() # actually write to DB
     await db.refresh(sku)  # reload from DB to get generated id, timestamps
     return sku
@@ -127,6 +147,10 @@ async def update_sku(
     # model_dump(exclude_none=True) = only fields the user actually sent
     # exclude_none=True skips fields that are None (not provided)
     # setattr(obj, 'name', value) = obj.name = value dynamically
+    try:
+        await validate_references(db, sku.company_id, payload.model_dump(exclude_unset=True))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
     for field, value in payload.model_dump(exclude_none=True).items():
         setattr(sku, field, value)
 
@@ -147,6 +171,13 @@ async def delete_sku(
     if not sku:
         raise HTTPException(status_code=404, detail="SKU not found")
     await require_role_in_company(db, user, sku.company_id)
+    from app.models.catalogue import SkuImage, StockMovement
+    if await db.scalar(select(StockMovement.id).where(
+        StockMovement.company_id == sku.company_id, StockMovement.sku_id == sku.id).limit(1)):
+        raise HTTPException(status_code=409, detail="SKU has stock history. Archive it instead of deleting.")
+    if await db.scalar(select(SkuImage.id).where(
+        SkuImage.company_id == sku.company_id, SkuImage.sku_id == sku.id).limit(1)):
+        raise HTTPException(status_code=409, detail="Remove product images before deleting this SKU.")
     await db.delete(sku)  # stage the delete
     await db.commit()     # execute it
     # 204 = No Content — success but nothing to return
@@ -176,8 +207,8 @@ async def list_pricing_for_sku(
 async def create_pricing(
     payload: PricingCreate,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    _=Depends(require_admin_or_above),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin)),
+    _=Depends(require_any),
 ):
     """
     Create pricing for a SKU on a platform.
@@ -195,17 +226,23 @@ async def create_pricing(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Pricing already exists for this SKU + Platform")
 
+    try:
+        await validate_references(db, company.id, payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
     # Step 1: Resolve all inputs (use provided values or auto-calculate defaults)
     try:
         resolved = await resolve_pricing_inputs(
             db=db,
             platform_id=payload.platform_id,
+            company_id=company.id,
             price=payload.price,
             cr_percentage=payload.cr_percentage,
             cr_cost=payload.cr_cost,
             damage_percentage=payload.damage_percentage,
             damage_cost=payload.damage_cost,
             misc_total=payload.misc_total,
+            sku_id=payload.sku_id,
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -235,11 +272,16 @@ async def create_pricing(
         addons=payload.addons,
         gst=payload.gst,
         profit_percentage=payload.profit_percentage,
+        cr_cost_override=payload.cr_cost,
+        damage_cost_override=payload.damage_cost,
+        misc_total_override=payload.misc_total,
         **resolved,   # cr_percentage, cr_cost, damage_percentage, damage_cost, misc_total
         **calcs,      # breakeven, net_profit_amt, bs_wo_gst, bank_settlement
     )
 
     db.add(pricing)
+    from app.services.pnl_statement import recover_unpriced_reports
+    await recover_unpriced_reports(db, company.id)
     await db.commit()
     await db.refresh(pricing)
     return pricing
@@ -266,21 +308,30 @@ async def update_pricing(
     await require_role_in_company(db, user, pricing.company_id)
 
     # Apply user-provided updates to the existing pricing object
-    updates = payload.model_dump(exclude_none=True)
+    updates = payload.model_dump(exclude_unset=True)
+    try:
+        await validate_references(db, pricing.company_id, updates)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
     for field, value in updates.items():
-        setattr(pricing, field, value)
+        if field in ('cr_cost', 'damage_cost', 'misc_total'):
+            setattr(pricing, field + '_override', value)
+        elif value is not None:
+            setattr(pricing, field, value)
 
     # Re-resolve inputs using latest values (mix of updated + existing)
     # getattr(obj, 'field') = obj.field — reads attribute dynamically
     resolved = await resolve_pricing_inputs(
         db=db,
         platform_id=pricing.platform_id,
+        company_id=pricing.company_id,
         price=pricing.price,
         cr_percentage=pricing.cr_percentage,
-        cr_cost=pricing.cr_cost if 'cr_cost' in updates else None,
+        cr_cost=pricing.cr_cost_override,
         damage_percentage=pricing.damage_percentage,
-        damage_cost=pricing.damage_cost if 'damage_cost' in updates else None,
-        misc_total=pricing.misc_total if 'misc_total' in updates else None,
+        damage_cost=pricing.damage_cost_override,
+        misc_total=pricing.misc_total_override,
+        sku_id=pricing.sku_id,
     )
 
     # Apply resolved values back
@@ -304,6 +355,8 @@ async def update_pricing(
     for field, value in calcs.items():
         setattr(pricing, field, value)
 
+    from app.services.pnl_statement import recover_unpriced_reports
+    await recover_unpriced_reports(db, pricing.company_id)
     await db.commit()
     await db.refresh(pricing)
     return pricing
@@ -323,3 +376,25 @@ async def delete_pricing(
     await require_role_in_company(db, user, pricing.company_id)
     await db.delete(pricing)
     await db.commit()
+
+@pricing_router.post("/refresh-preview")
+async def preview_pricing_refresh(db: AsyncSession = Depends(get_db),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin))):
+    from app.services.pricing_refresh import build_refresh_plan
+    return await build_refresh_plan(db, company.id)
+
+
+from pydantic import BaseModel, Field
+class PricingRefreshInput(BaseModel):
+    token: str = Field(min_length=64, max_length=64)
+
+
+@pricing_router.post("/refresh-apply")
+async def apply_pricing_refresh(payload: PricingRefreshInput, db: AsyncSession = Depends(get_db),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin))):
+    from app.services.pricing_refresh import apply_refresh_plan
+    try:
+        return await apply_refresh_plan(db, company.id, payload.token)
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(409, str(exc)) from exc

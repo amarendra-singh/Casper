@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import ConfirmDialog from './ConfirmDialog'
+import { useState, useId } from 'react'
 import api, { errText } from '../api/client'
 
 /**
@@ -13,6 +14,7 @@ import api, { errText } from '../api/client'
  *   onClose       - () => void
  */
 export default function AddTierQuickModal({ platform, onSaved, onClose }) {
+  const fieldId0 = useId()
   const [name,   setName]   = useState('')
   const [mode,   setMode]   = useState('amt')   // 'amt' | 'pct'
   const [val,    setVal]    = useState('')
@@ -20,6 +22,7 @@ export default function AddTierQuickModal({ platform, onSaved, onClose }) {
   const [error,  setError]  = useState('')
 
   const save = async () => {
+    if (busy) {return}
     if (!name.trim()) { setError('Tier name is required'); return }
     if (val === '')   { setError('Enter a fee value');     return }
     setBusy(true); setError('')
@@ -40,13 +43,13 @@ export default function AddTierQuickModal({ platform, onSaved, onClose }) {
   }
 
   return (
-    <div className="overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal" style={{ maxWidth: 360 }}>
-        <div className="modal-title">Add Tier · {platform.name}</div>
+    <ConfirmDialog open title="Add Tier" dialogRole="dialog"
+      onCancel={() => !busy && onClose()} onConfirm={save}
+      confirmLabel="Add Tier" confirmDisabled={busy || !name.trim() || val === ''}>
 
         <div className="input-group" style={{ marginBottom: 8 }}>
-          <label>Tier name *</label>
-          <input className="input" value={name} autoFocus
+          <label htmlFor={fieldId0 + '-field-50'}>Tier name *</label>
+          <input id={fieldId0 + '-field-50'} aria-label="Tier name" className="input" value={name}
             placeholder="e.g. Gold, Standard, Premium"
             onChange={e => setName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && save()} />
@@ -54,15 +57,15 @@ export default function AddTierQuickModal({ platform, onSaved, onClose }) {
 
         <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 8, marginBottom: 8 }}>
           <div className="input-group">
-            <label>Mode</label>
-            <select className="input" value={mode} onChange={e => setMode(e.target.value)}>
+            <label htmlFor={fieldId0 + '-field-59'}>Mode</label>
+            <select id={fieldId0 + '-field-59'} aria-label="Fee mode" className="input" value={mode} onChange={e => setMode(e.target.value)}>
               <option value="amt">₹</option>
               <option value="pct">%</option>
             </select>
           </div>
           <div className="input-group">
             <label>{mode === 'pct' ? '% of base BS' : 'Fee in ₹'}</label>
-            <input className="input" type="number" value={val}
+            <input aria-label="Tier fee" className="input" type="number" value={val}
               placeholder={mode === 'pct' ? '10' : '12'}
               onChange={e => setVal(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && save()} />
@@ -83,14 +86,6 @@ export default function AddTierQuickModal({ platform, onSaved, onClose }) {
           }}>{error}</div>
         )}
 
-        <div className="form-actions">
-          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-gold" onClick={save} disabled={busy || !name.trim() || val === ''}>
-            {busy && <span className="loader" style={{ width: 14, height: 14, borderWidth: 2 }} />}
-            Add Tier
-          </button>
-        </div>
-      </div>
-    </div>
+    </ConfirmDialog>
   )
 }

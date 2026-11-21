@@ -1,3 +1,4 @@
+import ConfirmDialog from './ConfirmDialog'
 import { useState } from 'react'
 import './ManageCategoriesModal.css'
 
@@ -17,7 +18,7 @@ export default function ManageCategoriesModal({ categories, rows, onClose, onUpd
     rows.filter(r => r.categoryId === cat.id || r.category === cat.name).length
 
   const numOrNull = v => {
-    if (v === '' || v === null || v === undefined) return null
+    if (v === '' || v === null || v === undefined) {return null}
     const n = parseFloat(v)
     return Number.isFinite(n) ? n : null
   }
@@ -34,7 +35,7 @@ export default function ManageCategoriesModal({ categories, rows, onClose, onUpd
   const cancelEdit = () => { setEditId(null); setDraft({}) }
 
   const saveEdit = async cat => {
-    if (!draft.name?.trim()) return cancelEdit()
+    if (!draft.name?.trim()) {return cancelEdit()}
     setBusy(cat.id)
     try {
       await onUpdate(cat.id, {
@@ -47,18 +48,14 @@ export default function ManageCategoriesModal({ categories, rows, onClose, onUpd
   }
 
   const handleDelete = async cat => {
-    if (skuCount(cat) > 0) return
+    if (skuCount(cat) > 0) {return}
     setBusy(cat.id)
     try { await onDelete(cat.id) } finally { setBusy(null) }
   }
 
   return (
-    <div className="mc-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="mc-modal" style={{ width: 520 }}>
-        <div className="mc-hdr">
-          <span>Manage Categories</span>
-          <button className="mc-close" onClick={onClose}>✕</button>
-        </div>
+    <ConfirmDialog open title="Manage Categories" dialogRole="dialog" hideCancel
+      confirmLabel="Close" onConfirm={onClose} onCancel={onClose} className="pricing-dialog">
         <div className="mc-body">
           {categories.length === 0 && (
             <div className="mc-empty">No categories yet.</div>
@@ -81,23 +78,23 @@ export default function ManageCategoriesModal({ categories, rows, onClose, onUpd
               <div key={cat.id} className="mc-row">
                 {isEdit ? (
                   <>
-                    <input
+                    <input aria-label={"Category name"}
                       className="mc-input"
                       value={draft.name}
-                      autoFocus
+
                       onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
                       onKeyDown={e => {
-                        if (e.key === 'Enter')  saveEdit(cat)
-                        if (e.key === 'Escape') cancelEdit()
+                        if (e.key === 'Enter')  {saveEdit(cat)}
+                        if (e.key === 'Escape') {cancelEdit()}
                       }}
                     />
-                    <input className="mc-pct-inp" type="number"
+                    <input aria-label={"Category return percentage"} className="mc-pct-inp" type="number"
                       value={draft.default_cr_pct}
                       onChange={e => setDraft(d => ({ ...d, default_cr_pct: e.target.value }))} />
-                    <input className="mc-pct-inp" type="number"
+                    <input aria-label={"Category damage percentage"} className="mc-pct-inp" type="number"
                       value={draft.default_damage_pct}
                       onChange={e => setDraft(d => ({ ...d, default_damage_pct: e.target.value }))} />
-                    <input className="mc-pct-inp" type="number"
+                    <input aria-label={"Category profit percentage"} className="mc-pct-inp" type="number"
                       value={draft.default_profit_pct}
                       onChange={e => setDraft(d => ({ ...d, default_profit_pct: e.target.value }))} />
                   </>
@@ -136,7 +133,6 @@ export default function ManageCategoriesModal({ categories, rows, onClose, onUpd
             )
           })}
         </div>
-      </div>
-    </div>
+    </ConfirmDialog>
   )
 }

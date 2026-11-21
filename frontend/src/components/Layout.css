@@ -448,3 +448,12 @@
   padding: 1px 6px; border-radius: 999px;
   background: var(--pink, #EC2D6E); color: #fff; font-size: 9.5px; font-weight: 700;
 }
+
+.mobile-menu-btn { display: none; border: 1px solid var(--border); background: white; border-radius: 8px; min-width: 40px; min-height: 40px; font-size: 20px; }
+.mobile-company { display: grid; gap: 8px; font-weight: 600; }
+.mobile-company select { padding: 10px; max-width: 100%; border: 1px solid var(--border); border-radius: 8px; }
+.mobile-nav { display: grid; gap: 4px; max-height: 50vh; overflow-y: auto; margin-top: 12px; }
+.mobile-nav a { padding: 10px; border-radius: 8px; color: var(--ink); }
+.mobile-nav a.active { background: var(--pink-wash); }
+@media (max-width: 900px) { .mobile-menu-btn { display: block; } }
+@media (max-width: 640px) { .topbar-brand { display: none; } }

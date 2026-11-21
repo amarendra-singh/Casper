@@ -102,14 +102,14 @@ def test_rematch_snapshot_matches_upload_snapshot():
     Re-matching must freeze costs exactly like an upload does, or a re-matched row
     would drift from one stamped at upload time.
     """
-    from app.services.pnl_statement import _snapshot_from_pricing
+    from app.services.pnl import pricing_snapshot
     from app.services.pnl import _build_sku_row
 
     sp = SimpleNamespace(id=1, price=63.0, package=7.0, logistics=10.0, addons=6.0,
                          misc_total=12.0, cr_cost=34.0, damage_cost=5.04,
                          breakeven=137.04, gst=6.85, bank_settlement=172.0,
                          profit_percentage=20.0)
-    snap = _snapshot_from_pricing(sp)
+    snap = pricing_snapshot(sp, net_units=1)
     uploaded = _build_sku_row({"platform_sku_name": "X", "net_units": 1},
                               report_id=1, matched_pricing=sp, company_id=1)
     for field, value in snap.items():

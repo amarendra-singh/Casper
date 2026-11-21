@@ -168,6 +168,22 @@
   align-items: center;
   gap: 12px;
 }
+.st-reverse-fee {
+  color: var(--text-1);
+  background: var(--surface-2, #f7f6f3);
+  border: 1px solid var(--border, #e5e2db);
+  border-radius: 7px;
+  padding: 5px 8px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.st-reverse-fee strong { font-family: var(--font-mono); font-size: 13px; }
+@media (max-width: 700px) {
+  .st-card-head { align-items: flex-start; gap: 10px; }
+  .st-card-right { flex-wrap: wrap; justify-content: flex-end; }
+  .st-plat-meta { display: none; }
+  .st-reverse-fee { white-space: normal; }
+}
 .st-plat-meta {
   font-size: 11px;
   color: var(--text-3);

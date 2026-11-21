@@ -38,7 +38,7 @@ export default function BidirectionalPctAmount({
         <td className={`ec ${pctClassName} ${shadeClassName}`}>
           <div className="ec-sizer-wrap">
             <span className="ec-sizer mono">{pctValue || pctComputed}</span>
-            <input
+            <input aria-label={`${pctKey} percentage`}
               className="ec-input right mono"
               type="number"
               size={size}
@@ -48,7 +48,7 @@ export default function BidirectionalPctAmount({
               onBlur={e => {
                 // Round to 2 decimals on blur — keeps stored value clean
                 const v = parseFloat(e.target.value)
-                if (Number.isFinite(v)) onUpd({ [pctKey]: String(+v.toFixed(2)), [amtKey]: '' })
+                if (Number.isFinite(v)) {onUpd({ [pctKey]: String(+v.toFixed(2)), [amtKey]: '' })}
               }}
             />
           </div>
@@ -58,7 +58,7 @@ export default function BidirectionalPctAmount({
         <td className={`ec ${amtClassName} ${shadeClassName}`}>
           <div className="ec-sizer-wrap">
             <span className="ec-sizer mono">{amtValue || amtComputed}</span>
-            <input
+            <input aria-label={`${amtKey} amount in rupees`}
               className="ec-input right mono"
               type="number"
               size={size}
@@ -67,7 +67,7 @@ export default function BidirectionalPctAmount({
               onChange={e => onUpd({ [pctKey]: '', [amtKey]: e.target.value })}
               onBlur={e => {
                 const v = parseFloat(e.target.value)
-                if (Number.isFinite(v)) onUpd({ [pctKey]: '', [amtKey]: String(+v.toFixed(2)) })
+                if (Number.isFinite(v)) {onUpd({ [pctKey]: '', [amtKey]: String(+v.toFixed(2)) })}
               }}
             />
           </div>

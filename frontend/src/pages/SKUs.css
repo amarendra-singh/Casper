@@ -827,50 +827,84 @@ select.ec-input,
 .imp-inp:disabled { background: var(--surface-2); color: var(--text-3); cursor: not-allowed; }
 .imp-inp:focus { outline: 2px solid var(--accent); border-color: transparent; }
 
-/* ── Series group header row — compact, Excel-like ── */
-.series-hdr-row td {
-  padding: 0;
-  background: linear-gradient(to right,
-    rgba(0, 0, 0, 0.025) 0%,
-    rgba(0, 0, 0, 0.015) 200px,
-    rgba(0, 0, 0, 0) 400px);
+/* ── Series grouping — no heavy title row; a light divider marks each new
+   series (the Series column already names it). ── */
+.e-row.series-start td {
   border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  height: 20px;
-  line-height: 20px;
 }
-.series-hdr-btn {
-  display: inline-flex;
+
+/* ── Excel-style rectangular selection ───────────────────────────────────── */
+/* inset box-shadow, not background, so the cell's own shade still reads. */
+.e-tbl td.cell-sel {
+  background: rgba(236, 45, 110, 0.10);
+  box-shadow: inset 0 0 0 1px rgba(236, 45, 110, 0.22);
+}
+.e-tbl td.cell-active {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+/* Spreadsheet cursor over selectable cells — single click selects, double
+   click (or Enter / F2 / just typing) edits. */
+.e-tbl td.selc { cursor: cell; }
+
+/* Focus holder for clipboard events. Must stay focusable (so copy/paste/cut
+   fire) — hence offscreen rather than display:none, which cannot take focus. */
+.grid-clipbox {
+  position: fixed;
+  top: 0;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  border: 0;
+  padding: 0;
+  resize: none;
+  pointer-events: none;
+}
+/* While dragging a range, stop the browser painting text selection over it. */
+.e-tbl tbody.range-dragging { user-select: none; }
+
+.range-bar {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 10px;
-  background: none;
-  border: none;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--ink, #0E0E10);
+  color: #fff;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+  font-size: 12px;
+}
+.range-bar-n { font-weight: 600; opacity: 0.9; white-space: nowrap; }
+.range-bar-inp {
+  width: 84px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 12px;
+  font-family: var(--font-mono, monospace);
+  text-align: right;
+}
+.range-bar-inp::placeholder { color: rgba(255, 255, 255, 0.45); }
+.range-bar-btn {
+  padding: 4px 9px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: transparent;
+  color: #fff;
+  font-size: 12px;
   cursor: pointer;
-  text-align: left;
-  height: 20px;
-  line-height: 20px;
+  white-space: nowrap;
 }
-.series-hdr-btn:hover { background: rgba(0, 0, 0, 0.04); }
-.series-hdr-arrow {
-  font-size: 7px;
-  color: var(--text-3);
-  width: 8px;
-  text-align: center;
-}
-.series-hdr-name {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-2);
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-}
-.series-hdr-count {
-  font-size: 9px;
-  color: var(--text-3);
-  font-weight: 500;
-  margin-left: 2px;
-}
+.range-bar-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.range-bar-btn.primary { background: var(--accent); border-color: var(--accent); font-weight: 600; }
+.range-bar-btn.danger:hover { background: #ef4444; border-color: #ef4444; }
 
 
 /* ── Hidden SKUs banner (unmatched from uploads) ───────────────────────────── */
@@ -976,3 +1010,8 @@ select.ec-input,
   color: rgba(255,255,255,.5); font-size: 18px; line-height: 1;
 }
 .bulk-undo-x:hover { color: #fff; }
+
+.grid-fieldset { padding: 0; margin: 0; border: 0; min-width: 0; }
+.ec-profile-link { display: inline-block; margin: 3px 0 0; color: var(--accent); font-size: 10px; text-decoration: none; white-space: nowrap; }
+.ec-profile-link:hover { text-decoration: underline; }
+.ec-inactive-label { display: inline-block; margin-left: 7px; color: var(--text-3); font-size: 10px; font-weight: 600; }

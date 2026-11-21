@@ -10,18 +10,20 @@ const CATEGORY_COLORS = {
 }
 
 export default function ReturnReasonTab() {
+  const [error, setError] = useState('')
   const [data,    setData]    = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     api.get('/fraud/return-reasons')
       .then(r => setData(r.data))
-      .catch(console.error)
+      .catch(() => setError('Could not load risk data. Please retry.'))
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <div className="fd-loading">Loading return reason intelligence…</div>
-  if (!data)   return <div className="fd-empty">No return reason data available.</div>
+  if (error) {return <div role="alert">{error} <button onClick={() => window.location.reload()}>Retry</button></div>}
+  if (loading) {return <div className="fd-loading">Loading return reason intelligence…</div>}
+  if (!data)   {return <div className="fd-empty">No return reason data available.</div>}
 
   const maxCount = Math.max(...(data.by_category || []).map(c => c.count), 1)
   const pct = v => data.total_with_reasons > 0

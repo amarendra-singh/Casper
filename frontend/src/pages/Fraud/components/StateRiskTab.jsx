@@ -9,17 +9,19 @@ const TIER_STYLE = {
 }
 
 export default function StateRiskTab() {
+  const [error, setError] = useState('')
   const [states,  setStates]  = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     api.get('/fraud/states')
       .then(r => setStates(r.data.states || []))
-      .catch(console.error)
+      .catch(() => setError('Could not load risk data. Please retry.'))
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <div className="fd-loading">Loading state risk intelligence…</div>
+  if (error) {return <div role="alert">{error} <button onClick={() => window.location.reload()}>Retry</button></div>}
+  if (loading) {return <div className="fd-loading">Loading state risk intelligence…</div>}
 
   const maxRate = Math.max(...states.map(s => s.fraud_rate || 0), 0.01)
 

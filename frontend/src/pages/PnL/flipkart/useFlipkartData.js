@@ -58,7 +58,7 @@ export function useFlipkartData(report) {
   }, [report])
 
   const insightsData = useMemo(() => {
-    if (!report) return null
+    if (!report) {return null}
     const rows    = report.sku_rows || []
     const matched = rows.filter(r => r.is_matched && r.variance_bs != null)
     const totalActualBS    = matched.reduce((s, r) => s + (r.bank_settlement_projected || 0), 0)

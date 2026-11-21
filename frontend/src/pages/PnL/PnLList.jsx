@@ -1,13 +1,14 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useId } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getPlatforms, getPnlReports, uploadPnlReport, deletePnlReport } from '../../api/client'
+import api, { errText } from '../../api/client'
 import './Flipkart.css'
 import { useConfirm } from '../../components/ConfirmDialog'
 
 const TABS = ['Reports', 'All Time P&L', 'By SKU']
 
 const fmt = (v, d = 0) => {
-  if (v == null) return '—'
+  if (v == null) {return '—'}
   const n = Number(v)
   const abs = Math.abs(n).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d })
   return (n < 0 ? '-' : '') + '₹' + abs
@@ -17,7 +18,7 @@ const fmtPct = v => v == null ? '—' : Number(v).toFixed(1) + '%'
 const parseLocalDate = s => s ? new Date(s + 'T00:00:00') : null
 const fmtPeriod = (start, end) => {
   const s = parseLocalDate(start), e = parseLocalDate(end)
-  if (!s || !e) return '—'
+  if (!s || !e) {return '—'}
   return `${s.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })} — ${e.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`
 }
 
@@ -29,6 +30,7 @@ const PLATFORM_COLORS = {
 }
 
 export default function PnLList() {
+  const fieldId0 = useId()
   const { ask, dialog } = useConfirm()
   const { platform }  = useParams()
   const navigate      = useNavigate()
@@ -38,6 +40,7 @@ export default function PnLList() {
   const dotColor      = PLATFORM_COLORS[platformKey] || '#6B7280'
   const capitalize    = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s
 
+  const [loadError, setLoadError] = useState('')
   const [tab,            setTab]           = useState(0)
   const [viewMode,       setViewMode]      = useState('grid')
   const [reports,        setReports]       = useState([])
@@ -53,6 +56,7 @@ export default function PnLList() {
   const [uploadResult,   setUploadResult]  = useState(null)   // holds result when parse warnings exist
 
   useEffect(() => {
+    setLoadError('')
     setTab(0)
     setReports([])
     setLoadingReports(true)
@@ -67,7 +71,7 @@ export default function PnLList() {
           setPlatformName(found.name)
           setReports(await getPnlReports(found.id))
         }
-      } catch (e) { console.error('[PnL]', e) }
+      } catch { setLoadError('Could not load reports. Please retry.') }
       finally { setLoadingReports(false) }
     }
     init()
@@ -97,7 +101,7 @@ export default function PnLList() {
         navigate(`/pnl/${platformKey}/${result.report_id}?view=pnl`)
       }
     } catch (err) {
-      if (err.response?.status === 409) { setConflict(err.response.data.detail) }
+      if (err.response?.status === 409 && err.response.data.detail?.type === 'duplicate') { setConflict(err.response.data.detail) }
       else {
         const d = err.response?.data?.detail
         setUploadError(typeof d === 'string' ? d : Array.isArray(d) ? d.map(e => e.msg).join(' · ') : 'Upload failed.')
@@ -106,7 +110,7 @@ export default function PnLList() {
   }
 
   function closeUpload() {
-    if (uploading) return
+    if (uploading) {return}
     setShowUpload(false); setUploadError(''); setFile(null); setUploadResult(null)
   }
 
@@ -137,7 +141,7 @@ export default function PnLList() {
   }
 
   const lifetimeData = useMemo(() => {
-    if (!reports.length) return null
+    if (!reports.length) {return null}
     return {
       totalBS:         reports.reduce((s, r) => s + (r.bank_settlement || 0), 0),
       totalNetSales:   reports.reduce((s, r) => s + (r.net_sales || 0), 0),
@@ -148,6 +152,8 @@ export default function PnLList() {
       sorted:          [...reports].sort((a, b) => parseLocalDate(b.period_start) - parseLocalDate(a.period_start)),
     }
   }, [reports])
+
+  if (loadError) {return <div role="alert">{loadError} <button onClick={() => window.location.reload()}>Retry</button></div>}
 
   return (
     <div className="pnl-page">
@@ -195,10 +201,10 @@ export default function PnLList() {
               <div className="pnl-view-bar">
                 <span className="pnl-report-count">{reports.length} report{reports.length !== 1 ? 's' : ''}</span>
                 <div className="pnl-view-toggle">
-                  <button className={`pnl-view-btn${viewMode === 'grid' ? ' active' : ''}`} onClick={() => setViewMode('grid')} title="Grid">
+                  <button aria-label="Grid" className={`pnl-view-btn${viewMode === 'grid' ? ' active' : ''}`} onClick={() => setViewMode('grid')} title="Grid">
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="0" y="0" width="6" height="6" rx="1.5" fill="currentColor"/><rect x="8" y="0" width="6" height="6" rx="1.5" fill="currentColor"/><rect x="0" y="8" width="6" height="6" rx="1.5" fill="currentColor"/><rect x="8" y="8" width="6" height="6" rx="1.5" fill="currentColor"/></svg>
                   </button>
-                  <button className={`pnl-view-btn${viewMode === 'list' ? ' active' : ''}`} onClick={() => setViewMode('list')} title="List">
+                  <button aria-label="List" className={`pnl-view-btn${viewMode === 'list' ? ' active' : ''}`} onClick={() => setViewMode('list')} title="List">
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="0" y="1" width="14" height="2" rx="1" fill="currentColor"/><rect x="0" y="6" width="14" height="2" rx="1" fill="currentColor"/><rect x="0" y="11" width="14" height="2" rx="1" fill="currentColor"/></svg>
                   </button>
                 </div>
@@ -407,8 +413,8 @@ export default function PnLList() {
 
       {/* ── Upload modal ── */}
       {showUpload && !conflict && (
-        <div className="pnl-modal-overlay" onClick={closeUpload}>
-          <div className="pnl-modal" onClick={e => e.stopPropagation()}>
+        <div role="presentation" className="pnl-modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) { (closeUpload)(e) } }}>
+          <div className="pnl-modal" >
             <div className="pnl-modal-hdr">
               <span>Upload {platformName} P&amp;L Report</span>
               <button className="pnl-modal-close" onClick={closeUpload}>✕</button>
@@ -416,11 +422,11 @@ export default function PnLList() {
             <div className="pnl-modal-body">
               <div className="pnl-period-note">Period will be auto-detected from the report file.</div>
               <div className="pnl-field">
-                <label className="pnl-label">Excel File (.xlsx / .xls)</label>
-                <div className={`pnl-dropzone${file ? ' has-file' : ''}`}
+                <label htmlFor={fieldId0 + '-field-423'} className="pnl-label">Excel File (.xlsx / .xls)</label>
+                <div onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); (() => fileRef.current?.click())(e) } }} role="button" tabIndex={0} className={`pnl-dropzone${file ? ' has-file' : ''}`}
                   onClick={() => fileRef.current?.click()}
                   onDragOver={e => e.preventDefault()}
-                  onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) setFile(f) }}>
+                  onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) {setFile(f)} }}>
                   {file ? (
                     <>
                       <span className="pnl-file-icon">
@@ -436,7 +442,7 @@ export default function PnLList() {
                       <span className="pnl-drop-hint">{platformName} P&amp;L .xlsx</span>
                     </>
                   )}
-                  <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }}
+                  <input aria-label={"Excel File (.xlsx / .xls)"} id={fieldId0 + '-field-423'} ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }}
                     onChange={e => setFile(e.target.files[0])} />
                 </div>
               </div>
@@ -453,6 +459,18 @@ export default function PnLList() {
                   {uploadResult.parse_warnings.map((w, i) => (
                     <div key={i} className="pnl-warn-item">• {w}</div>
                   ))}
+                  {uploadResult.parse_warnings.some(w => w.includes('Fraud processing incomplete')) && (
+                    <button disabled={uploading} onClick={async () => {
+                      setUploading(true); setUploadError('')
+                      try {
+                        await api.post(`/fraud/backfill/${uploadResult.report_id}`)
+                        setUploadResult(r => ({ ...r, parse_warnings: r.parse_warnings.filter(w => !w.includes('Fraud processing incomplete')) }))
+                        setReports(await getPnlReports(platformId))
+                        showToast('Risk processing completed')
+                      } catch (e) {setUploadError(errText(e, 'Risk processing retry failed'))}
+                      finally {setUploading(false)}
+                    }}>Retry risk processing</button>
+                  )}
                   <div className="pnl-warn-note">These fields may affect P&L accuracy. Check the parser or re-upload a corrected file.</div>
                 </div>
               )}
@@ -478,8 +496,8 @@ export default function PnLList() {
 
       {/* ── Conflict modal ── */}
       {conflict && (
-        <div className="pnl-modal-overlay" onClick={() => !uploading && setConflict(null)}>
-          <div className="pnl-modal" onClick={e => e.stopPropagation()}>
+        <div role="presentation" className="pnl-modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) { (() => !uploading && setConflict(null))(e) } }}>
+          <div className="pnl-modal" >
             <div className="pnl-modal-hdr"><span>⚠ Duplicate Report Detected</span></div>
             <div className="pnl-modal-body">
               <div className="pnl-conflict-info">

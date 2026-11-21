@@ -118,7 +118,7 @@ export default function OperatingPnlPatternCards({ killList, returnLeakage, data
 }
 
 function Card({ icon, title, subtitle, count, countClass, badge, badgeClass, empty, emptyGood, children }) {
-  const isEmpty = !children || (Array.isArray(children) && children.every(c => !c))
+
   const hasList = count != null
   return (
     <div className="pnl-pattern-card">

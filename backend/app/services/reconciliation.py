@@ -1,16 +1,7 @@
-"""
-Settlement Reconciliation Service
-=================================
+"""Cash settlement summaries and variance against pricing targets.
 
-Surfaces where money is stuck or leaking in real platform settlement data:
-  • Cash position   — settled vs pending (cash the platform still owes you).
-  • Fee load        — total platform fees as % of gross, flagged per platform.
-  • Underpayment     — SKUs where the platform settled less per unit than the
-                      Casper-expected bank settlement (recoverable variance).
-
-Layers (clean architecture):
-  • build_reconciliation(reports, watch_rows) — PURE, unit-testable.
-  • compute_reconciliation(db)                — async DB wrapper.
+Pricing targets include desired profit. A below-target payout does not establish
+underpayment or a recoverable claim; verified recovery is therefore unavailable.
 """
 from __future__ import annotations
 
@@ -18,14 +9,14 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.pnl import PnlReport, PnlSkuRow
-from app.services.scope import company_ids
+from app.services.scope import company_ids, unambiguous_report_ids
 from app.models.sku import SkuPricing, Sku
 from app.models.platform import Platform
 
 
 # A platform whose fees exceed this share of gross is flagged for review.
 FEE_LOAD_FLAG_PCT = 25.0
-# Per-unit underpayment below this (₹) is treated as recoverable, not noise.
+# Minimum per-unit pricing target variance displayed (rupees).
 UNDERPAY_MIN_RS = 1.0
 UNDERPAY_LIMIT = 10
 
@@ -61,7 +52,7 @@ def build_reconciliation(reports: list[dict], watch_rows: list[dict]) -> dict:
         tot_settle += bs; tot_settled += settled; tot_pending += pending
         tot_gross += gross; tot_fees += fees
 
-    # Per-SKU underpayment vs Casper-expected settlement (recoverable).
+    # Per-SKU variance against a pricing target, not a documented entitlement.
     underpaid: list[dict] = []
     total_recoverable = 0.0
     for w in watch_rows:
@@ -97,7 +88,9 @@ def build_reconciliation(reports: list[dict], watch_rows: list[dict]) -> dict:
             "settled_pct": settled_pct,
             "fee_load_pct": fee_load,
             "total_fees": round(tot_fees, 2),
-            "recoverable": round(total_recoverable, 2),
+            "recoverable": None,
+            "target_shortfall": round(total_recoverable, 2),
+            "basis": "Pricing target variance; not a verified claim",
             "underpaid_skus": len(underpaid),
         },
         "platforms": platforms,
@@ -118,7 +111,7 @@ async def compute_reconciliation(db: AsyncSession, company_id: int | list[int]) 
             func.coalesce(func.sum(PnlReport.total_expenses), 0.0),
         )
         .join(Platform, Platform.id == PnlReport.platform_id)
-        .where(PnlReport.company_id.in_(_cids))
+        .where(PnlReport.company_id.in_(_cids), PnlReport.id.in_(unambiguous_report_ids(_cids)))
         .group_by(Platform.name)
     )
     reports = [
@@ -139,9 +132,10 @@ async def compute_reconciliation(db: AsyncSession, company_id: int | list[int]) 
         )
         .join(SkuPricing, SkuPricing.id == PnlSkuRow.sku_pricing_id)
         .join(Sku, Sku.id == SkuPricing.sku_id)
-        .join(Platform, Platform.id == SkuPricing.platform_id)
+        .join(PnlReport, PnlReport.id == PnlSkuRow.report_id)
+        .join(Platform, Platform.id == PnlReport.platform_id)
         .where(
-            PnlSkuRow.company_id.in_(_cids),
+            PnlSkuRow.company_id.in_(_cids), PnlSkuRow.report_id.in_(unambiguous_report_ids(_cids)),
             PnlSkuRow.sku_pricing_id.isnot(None),
             PnlSkuRow.casper_expected_bs.isnot(None),
             PnlSkuRow.bank_settlement_projected.isnot(None),

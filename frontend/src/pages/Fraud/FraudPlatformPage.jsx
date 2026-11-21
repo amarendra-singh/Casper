@@ -29,9 +29,9 @@ export default function FraudPlatformPage() {
       .finally(() => setLoading(false))
   }, [platformId])
 
-  if (loading) return <div className="fpp-loading"><div className="loader" /></div>
-  if (error)   return <div className="fpp-error">{error}</div>
-  if (!data)   return null
+  if (loading) {return <div className="fpp-loading"><div className="loader" /></div>}
+  if (error)   {return <div className="fpp-error">{error}</div>}
+  if (!data)   {return null}
 
   const ts        = data.tier_summary || {}
   const totalSkus = Object.values(ts).reduce((a, b) => a + b, 0)

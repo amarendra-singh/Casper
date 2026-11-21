@@ -41,8 +41,8 @@ export default function Companies() {
       catch (e) { setErr(errText(e, 'Action failed')) }
       finally { setBusy(false) }
     }
-    if (confirmOpts) ask({ ...confirmOpts, onConfirm: go })
-    else await go()
+    if (confirmOpts) {ask({ ...confirmOpts, onConfirm: go })}
+    else {await go()}
   }
 
   const submitCreate = async () => {
@@ -61,7 +61,7 @@ export default function Companies() {
     })
   }
 
-  if (rows === null) return <div className="co-page"><div className="co-empty">Loading…</div></div>
+  if (rows === null) {return <div className="co-page"><div className="co-empty">Loading…</div></div>}
 
   const active   = rows.filter(c => c.is_active !== false)
   const archived = rows.filter(c => c.is_active === false)
@@ -87,7 +87,7 @@ export default function Companies() {
       {creating && (
         <div className="co-create">
           <label className="co-f">Company name
-            <input autoFocus value={newCo.name} placeholder="e.g. Shringar House"
+            <input aria-label={"Company name"}  value={newCo.name} placeholder="e.g. Shringar House"
               onChange={e => setNewCo({ ...newCo, name: e.target.value })}
               onKeyDown={e => e.key === 'Enter' && submitCreate()} />
           </label>
@@ -164,7 +164,7 @@ function CompanyCard({ c, isActive, busy, editing, draft, setDraft,
   if (editing) {
     return (
       <div className="co-card co-card-edit">
-        <input className="co-edit-name" autoFocus value={draft.name}
+        <input aria-label={"Company name"} className="co-edit-name"  value={draft.name}
           onChange={e => setDraft({ ...draft, name: e.target.value })}
           onKeyDown={e => e.key === 'Enter' && onSave()} />
         <div className="co-swatches">

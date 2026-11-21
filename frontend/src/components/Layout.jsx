@@ -3,6 +3,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useCompany } from '../context/CompanyContext'
 import { getPlatforms } from '../api/client'
+import ConfirmDialog from './ConfirmDialog'
 import './Layout.css'
 
 // ── SVG Icons ──────────────────────────────────────────────────────────────
@@ -10,14 +11,14 @@ const IcHome    = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColo
 const IcLayers  = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12l8 4 8-4M2 8l8 4 8-4M2 4l8 4 8-4"/></svg>
 const IcChart   = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17V7m4 10V3m4 14v-6m4 6v-4"/></svg>
 const IcDoc     = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6l-3-4z"/><path d="M13 2v4h4M7 9h6M7 12h6M7 15h4"/></svg>
-const IcEdit    = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2.5a2.12 2.12 0 0 1 3 3L6 17l-4 1 1-4 11.5-11.5z"/></svg>
+
 const IcSettings= () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="10" r="2.5"/><path d="M10 2v1.5M10 16.5V18M2 10h1.5M16.5 10H18M4.22 4.22l1.06 1.06M14.72 14.72l1.06 1.06M4.22 15.78l1.06-1.06M14.72 5.28l1.06-1.06"/></svg>
 const IcSearch  = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="9" r="6"/><path d="M17 17l-3.5-3.5"/></svg>
 const IcPlus    = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 4v12M4 10h12"/></svg>
-const IcChevron = () => <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+
 const IcUsers   = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M13 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM3 17a7 7 0 0 1 14 0"/></svg>
 const IcTag     = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h6l8 8a2 2 0 0 1 0 2.83l-3.17 3.17a2 2 0 0 1-2.83 0L3 9V3z"/><circle cx="7" cy="7" r="1" fill="currentColor" stroke="none"/></svg>
-const IcPnl     = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="16" height="14" rx="2"/><path d="M6 8h5M6 11h8M6 14h4"/><path d="M14 6l1.5 1.5L14 9"/></svg>
+
 const IcCalc    = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="12" height="16" rx="2"/><path d="M7 6h6M7 10h.01M10 10h.01M13 10h.01M7 13h.01M10 13h.01M13 13v3"/></svg>
 const IcLedger  = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 3h9a2 2 0 0 1 2 2v12a1 1 0 0 1-1 1H5a2 2 0 0 1-2-2V4a1 1 0 0 1 1-1z"/><path d="M3 7h12M8 3v14"/></svg>
 const IcInvoice = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 2h10v16l-2.5-1.5L10 18l-2.5-1.5L5 18V2z"/><path d="M8 7h4M8 10h4"/></svg>
@@ -25,7 +26,7 @@ const IcInvoice = () => <svg viewBox="0 0 20 20" fill="none" stroke="currentColo
 // ── Nav data ──────────────────────────────────────────────────────────────
 const RAIL_NAV = [
   { to: '/',           title: 'Dashboard', Icon: IcHome,  end: true },
-  { to: '/skus',       title: 'SKUs',      Icon: IcLayers },
+  { to: '/product',    title: 'Product',   Icon: IcLayers },
   { to: '/pricing',    title: 'Pricing',   Icon: IcTag },
   { to: '/fraud',      title: 'Fraud',     Icon: IcChart },
   { to: '/pnl/flipkart', title: 'P&L reports', Icon: IcDoc },
@@ -33,9 +34,11 @@ const RAIL_NAV = [
 
 const WORKSPACE = [
   { to: '/',         label: 'Dashboard', Icon: IcHome,     end: true },
-  { to: '/skus',     label: 'SKUs',      Icon: IcLayers,   module: 'skus', subItems: [
-    { to: '/skus',         label: 'Manage SKUs',    end: true },
-    { to: '/skus/intro',   label: 'Overview' },
+  { to: '/product',  label: 'Product',   Icon: IcLayers,   module: 'skus', subItems: [
+    { to: '/product/unit-economics', label: 'Unit Economics' },
+    { to: '/product/catalogue',      label: 'Catalogue' },
+    { to: '/product/categories',     label: 'Categories' },
+    { to: '/skus/intro',             label: 'Overview' },
   ]},
   { to: '/vendors',  label: 'Vendors',   Icon: IcUsers,    module: 'skus', subItems: [
     { to: '/vendors',        label: 'Manage Vendors', end: true },
@@ -62,7 +65,9 @@ const REPORTS_SHARED = ['Weekly Summary','Deal Duration']
 
 const ALL_SEARCH = [
   { label: 'Dashboard',         sub: 'Workspace', to: '/' },
-  { label: 'Manage SKUs',       sub: 'Workspace', to: '/skus' },
+  { label: 'Unit Economics',    sub: 'Workspace', to: '/product/unit-economics' },
+  { label: 'Catalogue',         sub: 'Workspace', to: '/product/catalogue' },
+  { label: 'Categories',        sub: 'Workspace', to: '/product/categories' },
   { label: 'Vendors',           sub: 'Workspace', to: '/vendors' },
   { label: 'Pricing',           sub: 'Workspace', to: '/pricing' },
   { label: 'Profit Calculator', sub: 'Workspace', to: '/calculator' },
@@ -70,6 +75,10 @@ const ALL_SEARCH = [
   { label: 'P&L reports',       sub: 'Reports',   to: '/pnl/flipkart' },
   { label: 'Team',              sub: 'Company',   to: '/users' },
   { label: 'Platforms & Tiers', sub: 'Settings',  to: '/settings' },
+  { label: 'Billing & Invoices', sub: 'Company', to: '/billing' },
+  { label: 'Expense Ledger', sub: 'Company', to: '/ledger' },
+  { label: 'Companies', sub: 'Settings', to: '/companies' },
+  { label: 'Business P&L', sub: 'Reports', to: '/pnl/business' },
   { label: 'Account',           sub: 'Settings',  to: '/account' },
 ]
 
@@ -85,10 +94,11 @@ export default function Layout() {
   const [open,      setOpen]      = useState({ workspace:true, pnl:true, analytics:false, reports:true, settings:false })
   const [openWsItem,setOpenWsItem]= useState({})
   const [treeOpen,  setTreeOpen]  = useState({ my:true, shared:false })
-  const { companies, activeCompany, isAll, setActive, createCompany, modules } = useCompany()
+  const { companies, activeCompany, isAll, setActive, modules, contextReady, contextError } = useCompany()
   const company = activeCompany || { name: 'Select company', color: 'var(--muted-2)' }
   // Enter/Space activation for role="button" divs (keyboard a11y).
   const onKey = fn => e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn() } }
+  const [mobileOpen, setMobileOpen] = useState(false)
   const [showCo,    setShowCo]    = useState(false)
   const [query,     setQuery]     = useState('')
   const [searchRes, setSearchRes] = useState([])
@@ -99,8 +109,8 @@ export default function Layout() {
 
   useEffect(() => {
     const h = e => {
-      if (coRef.current && !coRef.current.contains(e.target)) setShowCo(false)
-      if (srRef.current  && !srRef.current.contains(e.target)) setShowSR(false)
+      if (coRef.current && !coRef.current.contains(e.target)) {setShowCo(false)}
+      if (srRef.current  && !srRef.current.contains(e.target)) {setShowSR(false)}
     }
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
@@ -126,20 +136,37 @@ export default function Layout() {
 
   // Determine active rail button
   const isRailActive = (item) => {
-    if (!item.to) return false
-    if (item.end) return location.pathname === item.to
+    if (!item.to) {return false}
+    if (item.end) {return location.pathname === item.to}
     return location.pathname.startsWith(item.to)
   }
 
   return (
     <div className="app">
+      <ConfirmDialog open={mobileOpen} title="Navigation and company" dialogRole="dialog" hideCancel confirmLabel="Close" cancelLabel="Close menu"
+        onCancel={() => setMobileOpen(false)} onConfirm={() => setMobileOpen(false)}>
+        <label className="mobile-company">Current company
+          <select value={activeCompany?.id || ''} onChange={e => setActive(e.target.value)}>
+            {companies.length > 1 && <option value="all">All Companies</option>}
+            {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </label>
+        <nav className="mobile-nav" aria-label="Main navigation">
+          {WORKSPACE.filter(item => !item.module || modules[item.module] !== false).flatMap(item => item.subItems || [item])
+            .map(item => <NavLink key={item.to} to={item.to} onClick={() => setMobileOpen(false)}>{item.label}</NavLink>)}
+          {modules.pnl !== false && <NavLink to="/pnl/business" onClick={() => setMobileOpen(false)}>Business P&amp;L</NavLink>}
+          {modules.pnl !== false && pnlPlatforms.map(p => <NavLink key={p.id} to={`/pnl/${p.name.toLowerCase()}`} onClick={() => setMobileOpen(false)}>{p.name} reports</NavLink>)}
+          {modules.fraud !== false && <NavLink to="/fraud" onClick={() => setMobileOpen(false)}>Fraud detection</NavLink>}
+          <button className="btn btn-ghost" onClick={handleLogout}>Sign out on all devices</button>
+        </nav>
+      </ConfirmDialog>
 
       {/* ══ RAIL ══ */}
       <aside className="rail">
-        <div className="rail-logo" onClick={() => navigate('/')}>C</div>
+        <div onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); (() => navigate('/'))(e) } }} role="button" tabIndex={0} className="rail-logo" onClick={() => navigate('/')}>C</div>
 
         <nav className="rail-nav">
-          {RAIL_NAV.map((item, i) => (
+          {RAIL_NAV.filter(item => modules[({'/product':'skus','/pricing':'pricing','/fraud':'fraud','/pnl/flipkart':'pnl'})[item.to]] !== false).map((item, i) => (
             <button key={i}
               className={`rail-btn${isRailActive(item) ? ' active' : ''}`}
               title={item.title} aria-label={item.title}
@@ -186,7 +213,7 @@ export default function Layout() {
             <div className="co-dd" role="menu">
               {/* Group mode — consolidated reads across every company. */}
               {companies.length > 1 && (() => {
-                const pickAll = () => { setShowCo(false); if (!isAll) setActive('all') }
+                const pickAll = () => { setShowCo(false); if (!isAll) {setActive('all')} }
                 return (
                   <div className={`co-row co-row-all${isAll ? ' on' : ''}`} role="menuitem" tabIndex={0}
                     aria-label={`All Companies, consolidated${isAll ? ', active' : ''}`}
@@ -202,7 +229,7 @@ export default function Layout() {
                 )
               })()}
               {companies.map(c => {
-                const pick = () => { setShowCo(false); if (c.id !== activeCompany?.id) setActive(c.id) }
+                const pick = () => { setShowCo(false); if (c.id !== activeCompany?.id) {setActive(c.id)} }
                 return (
                   <div key={c.id} className="co-row" role="menuitem" tabIndex={0}
                     aria-label={`${c.name}, ${c.role}${c.id === activeCompany?.id ? ', active' : ''}`}
@@ -232,22 +259,22 @@ export default function Layout() {
 
           {/* Workspace */}
           <div className="nav-sec">
-            <div className="sec-hdr" onClick={() => togSec('workspace')}>
+            <div className="sec-hdr" role="button" tabIndex={0} onKeyDown={onKey(() => togSec('workspace'))} onClick={() => togSec('workspace')}>
               <span className="sec-lbl">Workspace</span>
               <span className={`sec-chev ${open.workspace ? '' : 'closed'}`}>▾</span>
             </div>
             {open.workspace && WORKSPACE.filter(item => !item.module || modules[item.module] !== false).map(item => {
-              if (!item.subItems) return (
+              if (!item.subItems) {return (
                 <NavLink key={item.to} to={item.to} end={item.end}
                   className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
                   {item.Icon && <span className="nav-icon"><item.Icon /></span>}
                   {item.label}
                 </NavLink>
-              )
+              )}
               const expanded = openWsItem[item.to] ?? true
               return (
                 <div key={item.to} className="nav-ws-group">
-                  <div className="nav-item nav-ws-hdr" onClick={() => togWsItem(item.to)}>
+                  <div className="nav-item nav-ws-hdr" role="button" tabIndex={0} aria-expanded={expanded} onKeyDown={onKey(() => togWsItem(item.to))} onClick={() => togWsItem(item.to)}>
                     {item.Icon && <span className="nav-icon"><item.Icon /></span>}
                     <span>{item.label}</span>
                     <span className={`sec-chev sec-chev-sm ${expanded ? '' : 'closed'}`}>▾</span>
@@ -264,8 +291,8 @@ export default function Layout() {
           </div>
 
           {/* P&L */}
-          <div className="nav-sec">
-            <div className="sec-hdr" onClick={() => togSec('pnl')}>
+          {modules.pnl !== false && <div className="nav-sec">
+            <div className="sec-hdr" role="button" tabIndex={0} onKeyDown={onKey(() => togSec('pnl'))} onClick={() => togSec('pnl')}>
               <span className="sec-lbl">P&amp;L</span>
               <span className={`sec-chev ${open.pnl ? '' : 'closed'}`}>▾</span>
             </div>
@@ -286,10 +313,10 @@ export default function Layout() {
                 </NavLink>
               ))}
             </>}
-          </div>
+          </div>}
 
           {/* Risk Intelligence */}
-          <div className="nav-sec">
+          {modules.fraud !== false && <div className="nav-sec">
             <NavLink to="/fraud"
               className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
               style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -297,11 +324,11 @@ export default function Layout() {
               Fraud Detection
               <span style={{marginLeft:'auto',background:'#ef4444',color:'#fff',borderRadius:4,padding:'1px 5px',fontSize:'0.68rem',fontWeight:700}}>LIVE</span>
             </NavLink>
-          </div>
+          </div>}
 
           {/* Analytics */}
           <div className="nav-sec">
-            <div className="sec-hdr" onClick={() => togSec('analytics')}>
+            <div className="sec-hdr" role="button" tabIndex={0} onKeyDown={onKey(() => togSec('analytics'))} onClick={() => togSec('analytics')}>
               <span className="sec-lbl">Analytics</span>
               <span className={`sec-chev ${open.analytics ? '' : 'closed'}`}>▾</span>
             </div>
@@ -319,12 +346,12 @@ export default function Layout() {
 
           {/* Reports */}
           <div className="nav-sec">
-            <div className="sec-hdr" onClick={() => togSec('reports')}>
+            <div className="sec-hdr" role="button" tabIndex={0} onKeyDown={onKey(() => togSec('reports'))} onClick={() => togSec('reports')}>
               <span className="sec-lbl">Reports</span>
               <span className={`sec-chev ${open.reports ? '' : 'closed'}`}>▾</span>
             </div>
             {open.reports && <>
-              <div className="tree-group-hdr" onClick={() => togTree('my')}>
+              <div onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); (() => togTree('my'))(e) } }} role="button" tabIndex={0} aria-expanded={treeOpen.my} className="tree-group-hdr" onClick={() => togTree('my')}>
                 My Reports
                 <span className={`tree-chev${treeOpen.my ? ' open' : ''}`}>▶</span>
               </div>
@@ -338,7 +365,7 @@ export default function Layout() {
                   ))}
                 </div>
               )}
-              <div className="tree-group-hdr" onClick={() => togTree('shared')}>
+              <div onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); (() => togTree('shared'))(e) } }} role="button" tabIndex={0} aria-expanded={treeOpen.shared} className="tree-group-hdr" onClick={() => togTree('shared')}>
                 Shared with me
                 <span className={`tree-chev${treeOpen.shared ? ' open' : ''}`}>▶</span>
               </div>
@@ -385,6 +412,7 @@ export default function Layout() {
 
         {/* Topbar */}
         <div className="topbar">
+          <button className="mobile-menu-btn" aria-label="Open navigation and company menu" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}>☰</button>
           <div className="topbar-brand">
             Casper.com
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M5 3l4 4-4 4"/></svg>
@@ -403,7 +431,7 @@ export default function Layout() {
           <div className="topbar-search-wrap" ref={srRef}>
             <div className="topbar-search">
               <IcSearch />
-              <input className="topbar-input"
+              <input aria-label='Try searching "insights"' className="topbar-input"
                 placeholder='Try searching "insights"'
                 value={query}
                 onChange={e => handleSearch(e.target.value)}
@@ -414,8 +442,8 @@ export default function Layout() {
               <div className="search-dd">
                 {searchRes.length > 0
                   ? searchRes.map((item, i) => (
-                    <div key={i} className="sd-item"
-                      onClick={() => { setQuery(''); setShowSR(false); if (item.to) navigate(item.to) }}>
+                    <div key={i} className="sd-item" role="button" tabIndex={0} onKeyDown={onKey(() => { setQuery(''); setShowSR(false); if (item.to) {navigate(item.to)} })}
+                      onClick={() => { setQuery(''); setShowSR(false); if (item.to) {navigate(item.to)} }}>
                       <div>
                         <div className="sd-label">{item.label}</div>
                         <div className="sd-sub">{item.sub}</div>
@@ -441,7 +469,10 @@ export default function Layout() {
         {/* Canvas */}
         <div className="canvas-wrap">
           <main className="canvas">
-            <Outlet />
+            {contextError ? <div role="alert">{contextError} <button onClick={() => window.location.reload()}>Retry</button></div>
+              : !contextReady ? <div role="status">Loading company access…</div>
+              : !activeCompany && location.pathname !== '/companies' ? <div>Select or <NavLink to="/companies">create a company</NavLink> to continue.</div>
+              : <Outlet />}
           </main>
         </div>
 

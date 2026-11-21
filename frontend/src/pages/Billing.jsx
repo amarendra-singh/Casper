@@ -1,14 +1,16 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import InvoiceReceipts from '../components/InvoiceReceipts'
+import { localDate } from '../lib/format'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import api, { getSkus, inCompany, errText } from '../api/client'
 import { useCompany } from '../context/CompanyContext'
 import './Ledger.css'
 import './Billing.css'
-import { useConfirm } from '../components/ConfirmDialog'
+import ConfirmDialog, { useConfirm } from '../components/ConfirmDialog'
 
 const STATUSES = ['draft', 'sent', 'paid', 'cancelled']
 const STATUS_COLOR = { draft: '#9A9A9F', sent: '#2874F0', paid: '#1FA968', overdue: '#EC2D6E', cancelled: '#B8B6B2' }
-const today = () => new Date().toISOString().slice(0, 10)
+const today = localDate
 const fmt  = n => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
 const fmtP = n => `₹${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const cap  = s => (s || '').charAt(0).toUpperCase() + (s || '').slice(1)
@@ -36,6 +38,7 @@ function Stat({ label, value, tone, sub }) {
 }
 
 export default function Billing() {
+  const [receiptInvoice, setReceiptInvoice] = useState(null)
   const { ask, dialog } = useConfirm()
   const [invoices, setInvoices] = useState([])
   const [summary, setSummary]   = useState({ total_invoiced: 0, total_paid: 0, outstanding: 0, overdue: 0, count: 0, by_status: [], aging: {} })
@@ -47,11 +50,14 @@ export default function Billing() {
   const [editId, setEditId]     = useState(null)
   const [draft, setDraft]       = useState(blankDraft())
   const [busy, setBusy]         = useState(false)
+  const pendingActions = useRef(new Set())
+  const [pendingIds, setPendingIds] = useState(new Set())
   const [error, setError]       = useState('')
   const [printInv, setPrintInv] = useState(null)
   const [search, setSearch]     = useState('')
   // A new invoice has no company to infer, so All Companies must ask for one.
-  const { activeCompany, companies, isAll } = useCompany()
+  const { companies, isAll, role } = useCompany()
+  const canWrite = !isAll && ['owner', 'admin'].includes(role)
   const [newIn, setNewIn] = useState('')
 
   const load = useCallback(async () => {
@@ -123,16 +129,33 @@ export default function Billing() {
       })),
     }
     try {
-      if (editId) await updateInv(editId, payload)
+      if (editId) {await updateInv(editId, payload)}
       // The picked company overrides the 'all' header for this one request.
-      else await createInv(payload, isAll ? inCompany(newIn) : undefined)
+      else {await createInv(payload, isAll ? inCompany(newIn) : undefined)}
       setShowForm(false); setEditId(null); setDraft(blankDraft()); setNewIn(''); await load()
     } catch (e) { setError(errText(e, 'Save failed')) }
     finally { setBusy(false) }
   }
 
-  const markPaid = async inv => { try { await updateInv(inv.id, { status: 'paid', amount_paid: inv.total }); await load() } catch { /* noop */ } }
-  const doRemove = async inv => { try { await deleteInv(inv.id); await load() } catch { /* noop */ } }
+  const runInvoiceAction = async (inv, action, failureMessage) => {
+    if (pendingActions.current.has(inv.id)) {return}
+    pendingActions.current.add(inv.id)
+    setPendingIds(new Set(pendingActions.current)); setError('')
+    try { await action(); await load() }
+    catch (e) { setError(errText(e, failureMessage)) }
+    finally {
+      pendingActions.current.delete(inv.id)
+      setPendingIds(new Set(pendingActions.current))
+    }
+  }
+  const markPaid = inv => setReceiptInvoice(inv)
+  const voidInvoice = inv => ask({
+    title: 'Void unpaid invoice',
+    body: <>Void <strong>{inv.number}</strong>? The original document and history are retained.</>,
+    confirmLabel: 'Void invoice', tone: 'danger',
+    onConfirm: () => runInvoiceAction(inv, () => updateInv(inv.id, { status: 'cancelled' }), 'Void failed'),
+  })
+  const doRemove = inv => runInvoiceAction(inv, () => deleteInv(inv.id), 'Delete failed')
   const remove = inv => ask({
     title: 'Delete invoice',
     body: <>Delete invoice <strong>{inv.number}</strong>{inv.customer_name ? <> for <strong>{inv.customer_name}</strong></> : null}
@@ -145,12 +168,13 @@ export default function Billing() {
   return (
     <div className="lg">
       {dialog}
+      {receiptInvoice && <InvoiceReceipts invoice={receiptInvoice} onClose={() => setReceiptInvoice(null)} onSaved={load} />}
       <header className="lg-head">
         <div>
           <h1 className="lg-title">Billing &amp; Invoices</h1>
           <p className="lg-sub">Issue invoices, track payments, and chase what's overdue</p>
         </div>
-        <button className="lg-add-btn" onClick={openAdd}>+ New invoice</button>
+        <button className="lg-add-btn" disabled={!canWrite} onClick={openAdd}>+ New invoice</button>
       </header>
 
       <div className="lg-stats">
@@ -169,7 +193,7 @@ export default function Billing() {
 
       {loading ? <div className="lg-loading"><div className="loader" style={{ width: 26, height: 26 }} /></div> : tab === 'overview' ? (
         summary.count === 0 ? (
-          <div className="lg-empty"><p>No invoices yet — create one to see reports.</p><button className="lg-add-btn" onClick={openAdd}>+ Create your first invoice</button></div>
+          <div className="lg-empty"><p>No invoices yet — create one to see reports.</p><button className="lg-add-btn" disabled={!canWrite} onClick={openAdd}>+ Create your first invoice</button></div>
         ) : (
           <div className="lg-reports">
             <div className="lg-card">
@@ -222,15 +246,15 @@ export default function Billing() {
                     {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select></label>
                 )}
-                <label>Invoice date<input type="date" value={draft.invoice_date} onChange={e => setF('invoice_date', e.target.value)} /></label>
-                <label>Due date<input type="date" value={draft.due_date} onChange={e => setF('due_date', e.target.value)} /></label>
-                <label>Customer<input value={draft.customer_name} onChange={e => setF('customer_name', e.target.value)} placeholder="Customer name" /></label>
-                <label>Customer GSTIN<input value={draft.customer_gstin} onChange={e => setF('customer_gstin', e.target.value)} placeholder="optional" /></label>
-                <label>GST %<input type="number" min="0" step="0.01" value={draft.gst_pct} onChange={e => setF('gst_pct', e.target.value)} /></label>
-                <label>Status<select value={draft.status} onChange={e => setF('status', e.target.value)}>{STATUSES.map(s => <option key={s} value={s}>{cap(s)}</option>)}</select></label>
-                <label>Amount paid ₹<input type="number" min="0" step="0.01" value={draft.amount_paid} onChange={e => setF('amount_paid', e.target.value)} /></label>
-                <label>Bank<input value={draft.bank_name} onChange={e => setF('bank_name', e.target.value)} placeholder="e.g. HDFC Bank" /></label>
-                <label className="lg-note-field">Notes<input value={draft.notes} onChange={e => setF('notes', e.target.value)} placeholder="optional" /></label>
+                <label>Invoice date<input aria-label={"Invoice date"} type="date" value={draft.invoice_date} onChange={e => setF('invoice_date', e.target.value)} /></label>
+                <label>Due date<input aria-label={"Due date"} type="date" value={draft.due_date} onChange={e => setF('due_date', e.target.value)} /></label>
+                <label>Customer<input aria-label={"Customer"} value={draft.customer_name} onChange={e => setF('customer_name', e.target.value)} placeholder="Customer name" /></label>
+                <label>Customer GSTIN<input aria-label={"Customer GSTIN"} value={draft.customer_gstin} onChange={e => setF('customer_gstin', e.target.value)} placeholder="optional" /></label>
+                <label>GST %<input aria-label={"GST %"} type="number" min="0" step="0.01" value={draft.gst_pct} onChange={e => setF('gst_pct', e.target.value)} /></label>
+                <label>Status<select value={draft.status} onChange={e => setF('status', e.target.value)}>{STATUSES.filter(s => s !== 'paid').map(s => <option key={s} value={s}>{cap(s)}</option>)}</select></label>
+                <label>Amount paid ₹<input aria-label={"Amount paid ₹"} type="number" min="0" step="0.01" value={draft.amount_paid} readOnly title="Record receipts after issuing the invoice" /></label>
+                <label>Bank<input aria-label={"Bank"} value={draft.bank_name} onChange={e => setF('bank_name', e.target.value)} placeholder="e.g. HDFC Bank" /></label>
+                <label className="lg-note-field">Notes<input aria-label={"Notes"} value={draft.notes} onChange={e => setF('notes', e.target.value)} placeholder="optional" /></label>
               </div>
 
               {/* Line items */}
@@ -239,10 +263,10 @@ export default function Billing() {
                 <div className="bl-line bl-line-head"><span>Description</span><span>SKU</span><span className="num">Qty</span><span className="num">Unit ₹</span><span className="num">Amount</span><span /></div>
                 {draft.lines.map((l, i) => (
                   <div className="bl-line" key={i}>
-                    <input value={l.description} onChange={e => setLine(i, 'description', e.target.value)} placeholder="Item description" />
-                    <select value={l.sku_id} onChange={e => setLine(i, 'sku_id', e.target.value)}><option value="">—</option>{skus.map(s => <option key={s.id} value={s.id}>{s.shringar_sku}</option>)}</select>
-                    <input className="num" type="number" min="0" step="1" value={l.quantity} onChange={e => setLine(i, 'quantity', e.target.value)} />
-                    <input className="num" type="number" min="0" step="0.01" value={l.unit_price} onChange={e => setLine(i, 'unit_price', e.target.value)} />
+                    <label className="bl-line-field"><span>Description</span><input aria-label="Item description" value={l.description} onChange={e => setLine(i, 'description', e.target.value)} placeholder="Item description" /></label>
+                    <label className="bl-line-field"><span>SKU</span><select value={l.sku_id} onChange={e => setLine(i, 'sku_id', e.target.value)}><option value="">—</option>{skus.map(s => <option key={s.id} value={s.id}>{s.shringar_sku}</option>)}</select></label>
+                    <label className="bl-line-field"><span>Quantity</span><input className="num" aria-label={`Line ${i + 1} quantity`} type="number" min="0" step="1" value={l.quantity} onChange={e => setLine(i, 'quantity', e.target.value)} /></label>
+                    <label className="bl-line-field"><span>Unit price ₹</span><input className="num" aria-label={`Line ${i + 1} unit price in rupees`} type="number" min="0" step="0.01" value={l.unit_price} onChange={e => setLine(i, 'unit_price', e.target.value)} /></label>
                     <span className="bl-line-amt num">{fmtP((Number(l.quantity) || 0) * (Number(l.unit_price) || 0))}</span>
                     <button className="bl-rm-line" onClick={() => rmLine(i)} aria-label="Remove line" disabled={draft.lines.length === 1}>✕</button>
                   </div>
@@ -262,7 +286,7 @@ export default function Billing() {
           )}
 
           {shown.length === 0 ? (
-            <div className="lg-empty"><p>No invoices{search ? ' match your search' : filter ? ` with status “${filter}”` : ''}.</p><button className="lg-add-btn" onClick={openAdd}>+ New invoice</button></div>
+            <div className="lg-empty"><p>No invoices{search ? ' match your search' : filter ? ` with status “${filter}”` : ''}.</p><button className="lg-add-btn" disabled={!canWrite} onClick={openAdd}>+ New invoice</button></div>
           ) : (
             <div className="lg-table-wrap">
               <table className="lg-table">
@@ -284,9 +308,10 @@ export default function Billing() {
                       <td><span className="bl-status" style={{ color: STATUS_COLOR[inv.status], background: `${STATUS_COLOR[inv.status]}1a` }}>{cap(inv.status)}</span></td>
                       <td className="lg-actions">
                         <button className="bl-view" onClick={() => setPrintInv(inv)} title="View / download PDF" aria-label="View invoice PDF">⎙</button>
-                        {inv.status !== 'paid' && inv.status !== 'cancelled' && <button className="bl-paid" onClick={() => markPaid(inv)} title="Mark paid">✓</button>}
-                        <button className="lg-edit" onClick={() => openEdit(inv)} aria-label="Edit invoice">✎</button>
-                        <button className="lg-del" onClick={() => remove(inv)} aria-label="Delete invoice">✕</button>
+                        {['sent', 'overdue', 'paid'].includes(inv.status) && <button className="bl-paid" disabled={!canWrite || pendingIds.has(inv.id)} aria-label="Invoice receipts" onClick={() => markPaid(inv)} title="Record or reverse receipts">Receipts</button>}
+                        {canWrite && inv.status === 'sent' && inv.amount_paid === 0 && <button disabled={pendingIds.has(inv.id)} onClick={() => voidInvoice(inv)}>Void</button>}
+                        <button className="lg-edit" disabled={!canWrite || pendingIds.has(inv.id) || inv.status !== 'draft' || inv.amount_paid > 0} onClick={() => openEdit(inv)} aria-label="Edit invoice">✎</button>
+                        <button className="lg-del" disabled={!canWrite || pendingIds.has(inv.id) || inv.status !== 'draft' || inv.amount_paid > 0} onClick={() => remove(inv)} aria-label="Delete invoice">✕</button>
                       </td>
                     </tr>
                   ))}
@@ -298,17 +323,14 @@ export default function Billing() {
       )}
 
       {/* Professional printable / PDF invoice */}
-      {printInv && (
-        <div className="bl-doc-overlay" onClick={e => { if (e.target === e.currentTarget) setPrintInv(null) }}>
-          <div className="bl-doc-bar bl-noprint">
-            <button className="lg-save" onClick={() => window.print()}>⬇ Download / Print PDF</button>
-            <button className="lg-cancel" onClick={() => setPrintInv(null)}>Close</button>
-          </div>
+      {printInv && <ConfirmDialog open title={`Invoice ${printInv.number}`} dialogRole="dialog"
+        className="invoice-preview" confirmLabel="Download / Print PDF" cancelLabel="Close"
+        onConfirm={() => window.print()} onCancel={() => setPrintInv(null)}>
           <div className="bl-doc" id="invoice-print">
             <div className="bl-doc-head">
               <div>
-                <div className="bl-doc-co">{activeCompany?.name || 'Company'}</div>
-                <div className="bl-doc-tag">TAX INVOICE</div>
+                <div className="bl-doc-co">{printInv.company_name || companies.find(c => c.id === printInv.company_id)?.name || 'Company'}</div>
+                <div className="bl-doc-tag">INVOICE</div>
               </div>
               <div className="bl-doc-numbox">
                 <div className="bl-doc-num">{printInv.number}</div>
@@ -352,8 +374,7 @@ export default function Billing() {
             {printInv.notes && <div className="bl-doc-note"><span>Notes</span> {printInv.notes}</div>}
             <div className="bl-doc-foot">Thank you for your business.</div>
           </div>
-        </div>
-      )}
+      </ConfirmDialog>}
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import VendorAliases from '../components/VendorAliases'
 import { useState, useEffect } from 'react'
 import { getVendors, updateVendor, deleteVendor, createVendor, getEntries, errText } from '../api/client'
 import './Vendors.css'
@@ -5,6 +6,7 @@ import { useConfirm } from '../components/ConfirmDialog'
 
 export default function Vendors() {
   const { ask, dialog } = useConfirm()
+  const [aliasVendor, setAliasVendor] = useState(null)
   const [vendors,  setVendors]  = useState([])
   const [skuCounts, setSkuCounts] = useState({}) // { vendorId: count }
   const [loading,  setLoading]  = useState(true)
@@ -21,17 +23,17 @@ export default function Vendors() {
     Promise.all([getVendors(), getEntries()]).then(([vs, entries]) => {
       setVendors(vs)
       const counts = {}
-      entries.forEach(e => { if (e.vendor_id) counts[e.vendor_id] = (counts[e.vendor_id] || 0) + 1 })
+      entries.forEach(e => { if (e.vendor_id) {counts[e.vendor_id] = (counts[e.vendor_id] || 0) + 1} })
       setSkuCounts(counts)
       setLoading(false)
-    })
+    }).catch(e => {setError(errText(e, "Could not load vendors")); setLoading(false)})
   }, [])
 
   const startEdit = v => { setEditId(v.id); setEditName(v.name); setEditCode(v.short_code) }
   const cancelEdit = () => { setEditId(null); setEditName(''); setEditCode('') }
 
   const saveEdit = async v => {
-    if (!editName.trim()) return
+    if (!editName.trim()) {return}
     setBusy(v.id)
     try {
       const updated = await updateVendor(v.id, { name: editName.trim(), short_code: editCode.trim().toUpperCase() })
@@ -67,7 +69,7 @@ export default function Vendors() {
   }
 
   const handleAdd = async () => {
-    if (!newName.trim() || !newCode.trim()) return
+    if (!newName.trim() || !newCode.trim()) {return}
     setBusy('new')
     try {
       const created = await createVendor({ name: newName.trim(), short_code: newCode.trim().toUpperCase() })
@@ -78,11 +80,12 @@ export default function Vendors() {
     } finally { setBusy(null) }
   }
 
-  if (loading) return <div className="vnd-loading"><div className="loader" /></div>
+  if (loading) {return <div className="vnd-loading"><div className="loader" /></div>}
 
   return (
     <div className="vnd-page">
       {dialog}
+      {aliasVendor && <VendorAliases vendor={aliasVendor} onClose={() => setAliasVendor(null)} />}
       <div className="vnd-header">
         <div>
           <h1 className="vnd-title">Vendors</h1>
@@ -97,12 +100,12 @@ export default function Vendors() {
 
       {showAdd && (
         <div className="vnd-add-row">
-          <input className="vnd-inp" placeholder="Vendor name" value={newName}
-            autoFocus onChange={e => setNewName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') setShowAdd(false) }} />
-          <input className="vnd-inp vnd-inp-short" placeholder="Short code" value={newCode}
+          <input aria-label="Vendor name" className="vnd-inp" placeholder="Vendor name" value={newName}
+             onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') {handleAdd();} if (e.key === 'Escape') {setShowAdd(false)} }} />
+          <input aria-label="Short code" className="vnd-inp vnd-inp-short" placeholder="Short code" value={newCode}
             onChange={e => setNewCode(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') setShowAdd(false) }} />
+            onKeyDown={e => { if (e.key === 'Enter') {handleAdd();} if (e.key === 'Escape') {setShowAdd(false)} }} />
           <button className="btn btn-accent" onClick={handleAdd} disabled={busy === 'new'}>
             {busy === 'new' ? '…' : 'Save'}
           </button>
@@ -130,17 +133,17 @@ export default function Vendors() {
                 <tr key={v.id}>
                   <td>
                     {isEdit
-                      ? <input className="vnd-inp" value={editName} autoFocus
+                      ? <input aria-label={"Vendor name"} className="vnd-inp" value={editName}
                           onChange={e => setEditName(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') saveEdit(v); if (e.key === 'Escape') cancelEdit() }} />
+                          onKeyDown={e => { if (e.key === 'Enter') {saveEdit(v);} if (e.key === 'Escape') {cancelEdit()} }} />
                       : <span className="vnd-name">{v.name}</span>
                     }
                   </td>
                   <td>
                     {isEdit
-                      ? <input className="vnd-inp vnd-inp-short" value={editCode}
+                      ? <input aria-label={"Vendor short code"} className="vnd-inp vnd-inp-short" value={editCode}
                           onChange={e => setEditCode(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') saveEdit(v); if (e.key === 'Escape') cancelEdit() }} />
+                          onKeyDown={e => { if (e.key === 'Enter') {saveEdit(v);} if (e.key === 'Escape') {cancelEdit()} }} />
                       : <span className="vnd-code">{v.short_code}</span>
                     }
                   </td>
@@ -156,6 +159,7 @@ export default function Vendors() {
                   </td>
                   <td>
                     <div className="vnd-actions">
+                      <button className="vnd-btn" onClick={() => setAliasVendor(v)}>Supplier names</button>
                       {isEdit ? (
                         <>
                           <button className="vnd-btn vnd-save" onClick={() => saveEdit(v)} disabled={isBusy}>

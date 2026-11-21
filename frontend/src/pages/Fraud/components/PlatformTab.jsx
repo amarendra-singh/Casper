@@ -21,8 +21,8 @@ const TIER = {
 }
 
 export default function PlatformTab({ data, onResolve }) {
-  if (!data) return <div className="fd-empty">Loading platform data…</div>
-  if (data.error) return <div className="fd-error">{data.error}</div>
+  if (!data) {return <div className="fd-empty">Loading platform data…</div>}
+  if (data.error) {return <div className="fd-error">{data.error}</div>}
 
   const c        = cfg(data.platform_name)
   const ts       = data.tier_summary || {}

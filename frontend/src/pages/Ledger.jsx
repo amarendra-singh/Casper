@@ -1,8 +1,12 @@
+import { localDate } from '../lib/format'
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
 import { useConfirm } from '../components/ConfirmDialog'
+import BillDiscrepancies from '../components/BillDiscrepancies'
+import SmartCell from '../components/SmartCell'
 import {
   getLedger, getLedgerSummary, createLedgerEntry, updateLedgerEntry, deleteLedgerEntry,
   getVendors, getSkus, inCompany, errText,
@@ -15,7 +19,7 @@ const INCOME_CATS  = ['settlement', 'sale', 'refund_received', 'other_income']
 const METHODS      = ['bank_transfer', 'upi', 'cash', 'card', 'cheque', 'other']
 const CHART_COLORS = ['#EC2D6E', '#7A5BFF', '#D97706', '#1FA968', '#2874F0', '#F23A77', '#0EA5E9', '#DB2777', '#65A30D', '#9333EA', '#E11D48']
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = localDate
 const monthKey = d => (d || '').slice(0, 7)
 const blank = () => ({
   entry_date: today(), direction: 'expense', category: 'inventory', amount: '',
@@ -51,28 +55,40 @@ export default function Ledger() {
   const [skus, setSkus]       = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter]   = useState({ start: '', end: '', direction: '' })
-  const [tab, setTab]         = useState('overview')  // overview | entries
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedTab = searchParams.get('tab')
+  const tab = ['overview', 'entries', 'discrepancies'].includes(requestedTab) ? requestedTab : 'overview'
+  const setTab = nextTab => {
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous)
+      next.set('tab', nextTab)
+      return next
+    })
+  }
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId]   = useState(null)
   const [draft, setDraft]     = useState(blank())
+  const [skuSearch, setSkuSearch] = useState('')
   const [busy, setBusy]       = useState(false)
   const [error, setError]     = useState('')
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async ({ background = false } = {}) => {
+    if (!background) {setLoading(true)}
     const params = {}
-    if (filter.start) params.start = filter.start
-    if (filter.end) params.end = filter.end
-    if (filter.direction) params.direction = filter.direction
+    if (filter.start) {params.start = filter.start}
+    if (filter.end) {params.end = filter.end}
+    if (filter.direction) {params.direction = filter.direction}
     try {
       const [e, s] = await Promise.all([getLedger(params), getLedgerSummary(params)])
       setEntries(e); setSummary(s)
     } catch (err) { setError(errText(err, 'Failed to load ledger')) }
-    finally { setLoading(false) }
+    finally { if (!background) {setLoading(false)} }
   }, [filter])
+  const refreshAfterSave = useCallback(() => load({ background: true }), [load])
 
   useEffect(() => { load() }, [load])
-  useEffect(() => { getVendors().then(setVendors).catch(() => {}); getSkus().then(setSkus).catch(() => {}) }, [])
+  const refreshSkus = () => getSkus().then(setSkus).catch(err => setError(errText(err, 'Could not load SKUs. Reopen the form to retry.')))
+  useEffect(() => { getVendors().then(setVendors).catch(() => {}); getSkus().then(setSkus).catch(err => setError(errText(err, 'Could not load SKUs. Reopen the form to retry.'))) }, [])
 
   // ── Report aggregations (client-side, from loaded entries) ──────────────────
   const expenseByCat = useMemo(() =>
@@ -84,7 +100,7 @@ export default function Ledger() {
     const m = {}
     for (const e of entries) {
       const k = monthKey(e.entry_date)
-      if (!m[k]) m[k] = { month: k, expense: 0, income: 0 }
+      if (!m[k]) {m[k] = { month: k, expense: 0, income: 0 }}
       m[k][e.direction] += e.amount
     }
     return Object.values(m).sort((a, b) => a.month.localeCompare(b.month)).slice(-6)
@@ -93,7 +109,7 @@ export default function Ledger() {
   const topParties = useMemo(() => {
     const m = {}
     for (const e of entries) {
-      if (e.direction !== 'expense') continue
+      if (e.direction !== 'expense') {continue}
       const key = e.vendor_name || e.party_name || 'Unassigned'
       m[key] = (m[key] || 0) + e.amount
     }
@@ -105,12 +121,14 @@ export default function Ledger() {
   // ── Form ────────────────────────────────────────────────────────────────────
   const set = (k, v) => setDraft(d => {
     const next = { ...d, [k]: v }
-    if (k === 'direction') next.category = (v === 'income' ? INCOME_CATS : EXPENSE_CATS)[0]
+    if (k === 'direction') {next.category = (v === 'income' ? INCOME_CATS : EXPENSE_CATS)[0]}
     return next
   })
-  const openAdd  = () => { setEditId(null); setDraft(blank()); setShowForm(true); setTab('entries'); setError('') }
+  const openAdd  = () => { setEditId(null); setDraft(blank()); setSkuSearch(''); setShowForm(true); setTab('entries'); setError(''); refreshSkus() }
   const openEdit = e => {
     setEditId(e.id)
+    setSkuSearch(e.sku_code || '')
+    refreshSkus()
     setDraft({
       entry_date: e.entry_date, direction: e.direction, category: e.category, amount: String(e.amount),
       vendor_id: e.vendor_id || '', party_name: e.party_name || '', sku_id: e.sku_id || '',
@@ -131,9 +149,9 @@ export default function Ledger() {
       reference_no: draft.reference_no.trim() || null, note: draft.note.trim() || null,
     }
     try {
-      if (editId) await updateLedgerEntry(editId, payload)
+      if (editId) {await updateLedgerEntry(editId, payload)}
       // In All Companies the picked company overrides the 'all' header for this request.
-      else await createLedgerEntry(payload, isAll ? inCompany(newIn) : undefined)
+      else {await createLedgerEntry(payload, isAll ? inCompany(newIn) : undefined)}
       setShowForm(false); setEditId(null); setDraft(blank()); setNewIn(''); await load()
     } catch (err) { setError(errText(err, 'Save failed')) }
     finally { setBusy(false) }
@@ -164,6 +182,9 @@ export default function Ledger() {
   }
 
   const cats = draft.direction === 'income' ? INCOME_CATS : EXPENSE_CATS
+  const skuCompany = editId ? entries.find(e => e.id === editId)?.company_id : Number(newIn)
+  const skuOptions = skus.filter(s => !isAll || s.company_id === skuCompany)
+    .map(s => ({ id: s.id, label: s.shringar_sku, sublabel: [s.vendor_sku, s.description].filter(Boolean).join(' · ') }))
   const thisMonth = monthly.find(m => m.month === monthKey(today()))?.expense || 0
 
   return (
@@ -196,11 +217,14 @@ export default function Ledger() {
       <div className="lg-tabs">
         <button className={`lg-tab${tab === 'overview' ? ' on' : ''}`} onClick={() => setTab('overview')}>Reports</button>
         <button className={`lg-tab${tab === 'entries' ? ' on' : ''}`} onClick={() => setTab('entries')}>Entries</button>
+        <button className={`lg-tab${tab === 'discrepancies' ? ' on' : ''}`} onClick={() => setTab('discrepancies')}>Bill Discrepancies</button>
       </div>
 
       {error && <div className="lg-error" role="alert">{error}</div>}
 
-      {loading ? <div className="lg-loading"><div className="loader" style={{ width: 26, height: 26 }} /></div> : tab === 'overview' ? (
+      {loading ? <div className="lg-loading"><div className="loader" style={{ width: 26, height: 26 }} /></div> : tab === 'discrepancies' ? (
+        <BillDiscrepancies onSaved={refreshAfterSave} />
+      ) : tab === 'overview' ? (
         /* ── REPORTS ─────────────────────────────────────────────────────── */
         summary.count === 0 ? (
           <div className="lg-empty"><p>No data yet — add entries to see reports.</p><button className="lg-add-btn" onClick={openAdd}>+ Record your first entry</button></div>
@@ -257,8 +281,8 @@ export default function Ledger() {
         /* ── ENTRIES ─────────────────────────────────────────────────────── */
         <>
           <div className="lg-filters">
-            <label>From <input type="date" value={filter.start} onChange={e => setFilter(f => ({ ...f, start: e.target.value }))} /></label>
-            <label>To <input type="date" value={filter.end} onChange={e => setFilter(f => ({ ...f, end: e.target.value }))} /></label>
+            <label>From <input aria-label={"From"} type="date" value={filter.start} onChange={e => setFilter(f => ({ ...f, start: e.target.value }))} /></label>
+            <label>To <input aria-label={"To"} type="date" value={filter.end} onChange={e => setFilter(f => ({ ...f, end: e.target.value }))} /></label>
             <label>Type
               <select value={filter.direction} onChange={e => setFilter(f => ({ ...f, direction: e.target.value }))}>
                 <option value="">All</option><option value="expense">Expense</option><option value="income">Income</option>
@@ -271,22 +295,24 @@ export default function Ledger() {
             <div className="lg-form">
               <div className="lg-form-grid">
                 {isAll && !editId && (
-                  <label>Company<select value={newIn} onChange={e => setNewIn(e.target.value)}>
+                  <label>Company<select value={newIn} onChange={e => {setNewIn(e.target.value); set('sku_id', ''); setSkuSearch('')}}>
                     <option value="">— choose —</option>
                     {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select></label>
                 )}
-                <label>Date<input type="date" value={draft.entry_date} onChange={e => set('entry_date', e.target.value)} /></label>
+                <label>Date<input aria-label={"Date"} type="date" value={draft.entry_date} onChange={e => set('entry_date', e.target.value)} /></label>
                 <label>Type<select value={draft.direction} onChange={e => set('direction', e.target.value)}><option value="expense">Expense (out)</option><option value="income">Income (in)</option></select></label>
                 <label>Category<select value={draft.category} onChange={e => set('category', e.target.value)}>{cats.map(c => <option key={c} value={c}>{label(c)}</option>)}</select></label>
-                <label>Amount ₹<input type="number" min="0" step="0.01" value={draft.amount} onChange={e => set('amount', e.target.value)} placeholder="0.00" /></label>
+                <label>Amount ₹<input aria-label={"Amount ₹"} type="number" min="0" step="0.01" value={draft.amount} onChange={e => set('amount', e.target.value)} placeholder="0.00" /></label>
                 <label>Vendor<select value={draft.vendor_id} onChange={e => set('vendor_id', e.target.value)}><option value="">— none —</option>{vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label>
-                <label>Party name<input value={draft.party_name} onChange={e => set('party_name', e.target.value)} placeholder="if not a saved vendor" /></label>
-                <label>SKU<select value={draft.sku_id} onChange={e => set('sku_id', e.target.value)}><option value="">— none —</option>{skus.map(s => <option key={s.id} value={s.id}>{s.shringar_sku}</option>)}</select></label>
-                <label>Bank name<input value={draft.bank_name} onChange={e => set('bank_name', e.target.value)} placeholder="e.g. HDFC Bank" /></label>
+                <label>Party name<input aria-label={"Party name"} value={draft.party_name} onChange={e => set('party_name', e.target.value)} placeholder="if not a saved vendor" /></label>
+                <label htmlFor="ledger-sku">SKU<SmartCell id="ledger-sku" label="SKU" value={skuSearch} options={skuOptions} placeholder="Code, vendor code or product name"
+                  onChange={v => {setSkuSearch(v); set('sku_id', '')}}
+                  onSelect={opt => {setSkuSearch(opt.label); set('sku_id', opt.id)}} /></label>
+                <label>Bank name<input aria-label={"Bank name"} value={draft.bank_name} onChange={e => set('bank_name', e.target.value)} placeholder="e.g. HDFC Bank" /></label>
                 <label>Payment method<select value={draft.payment_method} onChange={e => set('payment_method', e.target.value)}>{METHODS.map(m => <option key={m} value={m}>{label(m)}</option>)}</select></label>
-                <label>Reference no<input value={draft.reference_no} onChange={e => set('reference_no', e.target.value)} placeholder="txn / invoice / cheque" /></label>
-                <label className="lg-note-field">Note<input value={draft.note} onChange={e => set('note', e.target.value)} placeholder="optional" /></label>
+                <label>Reference no<input aria-label={"Reference no"} value={draft.reference_no} onChange={e => set('reference_no', e.target.value)} placeholder="txn / invoice / cheque" /></label>
+                <label className="lg-note-field">Note<input aria-label={"Note"} value={draft.note} onChange={e => set('note', e.target.value)} placeholder="optional" /></label>
               </div>
               <div className="lg-form-actions">
                 <button className="lg-save" onClick={save} disabled={busy}>{busy ? 'Saving…' : editId ? 'Update entry' : 'Add entry'}</button>
@@ -300,7 +326,7 @@ export default function Ledger() {
           ) : (
             <div className="lg-table-wrap">
               <table className="lg-table">
-                <thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Party</th><th>SKU</th><th className="num">Amount</th><th>Bank</th><th>Method</th><th>Ref</th><th>Note</th><th></th></tr></thead>
+                <thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Party</th><th>SKU</th><th className="num">Amount</th><th>Bank</th><th>Method</th><th>Ref</th><th>Note</th><th>Source / actions</th></tr></thead>
                 <tbody>
                   {entries.map(e => (
                     // company_name is sent only when the list spans several companies,
@@ -320,8 +346,14 @@ export default function Ledger() {
                       <td className="mono">{e.reference_no || '—'}</td>
                       <td className="lg-note-cell" title={e.note || ''}>{e.note || '—'}</td>
                       <td className="lg-actions">
-                        <button className="lg-edit" onClick={() => openEdit(e)} aria-label="Edit entry">✎</button>
-                        <button className="lg-del" onClick={() => remove(e)} aria-label="Delete entry">✕</button>
+                        {e.source_type && e.source_type !== 'manual' ? (
+                          <span title={e.source_type === 'invoice_receipt' ? 'Manage this posting from its invoice receipts' : 'Manage this posting from its supplier bill'}>
+                            {e.source_type === 'invoice_receipt' ? 'Invoice receipt' : 'Supplier bill'}
+                          </span>
+                        ) : <>
+                          <button className="lg-edit" onClick={() => openEdit(e)} aria-label="Edit entry">✎</button>
+                          <button className="lg-del" onClick={() => remove(e)} aria-label="Delete entry">✕</button>
+                        </>}
                       </td>
                     </tr>
                   ))}

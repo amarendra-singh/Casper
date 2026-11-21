@@ -2,7 +2,7 @@
  * UI tests for FlipkartReport Unit Economics table rendering.
  * Tests that computed values display correctly in the DOM.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import PnLReport from '../pages/PnL/PnLReport'
@@ -166,7 +166,7 @@ describe('FlipkartReport loading', () => {
         </Routes>
       </MemoryRouter>
     )
-    const error = await screen.findByText(/report not found/i)
+    const error = await screen.findByText(/could not load report/i)
     expect(error).toBeInTheDocument()
   })
 })

@@ -11,26 +11,33 @@ export const ALL = 'all'   // sentinel for group mode; sent as the X-Company-Id 
 export function CompanyProvider({ children }) {
   const { user } = useAuth()
   const [companies, setCompanies] = useState([])
+  const [companyLoading, setCompanyLoading] = useState(true)
+  const [contextError, setContextError] = useState('')
+  const [loadedKey, setLoadedKey] = useState(null)
   // 'all' = group mode: consolidated reads across every company the user belongs to.
   // Writes stay single-company (the backend refuses non-GET while in group mode).
   const [activeId, setActiveId] = useState(() => {
     const v = localStorage.getItem('active_company_id')
-    if (v === ALL) return ALL
+    if (v === ALL) {return ALL}
     return v ? Number(v) : null
   })
+  const contextKey = `${user?.email || user?.id || ''}:${activeId}`
   const isAll = activeId === ALL
 
   const load = useCallback(async () => {
-    if (!localStorage.getItem('access_token')) { setCompanies([]); return }
+    setCompanyLoading(true); setContextError('')
+    if (!localStorage.getItem('access_token')) { setCompanies([]); setCompanyLoading(false); return }
     try {
       const cs = await getCompanies()
       setCompanies(cs)
       const raw = localStorage.getItem('active_company_id')
-      if (raw === ALL) { setActiveId(ALL); return }   // stay in group mode across reloads
+      if (raw === ALL && cs.length) { setActiveId(ALL); return }   // stay in group mode across reloads
       const stored = Number(raw)
       const next = cs.find(c => c.id === stored) ? stored : (cs[0]?.id ?? null)
       if (next) { localStorage.setItem('active_company_id', String(next)); setActiveId(next) }
-    } catch { /* unauthenticated or none yet */ }
+      else { localStorage.removeItem('active_company_id'); setActiveId(null) }
+    } catch { setContextError('Could not load your companies. Please retry.') }
+    finally { setCompanyLoading(false) }
   }, [])
 
   // Re-fetch whenever the logged-in user changes (login / logout).
@@ -40,28 +47,33 @@ export function CompanyProvider({ children }) {
   const [modules, setModules] = useState({})
   const [role, setRole] = useState(null)
   useEffect(() => {
-    if (!activeId || !localStorage.getItem('access_token')) { setModules({}); setRole(null); return }
+    if (!activeId || !localStorage.getItem('access_token')) { setModules({}); setRole(null); setLoadedKey(contextKey); return }
+    let current = true
+    setContextError('')
     // Master view: every feature is available. Per-company views stay restricted
     // to that company's own enabled modules (below). Enabling all keys here — not
     // just the union of what companies happen to have on — keeps the master a
     // true superset, so a feature never disappears from it because every company
     // switched it off.
     if (activeId === ALL) {
-      if (!companies.length) return
-      Promise.all(companies.map(c => getCompanyContext(c.id).catch(() => null)))
+      if (!companies.length) {return}
+      Promise.all(companies.map(c => getCompanyContext(c.id)))
         .then(ctxs => {
+          if (!current) {return}
           const all = {}
           ctxs.filter(Boolean).forEach(ctx => {
             Object.keys(ctx.modules || {}).forEach(k => { all[k] = true })
           })
-          setModules(all); setRole(null)
+          setModules(all); setRole(null); setLoadedKey(contextKey)
         })
-      return
+        .catch(() => { if (current) {setContextError('Could not load company access. Please retry.')} })
+      return () => { current = false }
     }
     getCompanyContext(activeId)
-      .then(ctx => { setModules(ctx.modules || {}); setRole(ctx.company?.role || null) })
-      .catch(() => {})
-  }, [activeId, user, companies])
+      .then(ctx => { if (current) { setModules(ctx.modules || {}); setRole(ctx.company?.role || null); setLoadedKey(contextKey) } })
+      .catch(() => { if (current) {setContextError('Could not load company access. Please retry.')} })
+    return () => { current = false }
+  }, [activeId, user, companies, contextKey])
 
   const updateModules = useCallback(async (next) => {
     const ctx = await updateCompanyModules(activeId, next)
@@ -109,7 +121,7 @@ export function CompanyProvider({ children }) {
 
   return (
     <CompanyContext.Provider value={{ companies, activeCompany, activeId, isAll, setActive, createCompany,
-        renameCompany, archiveCompany, leaveCompany, restoreCompany, reload: load, modules, role, updateModules }}>
+        renameCompany, archiveCompany, leaveCompany, restoreCompany, reload: load, modules, role, updateModules, contextError, contextReady: !companyLoading && loadedKey === contextKey }}>
       {children}
     </CompanyContext.Provider>
   )

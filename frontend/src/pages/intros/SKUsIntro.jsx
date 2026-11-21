@@ -33,7 +33,7 @@ export default function SKUsIntro() {
         <ul>
           <li><strong>Price</strong> — raw product cost only (vendor invoice)</li>
           <li><strong>Package</strong> — box + label + tape + other packing per unit</li>
-          <li><strong>Inbound Logistics</strong> — vendor/factory → warehouse (outbound is platform's job)</li>
+          <li><strong>Logistics</strong> — vendor/factory → warehouse (outbound is platform's job)</li>
           <li><strong>Addons</strong> — free gifts, extras bundled with each unit</li>
           <li><strong>Misc</strong> — overhead per unit (rent ÷ target units, etc.)</li>
         </ul>
@@ -79,7 +79,7 @@ Breakeven     =  Landed Cost + CR Reserve + Damage Reserve`}
           inputs: [
             { label: 'Price',                                value: '₹63' },
             { label: 'Package',                              value: '₹7' },
-            { label: 'Inbound Logistics',                    value: '₹10' },
+            { label: 'Logistics',                            value: '₹10' },
             { label: 'Addons',                               value: '₹6' },
             { label: 'Misc (overhead/unit)',                 value: '₹12' },
             { label: 'CR Reserve (20% × ₹168)',              value: '₹33.60' },

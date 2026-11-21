@@ -47,12 +47,13 @@ async def get_current_user(
     result = await db.execute(select(User).where(User.id == user_id_int))
     user = result.scalar_one_or_none()
 
-    if not user or not user.is_active:
+    if not user or not user.is_active or payload.get("ver", 0) != user.token_version:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found or inactive",
         )
 
+    db.sync_session.info["actor_id"] = user.id
     return user
 
 
@@ -113,10 +114,7 @@ async def get_active_company(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Select a specific company before making changes.",
             )
-        companies = await _user_companies(db, current_user.id)
-        if not companies:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No companies")
-        return companies[0]
+        raise HTTPException(status_code=400, detail="Select a specific company for this screen")
 
     try:
         company_id = int(x_company_id)

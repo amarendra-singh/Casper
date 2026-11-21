@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react'
+import PricingRefresh from '../components/PricingRefresh'
+import FinancialHistory from '../components/FinancialHistory'
+import { useState, useEffect, useId, useRef } from 'react'
 import { getPlatforms, updatePlatform, createPlatform, errText } from '../api/client'
 import api from '../api/client'
 import { useCompany } from '../context/CompanyContext'
@@ -11,18 +13,22 @@ const MODULE_META = [
   { key: 'pnl',        label: 'P&L' },
   { key: 'fraud',      label: 'Fraud Detection' },
   { key: 'calculator', label: 'Profit Calculator' },
+  { key: 'billing', label: 'Billing & Invoices' },
+  { key: 'ledger', label: 'Expense Ledger' },
   { key: 'users',      label: 'Users & Team' },
 ]
 
 function CompanyModules() {
   const { modules, role, updateModules, activeCompany } = useCompany()
   const [busy, setBusy] = useState(null)
+  const [moduleError, setModuleError] = useState('')
   const isOwner = role === 'owner'
 
   const toggle = async key => {
-    if (!isOwner) return
+    if (!isOwner) {return}
     setBusy(key)
-    try { await updateModules({ [key]: !(modules[key] !== false) }) } catch {}
+    setModuleError('')
+    try { await updateModules({ [key]: !(modules[key] !== false) }) } catch (e) { setModuleError(errText(e, 'Module update failed')) }
     finally { setBusy(null) }
   }
 
@@ -31,9 +37,10 @@ function CompanyModules() {
       <div style={{ marginBottom: 12 }}>
         <div className="st-title" style={{ fontSize: 16 }}>Modules</div>
         <p className="st-sub" style={{ margin: '2px 0 0' }}>
-          Turn features on or off for <b>{activeCompany?.name || 'this company'}</b>
+          Show or hide navigation features for <b>{activeCompany?.name || 'this company'}</b>
         </p>
       </div>
+      {moduleError && <p role="alert">{moduleError}</p>}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 10 }}>
         {MODULE_META.map(m => {
           const on = modules[m.key] !== false
@@ -43,7 +50,7 @@ function CompanyModules() {
               background: 'var(--surface-2,#F7F3EC)' }}>
               <span style={{ fontSize: 14, fontWeight: 500 }}>{m.label}</span>
               <button onClick={() => toggle(m.key)} disabled={!isOwner || busy === m.key}
-                aria-label={`Toggle ${m.label}`}
+                role="switch" aria-checked={on} aria-label={`Toggle ${m.label}`}
                 style={{ width: 38, height: 22, borderRadius: 11, border: 'none', position: 'relative',
                   cursor: isOwner ? 'pointer' : 'default', padding: 0, transition: 'background .18s',
                   background: on ? '#1FA968' : 'var(--muted-2,#C7C1B6)', opacity: isOwner ? 1 : .6 }}>
@@ -72,7 +79,7 @@ function CompanyManage() {
 
   const doRename = async () => {
     const n = name.trim()
-    if (!n || n === activeCompany?.name) return
+    if (!n || n === activeCompany?.name) {return}
     setBusy(true); setErr('')
     try { await renameCompany(id, n) } catch (e) { setErr(errText(e, 'Rename failed')) }
     finally { setBusy(false) }
@@ -144,11 +151,11 @@ function CompanyManage() {
 
 const TIER_DEFAULTS = { tier_name: '', fee: '', fee_pct: '', mode: 'amt' /* 'amt' = ₹, 'pct' = % */ }
 
-function Toast({ msg, type }) {
-  return <div className={`st-toast st-toast-${type}`}>{msg}</div>
+function Toast({ msg, type, onDismiss }) {
+  return <div role={type === 'error' ? 'alert' : 'status'} className={`st-toast st-toast-${type}`}>{msg} <button onClick={onDismiss} aria-label="Dismiss notification">×</button></div>
 }
 
-function TierRow({ tier, platformId, onUpdated, onDeleted, onError }) {
+function TierRow({ tier, platformId, onUpdated, onDeleted, onError, canEdit }) {
   const { ask, dialog } = useConfirm()
   const [editing, setEditing] = useState(false)
   const [name,    setName]    = useState(tier.tier_name)
@@ -160,14 +167,14 @@ function TierRow({ tier, platformId, onUpdated, onDeleted, onError }) {
   const [busy,    setBusy]    = useState(false)
 
   const save = async () => {
-    if (!name.trim()) return
+    if (!name.trim()) {return}
     const payload = { tier_name: name.trim() }
     if (mode === 'pct') {
-      if (feePct === '') return
+      if (feePct === '') {return}
       payload.fee_pct = parseFloat(feePct)
       payload.fee     = 0   // when in pct mode, store 0 for the unused field
     } else {
-      if (fee === '') return
+      if (fee === '') {return}
       payload.fee     = parseFloat(fee)
       payload.fee_pct = null
     }
@@ -197,23 +204,23 @@ function TierRow({ tier, platformId, onUpdated, onDeleted, onError }) {
     setFeePct(tier.fee_pct != null ? String(tier.fee_pct) : '')
   }
 
-  if (editing) return (
+  if (editing) {return (
     <div className="st-tier-row st-tier-edit">
-      <input className="st-tier-input" value={name} onChange={e => setName(e.target.value)} placeholder="Tier name" />
+      <input aria-label="Tier name" className="st-tier-input" value={name} onChange={e => setName(e.target.value)} placeholder="Tier name" />
       <select className="st-tier-input st-tier-mode" value={mode} onChange={e => setMode(e.target.value)}>
         <option value="amt">₹</option>
         <option value="pct">%</option>
       </select>
       {mode === 'pct'
-        ? <input className="st-tier-input st-tier-fee" type="number" value={feePct}
+        ? <input aria-label="% of base" className="st-tier-input st-tier-fee" type="number" value={feePct}
             onChange={e => setFeePct(e.target.value)} placeholder="% of base" />
-        : <input className="st-tier-input st-tier-fee" type="number" value={fee}
+        : <input aria-label="Fee in ₹" className="st-tier-input st-tier-fee" type="number" value={fee}
             onChange={e => setFee(e.target.value)} placeholder="Fee in ₹" />
       }
       <button className="st-tier-save" onClick={save} disabled={busy}>{busy ? '…' : 'Save'}</button>
       <button className="st-tier-cancel" onClick={cancelEdit}>✕</button>
     </div>
-  )
+  )}
 
   // Read-only view
   const displayValue = tier.fee_pct != null ? `${tier.fee_pct}%` : `₹${tier.fee}`
@@ -221,8 +228,8 @@ function TierRow({ tier, platformId, onUpdated, onDeleted, onError }) {
     <div className="st-tier-row">
       <span className="st-tier-name">{tier.tier_name}</span>
       <span className="st-tier-fee-val">{displayValue}</span>
-      <button className="st-tier-edit-btn" onClick={() => setEditing(true)}>Edit</button>
-      <button className="st-tier-del-btn" disabled={busy}
+      <button className="st-tier-edit-btn" disabled={!canEdit} onClick={() => setEditing(true)}>Edit</button>
+      <button className="st-tier-del-btn" disabled={busy || !canEdit}
         onClick={() => ask({
           title: 'Delete tier',
           body: <>Delete tier <strong>{tier.tier_name}</strong>?<span className="cd-note">This cannot be undone.</span></>,
@@ -234,7 +241,8 @@ function TierRow({ tier, platformId, onUpdated, onDeleted, onError }) {
   )
 }
 
-function PlatformCard({ platform, onUpdated, onError }) {
+function PlatformCard({ platform, onUpdated, onError, canEdit }) {
+  const fieldId0 = useId()
   const [expanded, setExpanded] = useState(false)
   const [editing,  setEditing]  = useState(false)
   const [busy,     setBusy]     = useState(false)
@@ -287,10 +295,10 @@ function PlatformCard({ platform, onUpdated, onError }) {
   }
 
   const handleTierAdded = async () => {
-    if (!newTier.tier_name.trim()) return
+    if (!newTier.tier_name.trim()) {return}
     const isPct = (newTier.mode || 'amt') === 'pct'
     const valStr = isPct ? newTier.fee_pct : newTier.fee
-    if (valStr === '' || valStr === undefined) return
+    if (valStr === '' || valStr === undefined) {return}
     const payload = {
       tier_name: newTier.tier_name.trim(),
       fee:     isPct ? 0 : parseFloat(newTier.fee),
@@ -311,15 +319,16 @@ function PlatformCard({ platform, onUpdated, onError }) {
   return (
     <div className={`st-card${platform.is_active ? '' : ' st-card-inactive'}`}>
       {/* Card header */}
-      <div className="st-card-head" onClick={() => setExpanded(p => !p)}>
+      <div role="button" tabIndex={0} aria-expanded={expanded} onKeyDown={e => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setExpanded(p => !p) } }} className="st-card-head" onClick={() => setExpanded(p => !p)}>
         <div className="st-card-left">
           <div className="st-plat-dot" style={{ background: platform.is_active ? '#22c55e' : '#9ca3af' }} />
-          <span className="st-plat-name">{platform.name}</span>
+          <span className="st-plat-name">{platform.name}{!canEdit && <small> · company {platform.company_id}</small>}</span>
           <span className={`st-active-badge ${platform.is_active ? 'active' : 'inactive'}`}>
             {platform.is_active ? 'Active' : 'Inactive'}
           </span>
         </div>
         <div className="st-card-right">
+          <span className="st-reverse-fee">Reverse shipping <strong>₹{platform.cr_charge}</strong> / return</span>
           <span className="st-plat-meta">AD {platform.default_ad_pct}% · Profit {platform.default_profit_pct}% · {tiers.length} tier{tiers.length !== 1 ? 's' : ''}</span>
           <span className={`st-chev${expanded ? ' open' : ''}`}>▾</span>
         </div>
@@ -333,25 +342,25 @@ function PlatformCard({ platform, onUpdated, onError }) {
           {editing ? (
             <div className="st-fields">
               <div className="st-field-group">
-                <label className="st-label">Platform Name</label>
-                <input className="st-input" value={form.name} onChange={e => f('name', e.target.value)} />
+                <label htmlFor={fieldId0 + '-field-342'} className="st-label">Platform Name</label>
+                <input aria-label={"Platform Name"} id={fieldId0 + '-field-342'} className="st-input" value={form.name} onChange={e => f('name', e.target.value)} />
               </div>
               <div className="st-field-row">
                 <div className="st-field-group">
-                  <label className="st-label">CR Charge (₹)</label>
-                  <input className="st-input" type="number" value={form.cr_charge} onChange={e => f('cr_charge', e.target.value)} />
+                  <label htmlFor={fieldId0 + '-field-347'} className="st-label">Reverse shipping / return (₹)</label>
+                  <input aria-label="Reverse shipping charge per return" id={fieldId0 + '-field-347'} className="st-input" type="number" min="0" step="0.01" value={form.cr_charge} onChange={e => f('cr_charge', e.target.value)} />
                 </div>
                 <div className="st-field-group">
-                  <label className="st-label">CR %</label>
-                  <input className="st-input" type="number" value={form.cr_percentage} onChange={e => f('cr_percentage', e.target.value)} />
+                  <label htmlFor={fieldId0 + '-field-351'} className="st-label">CR %</label>
+                  <input aria-label={"CR %"} id={fieldId0 + '-field-351'} className="st-input" type="number" value={form.cr_percentage} onChange={e => f('cr_percentage', e.target.value)} />
                 </div>
                 <div className="st-field-group">
-                  <label className="st-label">Default AD %</label>
-                  <input className="st-input" type="number" value={form.default_ad_pct} onChange={e => f('default_ad_pct', e.target.value)} />
+                  <label htmlFor={fieldId0 + '-field-355'} className="st-label">Default AD %</label>
+                  <input aria-label={"Default AD %"} id={fieldId0 + '-field-355'} className="st-input" type="number" value={form.default_ad_pct} onChange={e => f('default_ad_pct', e.target.value)} />
                 </div>
                 <div className="st-field-group">
-                  <label className="st-label">Default Profit %</label>
-                  <input className="st-input" type="number" value={form.default_profit_pct} onChange={e => f('default_profit_pct', e.target.value)} />
+                  <label htmlFor={fieldId0 + '-field-359'} className="st-label">Default Profit %</label>
+                  <input aria-label={"Default Profit %"} id={fieldId0 + '-field-359'} className="st-input" type="number" value={form.default_profit_pct} onChange={e => f('default_profit_pct', e.target.value)} />
                 </div>
               </div>
               <div className="st-edit-actions">
@@ -363,7 +372,7 @@ function PlatformCard({ platform, onUpdated, onError }) {
             <div className="st-fields-view">
               <div className="st-fv-row">
                 <div className="st-fv-item">
-                  <div className="st-fv-label">CR Charge</div>
+                  <div className="st-fv-label">Reverse shipping / return</div>
                   <div className="st-fv-val">₹{platform.cr_charge}</div>
                 </div>
                 <div className="st-fv-item">
@@ -380,9 +389,9 @@ function PlatformCard({ platform, onUpdated, onError }) {
                 </div>
               </div>
               <div className="st-card-actions">
-                <button className="st-edit-btn" onClick={() => setEditing(true)}>Edit Platform</button>
+                <button className="st-edit-btn" disabled={!canEdit} onClick={() => setEditing(true)}>Edit Platform</button>
                 <button className={`st-toggle-btn ${platform.is_active ? 'deactivate' : 'activate'}`}
-                  onClick={toggleActive} disabled={busy}>
+                  onClick={toggleActive} disabled={busy || !canEdit}>
                   {busy ? '…' : platform.is_active ? 'Deactivate' : 'Activate'}
                 </button>
               </div>
@@ -393,7 +402,7 @@ function PlatformCard({ platform, onUpdated, onError }) {
           <div className="st-tiers-section">
             <div className="st-tiers-header">
               <span className="st-tiers-title">Fee Tiers</span>
-              <button className="st-add-tier-btn" onClick={() => setAddTier(p => !p)}>+ Add Tier</button>
+              <button className="st-add-tier-btn" disabled={!canEdit} onClick={() => setAddTier(p => !p)}>+ Add Tier</button>
             </div>
             {tiers.length === 0 && !addTier && (
               <div className="st-tiers-empty">No tiers defined. Add a fee tier above.</div>
@@ -402,12 +411,12 @@ function PlatformCard({ platform, onUpdated, onError }) {
               <TierRow key={t.id} tier={t} platformId={platform.id}
                 onUpdated={updated => setTiers(p => p.map(x => x.id === updated.id ? updated : x))}
                 onDeleted={id => setTiers(p => p.filter(x => x.id !== id))}
-                onError={onError}
+                onError={onError} canEdit={canEdit}
               />
             ))}
             {addTier && (
               <div className="st-tier-row st-tier-edit">
-                <input className="st-tier-input" placeholder="Tier name (e.g. Standard)"
+                <input aria-label="Tier name (e.g. Standard)" className="st-tier-input" placeholder="Tier name (e.g. Standard)"
                   value={newTier.tier_name} onChange={e => setNewTier(p => ({ ...p, tier_name: e.target.value }))} />
                 <select className="st-tier-input st-tier-mode"
                   value={newTier.mode || 'amt'}
@@ -416,9 +425,9 @@ function PlatformCard({ platform, onUpdated, onError }) {
                   <option value="pct">%</option>
                 </select>
                 {(newTier.mode || 'amt') === 'pct'
-                  ? <input className="st-tier-input st-tier-fee" type="number" placeholder="% of base"
+                  ? <input aria-label="% of base" className="st-tier-input st-tier-fee" type="number" placeholder="% of base"
                       value={newTier.fee_pct} onChange={e => setNewTier(p => ({ ...p, fee_pct: e.target.value }))} />
-                  : <input className="st-tier-input st-tier-fee" type="number" placeholder="Fee in ₹"
+                  : <input aria-label="Fee in ₹" className="st-tier-input st-tier-fee" type="number" placeholder="Fee in ₹"
                       value={newTier.fee} onChange={e => setNewTier(p => ({ ...p, fee: e.target.value }))} />
                 }
                 <button className="st-tier-save" onClick={handleTierAdded} disabled={busy}>{busy ? '…' : 'Add'}</button>
@@ -433,29 +442,37 @@ function PlatformCard({ platform, onUpdated, onError }) {
 }
 
 export default function Settings() {
+  const fieldId1 = useId()
+  const { role, isAll } = useCompany()
+  const canEdit = !isAll && ['owner', 'admin'].includes(role)
+  const toastTimer = useRef(null)
+  useEffect(() => () => clearTimeout(toastTimer.current), [])
+  const [historyVersion, setHistoryVersion] = useState(0)
+  const [loadError, setLoadError] = useState('')
   const [platforms,  setPlatforms]  = useState([])
   const [loading,    setLoading]    = useState(true)
   const [toast,      setToast]      = useState(null)
   const [showAdd,    setShowAdd]    = useState(false)
   const [busy,       setBusy]       = useState(false)
-  const [newPlat,    setNewPlat]    = useState({ name: '', cr_charge: '', cr_percentage: '', default_ad_pct: '0', default_profit_pct: '20' })
+  const [newPlat,    setNewPlat]    = useState({ name: '', cr_charge: '0', cr_percentage: '0', default_ad_pct: '0', default_profit_pct: '20' })
 
   const showToast = (msg, type = 'success') => {
+    clearTimeout(toastTimer.current)
     setToast({ msg, type })
-    setTimeout(() => setToast(null), 3000)
+    if (type !== 'error') {toastTimer.current = setTimeout(() => setToast(null), 6000)}
   }
 
   useEffect(() => {
-    getPlatforms().then(setPlatforms).finally(() => setLoading(false))
+    getPlatforms().then(setPlatforms).catch(e => setLoadError(errText(e, 'Could not load platforms'))).finally(() => setLoading(false))
   }, [])
 
   const handleUpdated = updated => {
     setPlatforms(p => p.map(x => x.id === updated.id ? updated : x))
-    showToast('Platform updated')
+    showToast('Defaults updated. They apply when overrides are omitted; existing saved prices and historical snapshots remain unchanged.')
   }
 
   const handleAdd = async () => {
-    if (!newPlat.name.trim() || newPlat.cr_charge === '' || newPlat.cr_percentage === '') return
+    if (!newPlat.name.trim() || newPlat.cr_charge === '' || newPlat.cr_percentage === '') {showToast('Enter a platform name, reverse-shipping charge and return percentage.', 'error'); return}
     setBusy(true)
     try {
       const created = await createPlatform({
@@ -467,7 +484,7 @@ export default function Settings() {
         tiers:              [],
       })
       setPlatforms(p => [...p, created])
-      setNewPlat({ name: '', cr_charge: '', cr_percentage: '', default_ad_pct: '0', default_profit_pct: '20' })
+      setNewPlat({ name: '', cr_charge: '0', cr_percentage: '0', default_ad_pct: '0', default_profit_pct: '20' })
       setShowAdd(false)
       showToast('Platform created')
     } catch(e) {
@@ -475,24 +492,21 @@ export default function Settings() {
     } finally { setBusy(false) }
   }
 
-  if (loading) return <div className="st-loading"><div className="loader" /></div>
+  if (loadError) {return <div role="alert">{loadError} <button onClick={() => window.location.reload()}>Retry</button></div>}
+  if (loading) {return <div className="st-loading"><div className="loader" /></div>}
 
   return (
     <div className="st-page">
-      {toast && <Toast {...toast} />}
+      {toast && <Toast {...toast} onDismiss={() => setToast(null)} />}
 
       {/* Header */}
       <div className="st-header">
         <div>
           <h1 className="st-title">Settings</h1>
-          <p className="st-sub">Manage platforms, default rates, and fee tiers</p>
+          <p className="st-sub">Manage platform defaults and fee tiers. Defaults apply when a calculation omits an override. Existing saved prices and historical snapshots remain fixed.</p>
         </div>
-        <button className="st-add-btn" onClick={() => setShowAdd(p => !p)}>+ Add Platform</button>
+        <button className="st-add-btn" disabled={!canEdit} onClick={() => setShowAdd(p => !p)}>+ Add Platform</button>
       </div>
-
-      {/* Per-company management + module enablement */}
-      <CompanyManage />
-      <CompanyModules />
 
       {/* Add Platform form */}
       {showAdd && (
@@ -500,28 +514,28 @@ export default function Settings() {
           <div className="st-add-title">New Platform</div>
           <div className="st-field-row">
             <div className="st-field-group">
-              <label className="st-label">Name</label>
-              <input className="st-input" placeholder="e.g. Meesho"
+              <label htmlFor={fieldId1 + '-field-510'} className="st-label">Name</label>
+              <input aria-label={"Name"} id={fieldId1 + '-field-510'} className="st-input" placeholder="e.g. Meesho"
                 value={newPlat.name} onChange={e => setNewPlat(p => ({ ...p, name: e.target.value }))} />
             </div>
             <div className="st-field-group">
-              <label className="st-label">CR Charge (₹)</label>
-              <input className="st-input" type="number" placeholder="0"
+              <label htmlFor={fieldId1 + '-field-515'} className="st-label">Reverse shipping / return (₹)</label>
+              <input aria-label="Reverse shipping charge per return" id={fieldId1 + '-field-515'} className="st-input" type="number" min="0" step="0.01" placeholder="0"
                 value={newPlat.cr_charge} onChange={e => setNewPlat(p => ({ ...p, cr_charge: e.target.value }))} />
             </div>
             <div className="st-field-group">
-              <label className="st-label">CR %</label>
-              <input className="st-input" type="number" placeholder="0"
+              <label htmlFor={fieldId1 + '-field-520'} className="st-label">CR %</label>
+              <input aria-label={"CR %"} id={fieldId1 + '-field-520'} className="st-input" type="number" placeholder="0"
                 value={newPlat.cr_percentage} onChange={e => setNewPlat(p => ({ ...p, cr_percentage: e.target.value }))} />
             </div>
             <div className="st-field-group">
-              <label className="st-label">Default AD %</label>
-              <input className="st-input" type="number" placeholder="0"
+              <label htmlFor={fieldId1 + '-field-525'} className="st-label">Default AD %</label>
+              <input aria-label={"Default AD %"} id={fieldId1 + '-field-525'} className="st-input" type="number" placeholder="0"
                 value={newPlat.default_ad_pct} onChange={e => setNewPlat(p => ({ ...p, default_ad_pct: e.target.value }))} />
             </div>
             <div className="st-field-group">
-              <label className="st-label">Default Profit %</label>
-              <input className="st-input" type="number" placeholder="20"
+              <label htmlFor={fieldId1 + '-field-530'} className="st-label">Default Profit %</label>
+              <input aria-label={"Default Profit %"} id={fieldId1 + '-field-530'} className="st-input" type="number" placeholder="20"
                 value={newPlat.default_profit_pct} onChange={e => setNewPlat(p => ({ ...p, default_profit_pct: e.target.value }))} />
             </div>
           </div>
@@ -538,11 +552,16 @@ export default function Settings() {
         {platforms.length === 0
           ? <div className="st-empty">No platforms. Add one above.</div>
           : platforms.map(p => (
-              <PlatformCard key={p.id} platform={p} onUpdated={handleUpdated}
+              <PlatformCard key={p.id} platform={p} canEdit={canEdit} onUpdated={handleUpdated}
                 onError={msg => showToast(msg, 'error')} />
             ))
         }
       </div>
+
+      {canEdit && <PricingRefresh onApplied={() => setHistoryVersion(v => v + 1)} />}
+      <FinancialHistory refreshKey={historyVersion} />
+      {!isAll && <CompanyManage />}
+      {!isAll && <CompanyModules />}
     </div>
   )
 }

@@ -1,10 +1,18 @@
+from app.core.time import utcnow
 from datetime import datetime, date
 from typing import Optional
-from sqlalchemy import String, Float, Date, DateTime, Integer, Text, ForeignKey
+from sqlalchemy import String, Float, Date, DateTime, Integer, Text, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
 INVOICE_STATUSES = ["draft", "sent", "paid", "cancelled"]
+
+
+class InvoiceSequence(Base):
+    __tablename__ = "invoice_sequences"
+    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), primary_key=True)
+    year: Mapped[int] = mapped_column(Integer, primary_key=True)
+    last_number: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
 class Invoice(Base):
@@ -14,9 +22,10 @@ class Invoice(Base):
     from due_date vs today when not yet paid/cancelled.
     """
     __tablename__ = "invoices"
+    __table_args__ = (UniqueConstraint("company_id", "number", name="uq_invoice_company_number"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    company_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
+    company_id: Mapped[int] = mapped_column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
 
     number: Mapped[str] = mapped_column(String(40), nullable=False)          # e.g. INV-2026-0001
     invoice_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
@@ -38,8 +47,8 @@ class Invoice(Base):
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     created_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
     lines: Mapped[list["InvoiceLine"]] = relationship(
         "InvoiceLine", back_populates="invoice", cascade="all, delete-orphan", order_by="InvoiceLine.id"

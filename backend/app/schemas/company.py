@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from app.models.company import CompanyRole
 
@@ -41,7 +41,7 @@ class MemberResponse(BaseModel):
 class MemberCreate(BaseModel):
     email: EmailStr
     name: Optional[str] = ""
-    password: Optional[str] = None     # required only for a brand-new user
+    password: Optional[str] = Field(default=None, min_length=8, max_length=1024)     # required only for a brand-new user
     role: CompanyRole = CompanyRole.viewer
 
 
@@ -52,5 +52,5 @@ class MemberRoleUpdate(BaseModel):
 class RegisterRequest(BaseModel):
     name: str
     email: EmailStr
-    password: str
+    password: str = Field(min_length=8, max_length=1024)
     company_name: str

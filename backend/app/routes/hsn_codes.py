@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from app.core.database import get_db
-from app.core.dependencies import require_any, require_admin_or_above
+from app.core.dependencies import require_any, require_super_admin
 from app.models.hsn_code import HsnCode
 from app.schemas.hsn_code import HsnCodeCreate, HsnCodeUpdate, HsnCodeResponse
 from typing import List
@@ -38,7 +38,7 @@ async def search_hsn(
 async def create_hsn(
     data: HsnCodeCreate,
     db: AsyncSession = Depends(get_db),
-    _=Depends(require_admin_or_above)
+    _=Depends(require_super_admin)
 ):
     existing = await db.execute(
         select(HsnCode).where(HsnCode.code == data.code)
@@ -70,7 +70,7 @@ async def update_hsn(
     code: str,
     data: HsnCodeUpdate,
     db: AsyncSession = Depends(get_db),
-    _=Depends(require_admin_or_above)
+    _=Depends(require_super_admin)
 ):
     result = await db.execute(select(HsnCode).where(HsnCode.code == code))
     hsn = result.scalar_one_or_none()
@@ -88,7 +88,7 @@ async def update_hsn(
 async def delete_hsn(
     code: str,
     db: AsyncSession = Depends(get_db),
-    _=Depends(require_admin_or_above)
+    _=Depends(require_super_admin)
 ):
     result = await db.execute(select(HsnCode).where(HsnCode.code == code))
     hsn = result.scalar_one_or_none()

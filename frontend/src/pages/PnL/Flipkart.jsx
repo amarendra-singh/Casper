@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useId } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getPlatforms, getPnlReports, uploadPnlReport, deletePnlReport } from '../../api/client'
 import './Flipkart.css'
@@ -7,7 +7,7 @@ import { useConfirm } from '../../components/ConfirmDialog'
 const TABS = ['Reports', 'All Time P&L', 'By SKU']
 
 const fmt = (v, d = 0) => {
-  if (v == null) return '—'
+  if (v == null) {return '—'}
   const n = Number(v)
   const abs = Math.abs(n).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d })
   return (n < 0 ? '-' : '') + '₹' + abs
@@ -17,11 +17,12 @@ const fmtPct = v => v == null ? '—' : Number(v).toFixed(1) + '%'
 const parseLocalDate = s => s ? new Date(s + 'T00:00:00') : null
 const fmtPeriod = (start, end) => {
   const s = parseLocalDate(start), e = parseLocalDate(end)
-  if (!s || !e) return '—'
+  if (!s || !e) {return '—'}
   return `${s.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })} — ${e.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`
 }
 
 export default function FlipkartPnL() {
+  const fieldId0 = useId()
   const { ask, dialog } = useConfirm()
   const navigate = useNavigate()
   const fileRef  = useRef(null)
@@ -80,7 +81,7 @@ export default function FlipkartPnL() {
   }
 
   function closeUpload() {
-    if (uploading) return
+    if (uploading) {return}
     setShowUpload(false); setUploadError(''); setFile(null)
   }
 
@@ -104,7 +105,7 @@ export default function FlipkartPnL() {
   }
 
   const lifetimeData = useMemo(() => {
-    if (!reports.length) return null
+    if (!reports.length) {return null}
     return {
       totalBS:         reports.reduce((s, r) => s + (r.bank_settlement || 0), 0),
       totalNetSales:   reports.reduce((s, r) => s + (r.net_sales || 0), 0),
@@ -159,10 +160,10 @@ export default function FlipkartPnL() {
               <div className="pnl-view-bar">
                 <span className="pnl-report-count">{reports.length} report{reports.length !== 1 ? 's' : ''}</span>
                 <div className="pnl-view-toggle">
-                  <button className={`pnl-view-btn${viewMode === 'grid' ? ' active' : ''}`} onClick={() => setViewMode('grid')} title="Grid">
+                  <button aria-label="Grid" className={`pnl-view-btn${viewMode === 'grid' ? ' active' : ''}`} onClick={() => setViewMode('grid')} title="Grid">
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="0" y="0" width="6" height="6" rx="1.5" fill="currentColor"/><rect x="8" y="0" width="6" height="6" rx="1.5" fill="currentColor"/><rect x="0" y="8" width="6" height="6" rx="1.5" fill="currentColor"/><rect x="8" y="8" width="6" height="6" rx="1.5" fill="currentColor"/></svg>
                   </button>
-                  <button className={`pnl-view-btn${viewMode === 'list' ? ' active' : ''}`} onClick={() => setViewMode('list')} title="List">
+                  <button aria-label="List" className={`pnl-view-btn${viewMode === 'list' ? ' active' : ''}`} onClick={() => setViewMode('list')} title="List">
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="0" y="1" width="14" height="2" rx="1" fill="currentColor"/><rect x="0" y="6" width="14" height="2" rx="1" fill="currentColor"/><rect x="0" y="11" width="14" height="2" rx="1" fill="currentColor"/></svg>
                   </button>
                 </div>
@@ -371,8 +372,8 @@ export default function FlipkartPnL() {
 
       {/* ── Upload modal ── */}
       {showUpload && !conflict && (
-        <div className="pnl-modal-overlay" onClick={closeUpload}>
-          <div className="pnl-modal" onClick={e => e.stopPropagation()}>
+        <div role="presentation" className="pnl-modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) { (closeUpload)(e) } }}>
+          <div className="pnl-modal" >
             <div className="pnl-modal-hdr">
               <span>Upload Flipkart P&amp;L Report</span>
               <button className="pnl-modal-close" onClick={closeUpload}>✕</button>
@@ -380,11 +381,11 @@ export default function FlipkartPnL() {
             <div className="pnl-modal-body">
               <div className="pnl-period-note">Period will be auto-detected from the report file.</div>
               <div className="pnl-field">
-                <label className="pnl-label">Excel File (.xlsx / .xls)</label>
-                <div className={`pnl-dropzone${file ? ' has-file' : ''}`}
+                <label htmlFor={fieldId0 + '-field-383'} className="pnl-label">Excel File (.xlsx / .xls)</label>
+                <div onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); (() => fileRef.current?.click())(e) } }} role="button" tabIndex={0} className={`pnl-dropzone${file ? ' has-file' : ''}`}
                   onClick={() => fileRef.current?.click()}
                   onDragOver={e => e.preventDefault()}
-                  onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) setFile(f) }}>
+                  onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) {setFile(f)} }}>
                   {file ? (
                     <>
                       <span className="pnl-file-icon">
@@ -400,7 +401,7 @@ export default function FlipkartPnL() {
                       <span className="pnl-drop-hint">Flipkart Profit &amp; Loss .xlsx</span>
                     </>
                   )}
-                  <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }}
+                  <input aria-label={"Excel File (.xlsx / .xls)"} id={fieldId0 + '-field-383'} ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }}
                     onChange={e => setFile(e.target.files[0])} />
                 </div>
               </div>
@@ -418,8 +419,8 @@ export default function FlipkartPnL() {
 
       {/* ── Conflict modal ── */}
       {conflict && (
-        <div className="pnl-modal-overlay" onClick={() => !uploading && setConflict(null)}>
-          <div className="pnl-modal" onClick={e => e.stopPropagation()}>
+        <div role="presentation" className="pnl-modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) { (() => !uploading && setConflict(null))(e) } }}>
+          <div className="pnl-modal" >
             <div className="pnl-modal-hdr"><span>⚠ Duplicate Report Detected</span></div>
             <div className="pnl-modal-body">
               <div className="pnl-conflict-info">

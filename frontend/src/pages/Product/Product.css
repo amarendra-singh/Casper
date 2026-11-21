@@ -1,0 +1,195 @@
+/* ── Product Layout — tab navigation ──────────────────────────────────── */
+.product-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.product-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 12px 16px 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-1);
+  flex-shrink: 0;
+}
+
+.product-tab {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  margin-bottom: -1px;
+}
+.product-tab:hover {
+  color: var(--text-1);
+}
+.product-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.product-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.product-body > * {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Categories page ──────────────────────────────────────────────────── */
+.cat-page {
+  padding: 24px;
+  max-width: 900px;
+}
+
+.cat-page .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.cat-page .page-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.cat-page .page-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+.cat-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.cat-tbl th {
+  text-align: left;
+  padding: 8px 12px;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-3);
+  border-bottom: 2px solid var(--border);
+  background: var(--bg-2);
+}
+
+.cat-tbl td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.cat-tbl tr:hover td {
+  background: var(--bg-2);
+}
+
+.cat-name {
+  font-weight: 500;
+  color: var(--text-1);
+}
+
+.cat-count {
+  font-size: 12px;
+  color: var(--text-3);
+  background: var(--bg-3);
+  padding: 1px 8px;
+  border-radius: 10px;
+  display: inline-block;
+}
+
+.cat-inp {
+  width: 70px;
+  padding: 4px 6px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-1);
+  color: var(--text-1);
+  text-align: right;
+  font-family: var(--font-mono, monospace);
+}
+.cat-inp:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.cat-name-inp {
+  width: 160px;
+  padding: 4px 8px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-1);
+  color: var(--text-1);
+}
+.cat-name-inp:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.cat-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.cat-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-1);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cat-btn:hover {
+  background: var(--bg-3);
+  color: var(--text-1);
+}
+.cat-btn.save {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.cat-btn.save:hover {
+  opacity: 0.9;
+}
+.cat-btn.danger:hover {
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
+}
+.cat-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cat-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-3);
+}
+
+/* ── Add category inline form ── */
+.cat-add-row td {
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border-bottom: 2px solid var(--border);
+}

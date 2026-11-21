@@ -13,7 +13,6 @@
  *   dateRange  — string  e.g. "Sep 1 – Nov 30, 2025"
  */
 
-import { useNavigate } from 'react-router-dom'
 import '../../pages/Dashboard.css'
 
 // ── Avatar circle ────────────────────────────────────────────────────────────
@@ -83,7 +82,7 @@ const LABEL_STYLE = {
 function StatCard({ label, value, sub, sub2, person, dark, highlight }) {
 
   // ── Dark card (Best deal) ──
-  if (dark) return (
+  if (dark) {return (
     <div style={{
       ...CARD_BASE,
       background: '#111110',
@@ -101,10 +100,10 @@ function StatCard({ label, value, sub, sub2, person, dark, highlight }) {
         <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.15)', lineHeight: 1 }}>›</span>
       </div>
     </div>
-  )
+  )}
 
   // ── Highlighted card (Value) ──
-  if (highlight) return (
+  if (highlight) {return (
     <div style={{
       ...CARD_BASE,
       background: 'linear-gradient(145deg, #fff 50%, rgba(232,54,93,0.04))',
@@ -117,7 +116,7 @@ function StatCard({ label, value, sub, sub2, person, dark, highlight }) {
       </div>
       <span style={{ fontSize: 11, fontWeight: 600, color: '#16A34A', marginTop: 'auto', paddingTop: 2 }}>{sub}</span>
     </div>
-  )
+  )}
 
   // ── Plain white card (Top sales, Deals, Win rate) ──
   return (
@@ -163,7 +162,7 @@ export default function ReportHeader({
   activeSkus = 2,
   dateRange  = 'Sep 1 – Nov 30, 2025',
 }) {
-  const navigate   = useNavigate()
+
   const topPerson  = team[1] ?? { ini: 'RM', color: '#E8365D', name: 'Rohan' }
   const winRate    = totalSkus > 0 ? Math.round((activeSkus / totalSkus) * 100) : 44
 
@@ -197,8 +196,8 @@ export default function ReportHeader({
               borderRadius: 99, border: '1px solid #EBEBEB', background: '#fff',
               cursor: 'pointer', transition: 'background 0.12s',
             }}
-              onMouseEnter={e => e.currentTarget.style.background = '#F7F6F3'}
-              onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+
+
             >
               <Av ini={p.ini} color={p.color} size={22} />
               <span style={{ fontSize: 11, fontWeight: 600, color: '#6B6866', whiteSpace: 'nowrap' }}>

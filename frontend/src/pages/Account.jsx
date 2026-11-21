@@ -17,14 +17,16 @@ export default function Account() {
   const submit = async e => {
     e.preventDefault()
     setMsg(null)
-    if (form.next.length < 6)        return setMsg({ type: 'err', text: 'New password must be at least 6 characters' })
-    if (form.next !== form.confirm)  return setMsg({ type: 'err', text: 'New passwords do not match' })
-    if (form.next === form.current)  return setMsg({ type: 'err', text: 'New password must differ from the current one' })
+    if (form.next.length < 8)        {return setMsg({ type: 'err', text: 'New password must be at least 8 characters' })}
+    if (form.next !== form.confirm)  {return setMsg({ type: 'err', text: 'New passwords do not match' })}
+    if (form.next === form.current)  {return setMsg({ type: 'err', text: 'New password must differ from the current one' })}
     setBusy(true)
     try {
       await changePassword({ current_password: form.current, new_password: form.next })
       setForm({ current: '', next: '', confirm: '' })
-      setMsg({ type: 'ok', text: 'Password changed successfully' })
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      window.location.assign('/login')
     } catch (err) {
       setMsg({ type: 'err', text: errText(err, 'Could not change password') })
     } finally {
@@ -57,18 +59,18 @@ export default function Account() {
         <form className="acc-form" onSubmit={submit}>
           <div className="acc-field">
             <label htmlFor="acc-current">Current password</label>
-            <input id="acc-current" type="password" autoComplete="current-password" className="acc-input"
+            <input aria-label={"Current password"} id="acc-current" type="password" autoComplete="current-password" className="acc-input"
               value={form.current} onChange={e => set('current', e.target.value)} required />
           </div>
           <div className="acc-field">
             <label htmlFor="acc-next">New password</label>
-            <input id="acc-next" type="password" autoComplete="new-password" className="acc-input"
-              value={form.next} onChange={e => set('next', e.target.value)} required minLength={6} />
+            <input aria-label={"New password"} id="acc-next" type="password" autoComplete="new-password" className="acc-input"
+              value={form.next} onChange={e => set('next', e.target.value)} required minLength={8} maxLength={1024} />
           </div>
           <div className="acc-field">
             <label htmlFor="acc-confirm">Confirm new password</label>
-            <input id="acc-confirm" type="password" autoComplete="new-password" className="acc-input"
-              value={form.confirm} onChange={e => set('confirm', e.target.value)} required minLength={6} />
+            <input aria-label={"Confirm new password"} id="acc-confirm" type="password" autoComplete="new-password" className="acc-input"
+              value={form.confirm} onChange={e => set('confirm', e.target.value)} required minLength={8} maxLength={1024} />
           </div>
           {msg && <div className={`acc-msg acc-msg-${msg.type}`} role={msg.type === 'err' ? 'alert' : 'status'}>{msg.text}</div>}
           <button className="acc-save" type="submit" disabled={busy}>

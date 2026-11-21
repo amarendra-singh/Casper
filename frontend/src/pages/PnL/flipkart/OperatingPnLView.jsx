@@ -102,7 +102,7 @@ export default function OperatingPnLView({ report, onRefresh }) {
 // ── Sub-components ──────────────────────────────────────────────────────────
 
 function VerdictBanner({ totals }) {
-  if (totals.final_profit == null || totals.payout === 0) return null
+  if (totals.final_profit == null || totals.payout === 0) {return null}
   const losing = totals.final_profit < 0
   return (
     <div className={`pnl-verdict-banner ${losing ? 'losing' : 'winning'}`}>
@@ -140,7 +140,7 @@ function TargetUnitsEditor({ platformId, initial, volumePct, onSaved }) {
       <div className="pnl-sum-label">Target / Actual</div>
       {editing ? (
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-          <input type="number" value={value} onChange={e => setValue(e.target.value)}
+          <input aria-label={"Target monthly units"} type="number" value={value} onChange={e => setValue(e.target.value)}
             style={{ width: 60, fontSize: 12, padding: '2px 4px' }} />
           <button className="pnl-btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 6px' }}
             onClick={save} disabled={saving} aria-label="Save target">{saving ? '…' : <Check s={13} />}</button>
@@ -148,7 +148,7 @@ function TargetUnitsEditor({ platformId, initial, volumePct, onSaved }) {
             onClick={() => setEditing(false)} aria-label="Cancel">{<XMark s={13} />}</button>
         </div>
       ) : (
-        <div className="pnl-sum-val" style={{ cursor: 'pointer' }} onClick={() => setEditing(true)}>
+        <div onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); (() => setEditing(true))(e) } }} role="button" tabIndex={0} className="pnl-sum-val" style={{ cursor: 'pointer' }} onClick={() => setEditing(true)}>
           {initial || '—'}
           {volumePct != null && <span className={`pnl-sum-pct ${volumePct >= 100 ? 'green' : 'amber'}`}> ({volumePct.toFixed(0)}%)</span>}
         </div>

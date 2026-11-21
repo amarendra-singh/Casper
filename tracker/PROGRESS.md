@@ -5,17 +5,42 @@
 
 ---
 
-## STATUS SNAPSHOT — 2026-04-16
+## Session 2026-11-22 — Casper startup and repository push
+
+- Casper runs locally at `http://127.0.0.1:5174` with its API on port 8766; port 8765 belongs to the Wedding project.
+- Backend 434 tests, frontend 149 tests, both lint checks, and frontend build passed.
+- Full GST correction and current run evidence: [2026-10-28 catalogue GST progress](../audit/runtime/2026-10-28-catalogue-gst-progress.md). Git push status is recorded there after completion.
+
+---
+
+## STATUS SNAPSHOT — 2026-09-28
 
 ```
-Backend   ██████████████░░░░░░  68%
-Frontend  █████████████░░░░░░░  62%
-Overall   █████████████░░░░░░░  63%
+Backend   ██████████████████░░  90%   294 tests passing
+Frontend  ████████████████░░░░  82%   103 tests passing
+Overall   █████████████████░░░  85%
 ```
+
+Since the April snapshot the app grew well past the original single-seller scope:
+multi-company (tenancy, switcher, per-company modules), Expense Ledger, Billing &
+Invoices, Profit Calculator, P&L for all four platforms, Fraud intelligence, and
+the Product area (Unit Economics / Inventory / Categories). It is now Railway
+deploy-ready (single-service Dockerfile). The older tables below are kept for
+history — cross-check against the live app, not these notes.
 
 ---
 
 ## ✅ COMPLETED
+
+### Session 2026-09-28 (Deploy-readiness + audit + hardening)
+- **Railway single-service deploy** — `Dockerfile` (builds React, FastAPI serves it + API on one URL), `railway.toml`, `.dockerignore`, `.env.example`, `RAILWAY.md`; `app/main.py` serves the built SPA with deep-link fallback; `.github/workflows/keepalive.yml` pings every 4 min.
+- **Product restructure** — SKUs page split into Product → Unit Economics / Inventory / Categories via a `viewMode` prop on the shared grid (no duplication). Routes + sidebar wired; `/skus` redirects to `/product/unit-economics`.
+- **Profit Calculator** — wired into routes + sidebar (channel-aware unit economics, client-side).
+- **Dashboard de-faked** — removed hardcoded demo insights, fake "Pulled from Flipkart Seller API" footer, and fabricated revenue chart fallback; all now use real endpoints or honest empty states (CLAUDE.md "no hardcoded demo data").
+- **Auth hardening** — single-flight refresh in `api/client.js`: a burst of parallel 401s (e.g. a company switch reloads the app) now shares ONE refresh instead of racing into a spurious logout.
+- **Tech debt** — migrated `schemas/entries.py` + `schemas/hsn_code.py` to Pydantic v2 (`ConfigDict` / `field_validator`); 0 deprecation warnings. Fixed dev-proxy port mismatch (vite → 8765).
+- Result: backend 294/294, frontend 103/103.
+
 
 ### Session 2026-04-16 (P&L Routing + Parser Audit)
 - **Separate route for report detail** — `/pnl/flipkart/:reportId` owns its own page
@@ -91,9 +116,10 @@ Overall   █████████████░░░░░░░  63%
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Platform Settings UI | Partially done | Page exists but missing `default_ad_pct` and `default_profit_pct` input fields |
-| Dashboard lower sections | Not started | Platform list, donut chart, sales table |
-| PnL re-upload needed | Action required | Must re-upload Excel after parser fix to get correct `cancelled_units`, `fixed_fee`, `net_margin_pct` |
+| Platform Settings UI | ✅ Done | Per-platform default AD%/Profit% shown and editable on Settings |
+| Dashboard lower sections | ✅ Done | Reconciliation, operations, action-pipeline, insights all render real data |
+| PnL re-upload needed | Action required | Re-upload Excel after parser fix for correct `cancelled_units`, `fixed_fee`, `net_margin_pct` |
+| Deployed DB persistence | Decision needed | Railway SQLite volume vs Postgres — see RAILWAY.md |
 
 ---
 
@@ -111,6 +137,10 @@ Overall   █████████████░░░░░░░  63%
 
 | Date | Bug | Fix | Files |
 |------|-----|-----|-------|
+| 2026-09-28 | Switching company logged the user out | Single-flight refresh — parallel 401s share one refresh instead of racing into logout | `api/client.js` |
+| 2026-09-28 | Per-platform BS rendered with float noise (`₹174.26000000000002`) | Round `bs` with `+bs.toFixed(2)` like sibling fields | `pages/SKUs.jsx` |
+| 2026-09-28 | Dashboard showed fabricated demo insights/revenue as real data | Wired to real `/dashboard/insights` + honest empty states; removed fake API footer | `pages/Dashboard.jsx` |
+| 2026-09-28 | Pydantic v2 deprecation warnings (7) | Migrated to `ConfigDict` / `field_validator` | `schemas/entries.py`, `schemas/hsn_code.py` |
 | 2026-04-11 | Scientific notation `1.5e-9` in dmgPct cell | `numStr()` helper + applied everywhere | `SKUs.jsx` |
 | 2026-04-11 | `w-plat-bs` clipping large BS values | Removed `max-width:86px` | `SKUs.css` |
 | 2026-04-11 | Tier dropdown lost after split | Moved to own `<td>` | `SKUs.jsx` |

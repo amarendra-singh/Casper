@@ -76,19 +76,32 @@ def setup_logging(log_dir: str = "logs", dev: bool = True) -> None:
     # error.log — catches ERROR+ from every casper.* logger
     root.addHandler(_make_handler(os.path.join(log_dir, "error.log"), logging.ERROR))
 
-    if dev:
-        root.addHandler(_make_console_handler(logging.INFO))
+    if root.handlers:
+        for handler in list(root.handlers):
+            root.removeHandler(handler)
+            handler.close()
+    root.addHandler(_make_console_handler(logging.INFO))
+    root.addHandler(_make_handler(os.path.join(log_dir, "error.log"), logging.ERROR))
 
     # ── casper.app → app.log ─────────────────────────────────────────────────
     app_log = logging.getLogger("casper.app")
+    for handler in list(app_log.handlers):
+        app_log.removeHandler(handler)
+        handler.close()
     app_log.addHandler(_make_handler(os.path.join(log_dir, "app.log"), logging.INFO))
 
     # ── casper.access → access.log ───────────────────────────────────────────
     access_log = logging.getLogger("casper.access")
+    for handler in list(access_log.handlers):
+        access_log.removeHandler(handler)
+        handler.close()
     access_log.addHandler(_make_handler(os.path.join(log_dir, "access.log"), logging.INFO))
 
     # ── casper.pnl → pnl.log ─────────────────────────────────────────────────
     pnl_log = logging.getLogger("casper.pnl")
+    for handler in list(pnl_log.handlers):
+        pnl_log.removeHandler(handler)
+        handler.close()
     pnl_log.addHandler(_make_handler(os.path.join(log_dir, "pnl.log"), logging.DEBUG))
 
 

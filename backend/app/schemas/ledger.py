@@ -66,6 +66,7 @@ class LedgerEntryResponse(LedgerEntryBase):
     id: int
     vendor_name: Optional[str] = None   # resolved for display
     sku_code: Optional[str] = None      # resolved for display
+    source_type: str = "manual"          # generated postings are managed at their source
     created_at: datetime
 
     model_config = {"from_attributes": True}

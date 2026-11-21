@@ -12,11 +12,9 @@ Layers (clean architecture, matches sibling services):
   • build_operations(units, fees, reasons, channels) — PURE, unit-testable.
   • compute_operations(db)                           — async DB wrapper.
 
-Fee sign convention differs per platform parser (FK stores expenses negative,
-Snapdeal mixes signs), so every fee is reduced to a positive magnitude. The
-"Other fees" bucket = |total_expenses| − Σ(known components), keeping the
-waterfall balanced to the actual settlement regardless of which line items a
-given platform broke out.
+Source parsers use different fee signs. Fee components are shown as reported
+magnitudes; the remaining bridge is explicitly unclassified, including returns,
+credits and missing fee components. It is never labelled verified extra fees.
 """
 from __future__ import annotations
 
@@ -24,7 +22,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.pnl import PnlReport, PnlSkuRow
-from app.services.scope import company_ids
+from app.services.scope import company_ids, unambiguous_report_ids
 from app.models.platform import Platform
 from app.models.fraud import ReturnReasonCluster
 
@@ -54,7 +52,7 @@ def build_operations(units: dict, fees: dict, reasons: list[dict], channels: lis
     net = int(units.get("net") or 0)
 
     def _pct(v: int) -> float:
-        return round(v / gross * 100, 1) if gross else 0.0
+        return round(v / gross * 100, 1) if gross else None
 
     funnel = [
         {"label": "Dispatched", "value": gross, "pct": _pct(gross), "kind": "base"},
@@ -67,8 +65,8 @@ def build_operations(units: dict, fees: dict, reasons: list[dict], channels: lis
     # ── Fees waterfall ──────────────────────────────────────────────────────
     gmv = float(fees.get("gross_sales") or 0.0)
     settlement = float(fees.get("bank_settlement") or 0.0)
-    total_exp = abs(float(fees.get("total_expenses") or 0.0))
 
+    total_exp = abs(float(fees.get("total_expenses") or 0.0))
     components = [
         ("Commission", abs(float(fees.get("commission") or 0.0))),
         ("Ads & marketing", abs(float(fees.get("marketing") or 0.0))),
@@ -76,18 +74,21 @@ def build_operations(units: dict, fees: dict, reasons: list[dict], channels: lis
         ("Collection fee", abs(float(fees.get("collection") or 0.0))),
         ("GST / TCS", abs(float(fees.get("tcs") or 0.0))),
     ]
-    known = sum(v for _, v in components)
-    other = round(total_exp - known, 2)
-    if other > 0.5:
-        components.append(("Other fees", other))
-
     def _fpct(v: float) -> float:
         return round(v / gmv * 100, 1) if gmv else 0.0
 
     waterfall = [{"label": "Gross sales (GMV)", "value": round(gmv, 2), "pct": 100.0, "kind": "pos"}]
+    shown = 0.0
     for label, val in components:
-        if val > 0.5:
-            waterfall.append({"label": label, "value": round(val, 2), "pct": _fpct(val), "kind": "neg"})
+        if val > 0.005:
+            value = round(val, 2)
+            shown += value
+            waterfall.append({"label": label, "value": value, "pct": _fpct(value), "kind": "neg"})
+    adjustment = round(settlement - round(gmv, 2) + shown, 2)
+    if adjustment:
+        waterfall.append({"label": "Other adjustments / returns (unclassified)",
+                          "value": abs(adjustment), "pct": _fpct(abs(adjustment)),
+                          "kind": "pos" if adjustment > 0 else "neg"})
     waterfall.append({"label": "Net settlement", "value": round(settlement, 2),
                       "pct": _fpct(settlement), "kind": "settle"})
 
@@ -155,7 +156,7 @@ async def compute_operations(db: AsyncSession, company_id: int | list[int]) -> d
             func.coalesce(func.sum(PnlSkuRow.rvp_units), 0),
             func.coalesce(func.sum(PnlSkuRow.cancelled_units), 0),
             func.coalesce(func.sum(PnlSkuRow.net_units), 0),
-        ).where(PnlSkuRow.company_id.in_(_cids))
+        ).where(PnlSkuRow.company_id.in_(_cids), PnlSkuRow.report_id.in_(unambiguous_report_ids(_cids)))
     )
     u = units_res.one()
     units = {"gross": u[0], "rto": u[1], "rvp": u[2], "cancelled": u[3], "net": u[4]}
@@ -170,7 +171,7 @@ async def compute_operations(db: AsyncSession, company_id: int | list[int]) -> d
             func.coalesce(func.sum(PnlReport.tcs_amount), 0.0),
             func.coalesce(func.sum(PnlReport.total_expenses), 0.0),
             func.coalesce(func.sum(PnlReport.bank_settlement), 0.0),
-        ).where(PnlReport.company_id.in_(_cids))
+        ).where(PnlReport.company_id.in_(_cids), PnlReport.id.in_(unambiguous_report_ids(_cids)))
     )
     f = fee_res.one()
     fees = {
@@ -193,7 +194,7 @@ async def compute_operations(db: AsyncSession, company_id: int | list[int]) -> d
         )
         .join(PnlReport, PnlReport.id == PnlSkuRow.report_id)
         .join(Platform, Platform.id == PnlReport.platform_id)
-        .where(PnlSkuRow.company_id.in_(_cids))
+        .where(PnlSkuRow.company_id.in_(_cids), PnlSkuRow.report_id.in_(unambiguous_report_ids(_cids)))
         .group_by(Platform.name)
     )
     channels = [{"platform": r[0], "rvp": r[1], "rto": r[2]} for r in chan_res.all()]

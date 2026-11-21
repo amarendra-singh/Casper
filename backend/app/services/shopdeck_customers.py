@@ -19,7 +19,9 @@ Scoring (return-on-behaviour):
     score       = clamp(rto_rate·0.7 + cancel_rate·0.3, 0..100)
 A volume gate dampens 1-order noise; tiers BLOCK/WATCH mirror action_pipeline.
 """
+
 from __future__ import annotations
+from app.core.time import utcnow
 
 import csv
 import hashlib
@@ -179,7 +181,7 @@ async def ingest_customer_fraud(db, customers: list[dict], company_id: int) -> i
             risk_tier=s["tier"],
             dominant_reason="RTO_REFUSAL" if s["rto"] >= s["cancelled"] else "SERIAL_CANCEL",
             fraud_signal_type="FRAUD_SIGNAL" if s["tier"] == "CRITICAL" else "QUALITY",
-            computed_at=datetime.utcnow(),
+            computed_at=utcnow(),
         )
         if existing:
             for k, v in fields.items():

@@ -122,7 +122,7 @@ def test_avg_margin_computed():
 def test_avg_margin_zero():
     cells = _cells(avg_margin=0.0)
     a05 = next(c for c in cells if c["idx"] == "a05")
-    assert a05["val"] == "—"
+    assert a05["val"] == "0.0"
 
 
 # ── CRITICAL actors (a06) ─────────────────────────────────────────────────────

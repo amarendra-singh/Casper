@@ -20,8 +20,8 @@ from __future__ import annotations
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.pnl import PnlSkuRow
-from app.services.scope import company_ids
+from app.models.pnl import PnlReport, PnlSkuRow
+from app.services.scope import company_ids, unambiguous_report_ids
 from app.models.sku import SkuPricing, Sku
 from app.models.platform import Platform
 
@@ -58,8 +58,8 @@ def build_sku_intelligence(rows: list[dict]) -> dict:
     by_sku: dict[str, dict] = {}
     for r in rows:
         units = int(r.get("net_units") or 0)
-        s = by_sku.setdefault(r["sku"], {
-            "sku": r["sku"], "platforms": set(),
+        s = by_sku.setdefault((r.get("company_id"), r.get("sku_id"), r["sku"]), {
+            "sku": r["sku"], "company_id": r.get("company_id"), "sku_id": r.get("sku_id"), "platforms": set(),
             "net_units": 0, "payout": 0.0, "cost": 0.0,
             "returned_units": 0, "target_pct": r.get("target_pct"),
         })
@@ -80,7 +80,7 @@ def build_sku_intelligence(rows: list[dict]) -> dict:
         # variance vs target: how far actual margin beats/misses the plan
         variance = round(margin - target, 1) if (margin is not None and target is not None) else None
         skus.append({
-            "sku": s["sku"],
+            "sku": s["sku"], "company_id": s["company_id"], "sku_id": s["sku_id"],
             "platforms": sorted(s["platforms"]),
             "net_units": s["net_units"],
             "payout": round(payout, 2),
@@ -137,21 +137,23 @@ async def compute_sku_intelligence(db: AsyncSession, company_id: int | list[int]
             Platform.name,
             PnlSkuRow.net_units,
             PnlSkuRow.bank_settlement_projected,
-            SkuPricing.breakeven,
-            SkuPricing.profit_percentage,
+            func.coalesce(PnlSkuRow.snap_breakeven, SkuPricing.breakeven),
+            func.coalesce(PnlSkuRow.casper_expected_profit_pct, SkuPricing.profit_percentage),
             func.coalesce(PnlSkuRow.rvp_units, 0)
             + func.coalesce(PnlSkuRow.rto_units, 0)
             + func.coalesce(PnlSkuRow.cancelled_units, 0),
+            Sku.company_id, Sku.id,
         )
         .join(SkuPricing, SkuPricing.id == PnlSkuRow.sku_pricing_id)
         .join(Sku, Sku.id == SkuPricing.sku_id)
-        .join(Platform, Platform.id == SkuPricing.platform_id)
+        .join(PnlReport, PnlReport.id == PnlSkuRow.report_id)
+        .join(Platform, Platform.id == PnlReport.platform_id)
         .where(
-            PnlSkuRow.company_id.in_(_cids),
+            PnlSkuRow.company_id.in_(_cids), PnlSkuRow.report_id.in_(unambiguous_report_ids(_cids)),
             PnlSkuRow.sku_pricing_id.isnot(None),
             PnlSkuRow.bank_settlement_projected.isnot(None),
             SkuPricing.breakeven.isnot(None),
-            SkuPricing.breakeven != 0,
+            func.coalesce(PnlSkuRow.snap_breakeven, SkuPricing.breakeven) != 0,
         )
     )
     rows = [
@@ -162,7 +164,7 @@ async def compute_sku_intelligence(db: AsyncSession, company_id: int | list[int]
             "payout": r[3],
             "breakeven": r[4],
             "target_pct": r[5],
-            "returned_units": r[6],
+            "returned_units": r[6], "company_id": r[7], "sku_id": r[8],
         }
         for r in result.all()
     ]

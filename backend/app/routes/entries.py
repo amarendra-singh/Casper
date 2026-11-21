@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends
+from app.core.dependencies import require_company_role
+from app.models.company import CompanyRole
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -14,7 +16,7 @@ router = APIRouter(prefix="/entries", tags=["Entries"])
 async def upsert_entries_batch(
     request: UpsertBatchRequest,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin)),
     _=Depends(require_any),
 ):
     saved, errors = await upsert_batch(db, request.rows, company.id)
@@ -30,8 +32,9 @@ async def upsert_entries_batch(
 
 @router.get("/", response_model=list[EntryRowResponse])
 async def get_entries(
+    include_inactive: bool = Query(False),
     db: AsyncSession = Depends(get_db),
     scope=Depends(get_company_scope),
     _=Depends(require_any),
 ):
-    return await get_all_entries(db, scope.ids)
+    return await get_all_entries(db, scope.ids, include_inactive=include_inactive)

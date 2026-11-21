@@ -5,7 +5,7 @@ const SEV = {
   LOW:      { color: '#22c55e', bg: 'rgba(34,197,94,0.1)',   icon: '🟢' },
 }
 const TYPE_LABEL = {
-  SETTLEMENT_GAP:      'Settlement Gap',
+  SETTLEMENT_GAP:      'Pricing Target Variance',
   COD_ABUSE:           'COD Abuse',
   RETURN_SPIKE:        'Return Spike',
   FEE_OVERCHARGE:      'Fee Overcharge',
@@ -17,7 +17,7 @@ export default function AlertsPanel({ alerts, onResolve, compact = false }) {
   if (!alerts?.length) {
     return (
       <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--muted)', fontSize: 13 }}>
-        ✅ No active alerts — all platforms clean
+        ✅ No active heuristic alerts in available data
       </div>
     )
   }
@@ -40,7 +40,7 @@ export default function AlertsPanel({ alerts, onResolve, compact = false }) {
               )}
               {a.amount && (
                 <span className="fd-alert-amount" style={{ color: s.color }}>
-                  {money(a.amount)} at risk
+                  {money(a.amount)} {a.alert_type === 'SETTLEMENT_GAP' ? 'target variance' : 'reported exposure'}
                 </span>
               )}
               {onResolve && (
@@ -49,7 +49,7 @@ export default function AlertsPanel({ alerts, onResolve, compact = false }) {
                 </button>
               )}
             </div>
-            <div className="fd-alert-title">{a.title}</div>
+            <div className="fd-alert-title">{a.alert_type === 'SETTLEMENT_GAP' ? 'Pricing target variance; claim eligibility unverified' : a.title}</div>
             {!compact && <div className="fd-alert-body">{a.body}</div>}
           </div>
         )

@@ -93,14 +93,11 @@ def build_pnl_statement(rows: list[dict], report: dict) -> dict:
     tcs = _abs_s(rows, "taxes_tcs") or abs(report.get("tcs_amount") or 0)
     tds = _abs_s(rows, "taxes_tds") or abs(report.get("tds_amount") or 0)
 
-    total_platform_fees = max(net_sales - net_payout, 0)
+    total_platform_fees = net_sales - net_payout
     identified = commission + shipping + collection + fixed + gst_fees + marketing + tcs + tds
     other_fees = round(total_platform_fees - identified, 2)
     # Only surface "Other fees" as a positive plug; if identified overshoots (rare,
     # from rounding/rewards), fold the excess back so the statement still foots.
-    if other_fees < 0:
-        other_fees = 0.0
-        total_platform_fees = identified
 
     # ── Full cost stack from the cost model (matched SKUs only) ──────────────
     # Together these equal breakeven × net_units — the complete per-unit cost floor.
@@ -144,7 +141,7 @@ def build_pnl_statement(rows: list[dict], report: dict) -> dict:
         line("tds", "TDS (Tax Deducted at Source)", -tds, "expense", 1,
              note="Creditable against income tax"),
         line("marketing", "Marketing / Ads", -marketing, "expense", 1),
-        line("other_fees", "Other Marketplace Fees", -other_fees, "expense", 1),
+        line("other_fees", "Other Fees / Reconciliation Adjustment", -other_fees, "expense", 1),
         line("net_payout", "Net Payout", net_payout, "subtotal", 0,
              note="Reconciles to platform bank settlement"),
         line("uncosted_payout", "Less: SKUs with no cost data", -uncosted_payout, "expense", 1,
@@ -252,7 +249,7 @@ def build_consolidated(statements: list[dict]) -> dict:
 
     keys = ["gross_sales", "net_sales", "total_platform_fees", "net_payout",
             "cogs", "fulfillment", "return_cost", "overhead", "total_cost",
-            "gross_profit", "contribution", "operating_profit"]
+            "gross_profit", "contribution", "operating_profit", "uncosted_payout", "costed_payout"]
     agg = {k: round(sum((s["subtotals"].get(k) or 0) for s in statements), 2) for k in keys}
     ns = agg["net_sales"] or 0
     return {
@@ -539,7 +536,7 @@ async def compute_pnl_rows(db, report_id: int, company_id: int) -> Optional[dict
         if not frozen:
             all_frozen = False
         breakeven = cb["breakeven"]
-        breakeven_gst = round(breakeven + cb["gst"], 2)
+        breakeven_gst = round(breakeven * (1 + cb["gst"] / 100), 2)
         # Cost components for the breakeven hover popover. A frozen row only stored
         # aggregates, so it explains itself at that granularity; a live row can show
         # the full granular stack.
@@ -567,8 +564,8 @@ async def compute_pnl_rows(db, report_id: int, company_id: int) -> Optional[dict
             "rewards_benefits": r.rewards_benefits,
             "breakeven": breakeven, "breakeven_gst": breakeven_gst,
             "cost_ops": cost_ops,
-            "target_pre_gst": round(breakeven + (sp.net_profit_amt or 0), 2) if sp else None,
-            "target_post_gst": sp.bank_settlement if sp else None,
+            "target_pre_gst": round(r.casper_expected_bs / (1 + cb["gst"] / 100), 2) if frozen and r.casper_expected_bs is not None else (sp.bs_wo_gst if sp else None),
+            "target_post_gst": r.casper_expected_bs if frozen else (sp.bank_settlement if sp else None),
         })
     result = build_pnl_rows(raw)
     result["report"] = _report_meta(report)
@@ -599,24 +596,23 @@ async def compute_unmatched_skus(db, company_id: int | list[int], report_id: Opt
     if report_id is not None:
         q = q.where(PnlSkuRow.report_id == report_id)
     rows = (await db.execute(q)).all()
-    return [{
-        "platform_sku_name": r.platform_sku_name,
-        "reports": r.reports,
-        "units": int(r.units or 0),
-        "payout": round(r.payout or 0, 2),
+    result = [{
+        "platform_sku_name": r.platform_sku_name, "reports": r.reports,
+        "units": int(r.units or 0), "payout": round(r.payout or 0, 2),
     } for r in rows]
+    if report_id is not None:
+        from app.models.pnl import PnlReport
+        from app.services.marketplace_identity import identity_candidates, normalize_name
+        report = await db.scalar(select(PnlReport).where(PnlReport.id == report_id,
+            PnlReport.company_id.in_(company_ids(company_id))))
+        if report is not None:
+            candidates = await identity_candidates(db, report.company_id, report.platform_id)
+            for item in result:
+                ids = candidates.get(normalize_name(item['platform_sku_name']), set())
+                item['sku_id'] = next(iter(ids)) if len(ids) == 1 else None
+                item['identity_status'] = 'known_product' if len(ids) == 1 else 'ambiguous' if ids else 'unknown_product'
+    return result
 
-
-def _snapshot_from_pricing(sp) -> dict:
-    """Frozen cost snapshot fields for a SkuPricing — mirrors pnl._build_sku_row."""
-    return dict(
-        snap_cogs_per_unit=sp.price,
-        snap_fulfillment_per_unit=(sp.package or 0) + (sp.logistics or 0) + (sp.addons or 0),
-        snap_return_per_unit=(sp.cr_cost or 0) + (sp.damage_cost or 0),
-        snap_overhead_per_unit=sp.misc_total,
-        snap_breakeven=sp.breakeven,
-        snap_gst=sp.gst,
-    )
 
 
 async def rematch_report(db, report_id: int, company_id: int) -> int:
@@ -626,10 +622,10 @@ async def rematch_report(db, report_id: int, company_id: int) -> int:
     a re-upload. Matching mirrors upload: SkuPlatformConfig.platform_sku_name (the
     per-platform alias), case-insensitive.
 
-    Returns the number of rows newly matched.
+    Returns the number of rows newly matched. The caller owns the transaction.
     """
     from app.models.pnl import PnlReport, PnlSkuRow
-    from app.services.pnl import _build_pricing_lookup
+    from app.services.pnl import _build_pricing_lookup, pricing_snapshot
 
     report = await db.scalar(
         _statement_query().where(PnlReport.id == report_id, PnlReport.company_id.in_(company_ids(company_id)))
@@ -643,18 +639,32 @@ async def rematch_report(db, report_id: int, company_id: int) -> int:
 
     matched = 0
     for row in report.sku_rows:
-        if row.sku_pricing_id is not None:
+        if row.sku_pricing_id is not None or row.snap_breakeven is not None:
             continue
         sp = lookup.get((row.platform_sku_name or "").strip().upper())
         if sp is None:
             continue
         row.sku_pricing_id = sp.id
-        for field, value in _snapshot_from_pricing(sp).items():
+        for field, value in pricing_snapshot(sp, row.bank_settlement_projected, row.net_units).items():
             setattr(row, field, value)
         matched += 1
 
     if matched:
-        await db.commit()
+        await db.flush()
+    return matched
+
+
+async def recover_unpriced_reports(db, company_id: int) -> int:
+    """Recover missing costs after a user saves pricing; never restate frozen rows."""
+    from sqlalchemy import select
+    from app.models.pnl import PnlReport, PnlSkuRow
+    await db.flush()
+    report_ids = (await db.scalars(select(PnlReport.id).join(PnlSkuRow).where(
+        PnlReport.company_id == company_id, PnlSkuRow.sku_pricing_id.is_(None),
+        PnlSkuRow.snap_breakeven.is_(None)).distinct())).all()
+    matched = 0
+    for report_id in report_ids:
+        matched += await rematch_report(db, report_id, company_id)
     return matched
 
 
@@ -680,32 +690,62 @@ async def quick_add_hidden_sku(db, company_id: int, report_id: int, platform_sku
     if report is None:
         return {"created": False, "error": "Report not found"}
 
-    platforms = [p for p in await get_platforms(db) if p.id == report.platform_id]
+    platforms = [p for p in await get_platforms(db, company_id) if p.id == report.platform_id]
     if not platforms:
         return {"created": False, "error": "Platform not found"}
 
     name = (platform_sku_name or "").strip()
+    from sqlalchemy import select
+    from app.models.sku import Sku, SkuPricing
+    existing = await db.scalar(
+        select(SkuPricing).join(Sku, Sku.id == SkuPricing.sku_id)
+        .where(Sku.company_id == company_id, Sku.shringar_sku == name.upper())
+        .order_by(SkuPricing.platform_id, SkuPricing.id).limit(1)
+    )
+    from app.services.marketplace_identity import identity_candidates, normalize_name
+    candidates = await identity_candidates(db, company_id, report.platform_id)
+    ids = candidates.get(normalize_name(name), set())
+    if len(ids) > 1:
+        return {"created": False, "error": "Ambiguous product identity; resolve marketplace mapping first"}
+    linked_sku = await db.get(Sku, next(iter(ids))) if ids else None
+    if linked_sku is not None:
+        existing = await db.scalar(select(SkuPricing).where(SkuPricing.company_id == company_id,
+            SkuPricing.sku_id == linked_sku.id, SkuPricing.platform_id == report.platform_id))
+    preserved = {}
+    if existing is not None:
+        for field in ('package', 'logistics', 'addons', 'gst', 'profit_percentage',
+                      'cr_percentage', 'damage_percentage'):
+            preserved[field] = getattr(existing, field)
+        for field in ('misc_total', 'cr_cost', 'damage_cost'):
+            preserved[field] = getattr(existing, field + '_override')
+        sku = await db.get(Sku, existing.sku_id)
+        for field in ('sku_id', 'vendor_id', 'category_id', 'hsn_code_id', 'description',
+                      'vendor_sku', 'series'):
+            preserved[field] = sku.id if field == 'sku_id' else getattr(sku, field)
+    if linked_sku is not None:
+        for field in ('sku_id', 'vendor_id', 'category_id', 'hsn_code_id', 'description', 'vendor_sku', 'series'):
+            preserved[field] = linked_sku.id if field == 'sku_id' else getattr(linked_sku, field)
+    preserved.update(costs or {})
     row = EntryRowInput(
-        sku=name,
+        sku=linked_sku.shringar_sku if linked_sku is not None else name,
         price=price,
         platform_overrides=[PlatformOverride(platform_id=report.platform_id,
                                              platform_sku_name=name)],
-        **(costs or {}),
+        **preserved,
     )
     result = await upsert_row(
         db, row,
-        misc_default=await get_misc_total(db),
-        damage_default=await get_damage_percent(db),
+        misc_default=await get_misc_total(db, company_id),
+        damage_default=await get_damage_percent(db, company_id),
         profit_default=getattr(settings, "DEFAULT_PROFIT_PERCENT", 20.0),
         platforms=platforms,
         company_id=company_id,
     )
     if not result.success:
         return {"created": False, "error": result.error}
-    await db.commit()
-
     rematched = await rematch_report(db, report_id, company_id)
     remaining = await compute_unmatched_skus(db, company_id, report_id)
+    await db.commit()
     return {
         "created": True,
         "sku": name,
@@ -743,6 +783,10 @@ async def compute_pnl_consolidated(db, company_id: int | list[int]) -> dict:
     q = _statement_query().where(PnlReport.company_id.in_(company_ids(company_id))).order_by(PnlReport.period_start.desc())
     reports = (await db.execute(q)).scalars().all()
 
+    from app.services.scope import unambiguous_report_ids
+    eligible = set((await db.scalars(unambiguous_report_ids(company_id))).all())
+    excluded = [report.id for report in reports if report.id not in eligible]
+    reports = [report for report in reports if report.id in eligible]
     index: dict[str, set] = {}
     for rep in reports:
         index.setdefault(_report_meta(rep)["period"], set()).add(rep.platform_id)
@@ -777,6 +821,7 @@ async def compute_pnl_consolidated(db, company_id: int | list[int]) -> dict:
 
     result = build_consolidated(statements)
     result["period"] = period
+    result["excluded_report_ids"] = excluded
     result["excluded_platforms"] = [id_to_name.get(pid) for pid in missing_ids]
 
     if co_names:

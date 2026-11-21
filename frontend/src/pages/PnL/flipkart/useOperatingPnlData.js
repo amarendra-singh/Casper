@@ -23,7 +23,7 @@ import { useMemo } from 'react'
  */
 export function useOperatingPnlData(report) {
   return useMemo(() => {
-    if (!report?.sku_rows) return emptyResult()
+    if (!report?.sku_rows) {return emptyResult()}
 
     const rows          = report.sku_rows
     const matchedRows   = rows.filter(r => r.is_matched && r.casper_breakeven != null)

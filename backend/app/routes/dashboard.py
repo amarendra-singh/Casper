@@ -19,7 +19,7 @@ from app.services.profitability import compute_sku_intelligence
 from app.services.reconciliation import compute_reconciliation
 from app.services.action_pipeline import compute_action_pipeline
 from app.services.operations import compute_operations
-from app.services.scope import company_ids
+from app.services.scope import company_ids, unambiguous_report_ids
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -69,7 +69,7 @@ def _build_metrics_cells(
     rto_rate      = round(rto_u / sku_gross * 100, 1) if sku_gross else None
     fraud_rate    = round(fraud_cnt / total_ord * 100, 1) if total_ord else None
     settle_rate   = round(settle / gross_s * 100, 1) if gross_s else None
-    margin        = round(avg_margin, 1) if avg_margin else None
+    margin        = round(avg_margin, 1) if avg_margin is not None else None
 
     settle_l  = f"₹{settle  / 100_000:.1f}L"
     gross_s_l = f"₹{gross_s / 100_000:.1f}L"
@@ -80,7 +80,7 @@ def _build_metrics_cells(
             "label": "Sell-through",
             "val": _v(sell_thru),
             "unit": "%" if sell_thru is not None else "",
-            "delta": f"▲ {net_u} sold · {gross_u} dispatched" if sell_thru else "Upload P&L",
+            "delta": f"▲ {net_u} sold · {gross_u} dispatched" if sell_thru is not None else "Upload P&L",
             "trend_cls": "up" if sell_thru and sell_thru > 60 else "flat",
             "meter": int(sell_thru) if sell_thru else 0,
             "meter_cls": "cyan",
@@ -90,7 +90,7 @@ def _build_metrics_cells(
             "label": "Customer return",
             "val": _v(cust_ret_rate),
             "unit": "%" if cust_ret_rate is not None else "",
-            "delta": f"▼ {rvp_u} RVP units · customer-initiated" if cust_ret_rate else "Upload P&L",
+            "delta": f"▼ {rvp_u} RVP units · customer-initiated" if cust_ret_rate is not None else "Upload P&L",
             "trend_cls": "down" if cust_ret_rate and cust_ret_rate > 20 else "up",
             "meter": int(cust_ret_rate) if cust_ret_rate else 0,
             "meter_cls": "amber" if cust_ret_rate and cust_ret_rate > 20 else "",
@@ -100,7 +100,7 @@ def _build_metrics_cells(
             "label": "RTO rate",
             "val": _v(rto_rate),
             "unit": "%" if rto_rate is not None else "",
-            "delta": f"▼ {rto_u} RTO units · logistics failure" if rto_rate else "Upload P&L",
+            "delta": f"▼ {rto_u} RTO units · logistics failure" if rto_rate is not None else "Upload P&L",
             "trend_cls": "down" if rto_rate and rto_rate > 10 else "up",
             "meter": int(rto_rate) if rto_rate else 0,
             "meter_cls": "amber" if rto_rate and rto_rate > 10 else "",
@@ -110,7 +110,7 @@ def _build_metrics_cells(
             "label": "Fraud signal rate",
             "val": _v(fraud_rate),
             "unit": "%" if fraud_rate is not None else "",
-            "delta": f"▼ {fraud_cnt} fraud orders · {total_ord} tracked" if fraud_rate else "Upload FK orders",
+            "delta": f"▼ {fraud_cnt} fraud orders · {total_ord} tracked" if fraud_rate is not None else "Upload FK orders",
             "trend_cls": "down" if fraud_rate and fraud_rate > 5 else "up",
             "meter": min(int(fraud_rate * 10), 100) if fraud_rate else 0,
             "meter_cls": "amber",
@@ -120,7 +120,7 @@ def _build_metrics_cells(
             "label": "Settlement rate",
             "val": _v(settle_rate),
             "unit": "%" if settle_rate is not None else "",
-            "delta": f"{settle_l} settled of {gross_s_l} GMV" if settle_rate else "Upload P&L",
+            "delta": f"{settle_l} settled of {gross_s_l} GMV" if settle_rate is not None else "Upload P&L",
             "trend_cls": "up" if settle_rate and settle_rate > 40 else "down",
             "meter": int(settle_rate) if settle_rate else 0,
             "meter_cls": "cyan",
@@ -129,8 +129,8 @@ def _build_metrics_cells(
             "idx": "a05", "dot": None,
             "label": "Avg net margin",
             "val": _v(margin),
-            "unit": "%" if margin else "",
-            "delta": "▲ matched SKUs · breakeven basis" if margin else "Upload P&L",
+            "unit": "%" if margin is not None else "",
+            "delta": "▲ matched SKUs · breakeven basis" if margin is not None else "Upload P&L",
             "trend_cls": "up" if margin and margin > 30 else "flat",
             "meter": int(margin) if margin else 0,
             "meter_cls": "cyan",
@@ -179,7 +179,7 @@ async def _compute_metrics(db: AsyncSession, company_id: int | list[int]) -> lis
             func.coalesce(func.sum(PnlReport.net_units),      0),
             func.coalesce(func.sum(PnlReport.bank_settlement),0.0),
             func.coalesce(func.sum(PnlReport.gross_sales),    0.0),
-        ).where(PnlReport.company_id.in_(_cids))
+        ).where(PnlReport.company_id.in_(_cids), PnlReport.id.in_(unambiguous_report_ids(_cids)))
     )
     pnl = pnl_res.one()
     gross_u, net_u, settle, gross_s = (
@@ -193,7 +193,7 @@ async def _compute_metrics(db: AsyncSession, company_id: int | list[int]) -> lis
             func.coalesce(func.sum(PnlSkuRow.gross_units), 0),
             func.coalesce(func.sum(PnlSkuRow.rvp_units),   0),
             func.coalesce(func.sum(PnlSkuRow.rto_units),   0),
-        ).where(PnlSkuRow.company_id.in_(_cids))
+        ).where(PnlSkuRow.company_id.in_(_cids), PnlSkuRow.report_id.in_(unambiguous_report_ids(_cids)))
     )
     sku_ret = sku_ret_res.one()
     sku_gross = int(sku_ret[0])
@@ -204,7 +204,7 @@ async def _compute_metrics(db: AsyncSession, company_id: int | list[int]) -> lis
     # Both are return-on-cost via sku_pricing.breakeven (see logic.md §6/§6b),
     # so reuse the SKU-intelligence engine instead of a second divergent query.
     _intel = await compute_sku_intelligence(db, company_id)
-    avg_margin = _intel["summary"]["blended_margin_pct"] or 0.0
+    avg_margin = _intel["summary"]["blended_margin_pct"]
 
     # Actor aggregates
     actor_res = await db.execute(
@@ -276,21 +276,21 @@ async def _insight_fraud_spike(db: AsyncSession, company_id: int | list[int]) ->
         "hero": True,
         "tag": "Fraud Detection · auto-detected",
         "tag_cls": "danger",
-        "title1": f"{reason} fraud spike — ",
+        "title1": f"{reason} risk pattern — ",
         "title_em": f"{orders} orders",
         "title2": f" flagged {tier_txt}.",
         "body": (
-            f"100% return rate on {reason} pattern. "
+            f"Return-event cohort for {reason}; not a customer-wide return rate. "
             f"{vel_txt}"
             f"Fraud score {score}/100. "
             f"Signal type: {sig_type}. "
-            f"All {orders} events match this fraud fingerprint."
+            f"Review the {orders} grouped events before making a claim or customer decision."
         ),
         "chips": [
-            {"dot": "#2874F0", "text": "Flipkart"},
+            {"dot": "#2874F0", "text": "Return cohort"},
             {"dot": "#EF4444", "text": reason},
             {"dot": "#F59E0B", "text": f"Score {score}/100"},
-            {"dot": None, "text": "est. impact", "bold": f"−₹{orders * 600:,}"},
+            {"dot": None, "text": "Monetary impact unverified", "bold": ""},
         ],
         "time": _time_label(),
         "cta": "Investigate",
@@ -348,29 +348,41 @@ async def _insight_return_breakdown(db: AsyncSession, company_id: int | list[int
 
 
 async def _insight_platform_health(db: AsyncSession, company_id: int | list[int]) -> dict | None:
-    """Platform margin spread from latest P&L reports."""
+    """Compare recorded payout ratios over the same report period."""
     _cids = company_ids(company_id)
     # Latest report per platform
     result = await db.execute(
         select(PnlReport, Platform.name)
         .join(Platform, Platform.id == PnlReport.platform_id)
-        .where(PnlReport.net_margin_pct.isnot(None), PnlReport.company_id.in_(_cids))
+        .where(PnlReport.gross_sales > 0, PnlReport.bank_settlement.isnot(None),
+               PnlReport.company_id.in_(_cids), PnlReport.id.in_(unambiguous_report_ids(_cids)))
         .order_by(PnlReport.uploaded_at.desc())
     )
     rows = result.all()
+    from app.services.pnl_statement import select_consolidation_period
+    period_key = lambda report: f"{report.period_start}/{report.period_end}"
+    index = {}
+    for report, _ in rows:
+        index.setdefault(period_key(report), set()).add(report.platform_id)
+    period, _ = select_consolidation_period(index)
+    rows = [(report, name) for report, name in rows if period_key(report) == period]
+
     if not rows:
         return None
 
     # Deduplicate by platform (keep latest)
     seen = {}
     for report, plat_name in rows:
-        if plat_name not in seen:
-            seen[plat_name] = report
+        key = f"{plat_name} (company {report.company_id})" if len(_cids) > 1 else plat_name
+        if key not in seen:
+            seen[key] = report
 
     if len(seen) < 1:
         return None
 
-    margins = {name: r.net_margin_pct for name, r in seen.items()}
+    margins = {name: (r.bank_settlement or 0) / r.gross_sales * 100 for name, r in seen.items() if r.gross_sales and r.gross_sales > 0}
+    if not margins:
+        return None
     best_plat  = max(margins, key=margins.get)
     worst_plat = min(margins, key=margins.get)
     best_m     = margins[best_plat]
@@ -379,20 +391,20 @@ async def _insight_platform_health(db: AsyncSession, company_id: int | list[int]
 
     if len(seen) == 1:
         body = (
-            f"{best_plat} operating at {best_m:.1f}% net margin. "
+            f"{best_plat} operating at {best_m:.1f}% payout ratio before product costs. "
             f"Bank settlement: {_fmt_l(seen[best_plat].bank_settlement or 0)}. "
             f"Add more platforms to compare performance."
         )
-        title = f"{best_plat} P&L live — {best_m:.1f}% net margin"
+        title = f"{best_plat} P&L live — {best_m:.1f}% payout ratio before product costs"
         chip  = None
     else:
         body = (
-            f"{best_plat} leading at {best_m:.1f}% margin. "
+            f"{best_plat} leading at {best_m:.1f}% payout ratio before product costs. "
             f"{worst_plat} trailing at {worst_m:.1f}%. "
             f"Gap: {diff:.1f}pp across {len(seen)} active platforms. "
             f"Total settlement: {_fmt_l(sum((r.bank_settlement or 0) for r in seen.values()))}."
         )
-        title = f"{best_plat} margin leading across {len(seen)} platforms"
+        title = f"{best_plat} payout ratio comparison across {len(seen)} platforms"
         chip  = {"text": f"+{diff:.1f}pp vs {worst_plat}", "cls": "up"}
 
     return {
@@ -401,7 +413,7 @@ async def _insight_platform_health(db: AsyncSession, company_id: int | list[int]
         "tag_cls": "emerald",
         "title": title,
         "title_chip": chip,
-        "body": body,
+        "body": body + f" Period: {period}. Comparisons use the same report coverage.",
         "time": _time_label(),
         "cta": "Compare P&L",
     }

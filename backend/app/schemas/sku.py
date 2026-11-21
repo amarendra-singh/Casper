@@ -1,6 +1,7 @@
+import math
 # BaseModel is Pydantic's base class — it gives us automatic 
 # data validation, type checking, and JSON parsing for free.
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 # Optional datetime for response models
 from datetime import datetime
@@ -10,12 +11,22 @@ from app.schemas.hsn_code import HsnCodeResponse
 # ── SKU Schemas ───────────────────────────────────────────
 
 class SkuCreate(BaseModel):
-    shringar_sku: str
-    vendor_sku: Optional[str] = None
+    shringar_sku: str = Field(min_length=1, max_length=150)
+    display_name: Optional[str] = Field(default=None, max_length=200)
+    vendor_sku: Optional[str] = Field(default=None, max_length=150)
     vendor_id: Optional[int] = None
     category_id: Optional[int] = None
     hsn_code_id: Optional[int] = None
     description: str | None = None
+    reverse_shipping_platform_id: int | None = None
+    reverse_shipping_charge: float | None = Field(default=None, ge=0)
+
+    @field_validator('reverse_shipping_charge')
+    @classmethod
+    def finite_reverse_shipping(cls, value):
+        if value is not None and not math.isfinite(value):
+            raise ValueError('Reverse shipping charge must be finite')
+        return value
 
     # field_validator lets us run custom logic on a field before saving
     # 'shringar_sku' = which field to validate
@@ -41,6 +52,7 @@ class SkuResponse(BaseModel):
     id: int
     company_id: Optional[int] = None  # nullable on the model — legacy pre-tenancy rows
     shringar_sku: str
+    display_name: Optional[str] = None
     vendor_sku:  Optional[str] = None
     vendor_id:   Optional[int] = None
     category_id: Optional[int] = None
@@ -58,6 +70,13 @@ class SkuResponse(BaseModel):
 # ── Pricing Schemas ───────────────────────────────────────
 
 class PricingCreate(BaseModel):
+    @field_validator('price', 'package', 'logistics', 'addons', 'misc_total', 'cr_percentage', 'cr_cost', 'damage_percentage', 'damage_cost', 'gst', 'profit_percentage')
+    @classmethod
+    def valid_economics(cls, value):
+        if value is not None and (not math.isfinite(value) or value < 0):
+            raise ValueError('Cost/rate must be finite and nonnegative')
+        return value
+
     sku_id: int
     platform_id: int
 
@@ -84,6 +103,13 @@ class PricingCreate(BaseModel):
 
 
 class PricingUpdate(BaseModel):
+    @field_validator('price', 'package', 'logistics', 'addons', 'misc_total', 'cr_percentage', 'cr_cost', 'damage_percentage', 'damage_cost', 'gst', 'profit_percentage')
+    @classmethod
+    def valid_economics(cls, value):
+        if value is not None and (not math.isfinite(value) or value < 0):
+            raise ValueError('Cost/rate must be finite and nonnegative')
+        return value
+
     # Every field optional — user can update just price,
     # and all calculations will recompute automatically
     price: float | None = None
@@ -100,6 +126,10 @@ class PricingUpdate(BaseModel):
 
 
 class PricingResponse(BaseModel):
+    company_id: int
+    cr_cost_override: float | None = None
+    damage_cost_override: float | None = None
+    misc_total_override: float | None = None
     id: int
     sku_id: int
     platform_id: int

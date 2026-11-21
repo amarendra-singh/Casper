@@ -1,3 +1,4 @@
+from app.core.time import utcnow
 from datetime import datetime, date
 from typing import Optional
 from sqlalchemy import String, Float, Date, DateTime, Integer, Text, ForeignKey
@@ -27,7 +28,7 @@ class LedgerEntry(Base):
     __tablename__ = "ledger_entries"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    company_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("companies.id"), nullable=True, index=True)
+    company_id: Mapped[int] = mapped_column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
 
     entry_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     direction: Mapped[str] = mapped_column(String(10), nullable=False, default="expense")  # expense | income
@@ -49,5 +50,5 @@ class LedgerEntry(Base):
     note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     created_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)

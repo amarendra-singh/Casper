@@ -9,7 +9,7 @@
   --canvas:      #FFFFFF;   /* content card */
   --ink:         #0E0E10;   /* primary text */
   --ink-2:       #1a1a1d;
-  --muted:       #9A9A9F;   /* subdued text */
+  --muted:       #6B6866;   /* subdued text */
   --muted-2:     #B8B6B2;
   --rule:        #EDEAE6;   /* borders/dividers */
   --chip:        #F2F0EC;   /* chip/pill bg */
@@ -239,3 +239,6 @@ tr:hover td { background: var(--shell); color: var(--ink); }
   content: ''; position: absolute; left: 0; top: 0; bottom: 0;
   width: 3px; background: var(--co-mark, transparent);
 }
+
+.pnl-sort-button { background: transparent; border: 0; color: inherit; font: inherit; text-align: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }

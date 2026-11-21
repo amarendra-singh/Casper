@@ -18,7 +18,7 @@ const MARGIN_FOR = {
 }
 
 function money(v) {
-  if (v == null) return '—'
+  if (v == null) {return '—'}
   const neg = v < 0
   const s = fmt(Math.abs(v))
   return neg ? `(${s})` : s
@@ -40,8 +40,8 @@ export default function IncomeStatement({ report }) {
     return () => { alive = false }
   }, [report.id, report.platform_id])
 
-  if (loading) return <div className="pnl-body"><div className="pnl-empty">Building statement…</div></div>
-  if (err || !stmt) return <div className="pnl-body"><div className="pnl-empty">{err || 'No statement data'}</div></div>
+  if (loading) {return <div className="pnl-body"><div className="pnl-empty">Building statement…</div></div>}
+  if (err || !stmt) {return <div className="pnl-body"><div className="pnl-empty">{err || 'No statement data'}</div></div>}
 
   const st = stmt.subtotals, m = stmt.margins, rec = stmt.reconciliation, cov = stmt.coverage
   const reconciled = Math.abs(rec.variance || 0) < 1

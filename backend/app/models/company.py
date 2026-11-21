@@ -6,6 +6,8 @@ grants a user access to a company with a role. CompanyModule enables/disables
 modules per company. All tenant data is scoped by company_id (added to the
 existing entities in the data-scoping phase).
 """
+from app.core.time import utcnow
+
 import enum
 from datetime import datetime
 from sqlalchemy import String, DateTime, Boolean, ForeignKey, Enum as SAEnum, UniqueConstraint
@@ -32,7 +34,7 @@ class Company(Base):
     color: Mapped[str] = mapped_column(String(20), default="#EC2D6E", nullable=False)
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
 
 class CompanyMembership(Base):
@@ -43,7 +45,7 @@ class CompanyMembership(Base):
     company_id: Mapped[int] = mapped_column(ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     role: Mapped[CompanyRole] = mapped_column(SAEnum(CompanyRole), default=CompanyRole.viewer, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
 
 class CompanyModule(Base):

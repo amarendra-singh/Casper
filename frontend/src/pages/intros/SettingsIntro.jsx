@@ -33,9 +33,9 @@ export default function SettingsIntro() {
         </p>
         <ul>
           <li><strong>Name</strong> — Flipkart, Meesho, Snapdeal, Amazon, etc.</li>
-          <li><strong>Reverse-ship cost (CR Charge)</strong> — what the platform charges you when a
-            customer returns an item. Currently: Flipkart = ₹168. Used as the anchor for CR Reserve
-            in every SKU: <code>CR ₹ = CR % × reverse_ship_cost</code>.</li>
+          <li><strong>Reverse shipping / return</strong> — what that platform charges when a customer
+            returns an item. It anchors the expected return cost:
+            <code> Return ₹ = Return % × reverse-shipping charge</code>.</li>
           <li><strong>Default AD %</strong> — platform-wide advertising default. Snapdeal = 10%.
             Can be overridden per SKU via ad-report upload on the SKUs page.</li>
         </ul>
@@ -67,14 +67,14 @@ export default function SettingsIntro() {
       <IntroSection title="How settings flow into pricing">
         <p>The chain from Settings → SKU price:</p>
         <ol>
-          <li>Settings: <strong>reverse_ship_cost = ₹168</strong> for Flipkart</li>
-          <li>SKUs page: CR % = 20% → <strong>CR Reserve = 20% × 168 = ₹33.60/unit</strong></li>
-          <li>Breakeven includes CR Reserve → rises by ₹33.60</li>
+          <li>Settings: enter that platform's <strong>reverse-shipping charge per return</strong></li>
+          <li>SKUs page: expected return cost = return percentage × that charge</li>
+          <li>Breakeven includes the expected return cost</li>
           <li>Target Post-GST rises accordingly → Listing Price rises</li>
         </ol>
         <p>
-          If Flipkart raises their reverse-ship fee from ₹168 → ₹185, update it here once —
-          all 50 SKUs recalculate automatically.
+          If a platform changes its reverse-shipping fee, update its platform card here.
+          Review saved SKU prices and refresh them when needed.
         </p>
       </IntroSection>
 

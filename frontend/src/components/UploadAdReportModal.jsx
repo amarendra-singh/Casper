@@ -1,3 +1,4 @@
+import ConfirmDialog from './ConfirmDialog'
 import { useState } from 'react'
 // xlsx is lazy-loaded inside the file handler (keeps it out of the main bundle).
 
@@ -26,7 +27,7 @@ import { useState } from 'react'
  *   onClose    — () => void
  */
 export default function UploadAdReportModal({ platform, rows, onApply, onClose }) {
-  const [file,        setFile]        = useState(null)
+  const [,        setFile]        = useState(null)
   const [parsing,     setParsing]     = useState(false)
   const [parseError,  setParseError]  = useState('')
   const [matched,     setMatched]     = useState([])  // [{ rowId, sku, adAmt, spend, orders }]
@@ -36,7 +37,7 @@ export default function UploadAdReportModal({ platform, rows, onApply, onClose }
 
   const handleFile = e => {
     const f = e.target.files?.[0]
-    if (!f) return
+    if (!f) {return}
     setFile(f)
     setParseError('')
     setParsing(true)
@@ -54,7 +55,7 @@ export default function UploadAdReportModal({ platform, rows, onApply, onClose }
           const keys = Object.keys(row)
           for (const n of names) {
             const k = keys.find(k => k.trim().toLowerCase() === n.toLowerCase())
-            if (k) return k
+            if (k) {return k}
           }
           return null
         }
@@ -78,7 +79,7 @@ export default function UploadAdReportModal({ platform, rows, onApply, onClose }
           const sku    = String(r[skuKey] ?? '').trim()
           const spend  = parseFloat(r[spendKey])
           const orders = parseFloat(r[ordersKey])
-          if (!sku) return
+          if (!sku) {return}
           if (!Number.isFinite(spend) || !Number.isFinite(orders) || orders <= 0) {
             U.push({ sku, spend, orders, reason: 'invalid spend/orders' })
             return
@@ -115,21 +116,21 @@ export default function UploadAdReportModal({ platform, rows, onApply, onClose }
   }
 
   const apply = () => {
-    if (matched.length === 0) return
+    if (matched.length === 0) {return}
     onApply(matched.map(m => ({ rowId: m.rowId, adAmt: m.adAmt })))
   }
 
   return (
-    <div className="overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal" style={{ maxWidth: 640, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-        <div className="modal-title">Upload Ad Report · {platform.name}</div>
+    <ConfirmDialog open title="Upload Ad Report" dialogRole="dialog"
+      onCancel={() => !parsing && onClose()} onConfirm={apply}
+      confirmLabel="Apply matched SKUs" confirmDisabled={matched.length === 0 || parsing}>
 
         <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 10 }}>
           File should have columns: <strong>SKU</strong>, <strong>Spend</strong>, <strong>Orders</strong>.
           Per-SKU AD ₹/unit = Spend ÷ Orders.
         </div>
 
-        <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFile}
+        <input aria-label={"Advertising report file"} type="file" accept=".csv,.xlsx,.xls" onChange={handleFile}
           style={{ marginBottom: 10 }} />
 
         {parsing && <div style={{ fontSize: 12 }}>Parsing…</div>}
@@ -201,14 +202,6 @@ export default function UploadAdReportModal({ platform, rows, onApply, onClose }
           )}
         </div>
 
-        <div className="form-actions" style={{ marginTop: 12 }}>
-          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-gold" onClick={apply}
-            disabled={matched.length === 0 || parsing}>
-            Apply to {matched.length} SKU{matched.length === 1 ? '' : 's'}
-          </button>
-        </div>
-      </div>
-    </div>
+    </ConfirmDialog>
   )
 }

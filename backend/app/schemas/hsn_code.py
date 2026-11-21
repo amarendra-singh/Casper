@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 class HsnCodeCreate(BaseModel):
@@ -20,5 +20,4 @@ class HsnCodeResponse(BaseModel):
     category:    Optional[str]
     is_custom:   bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

@@ -17,6 +17,7 @@ const SIGNAL_LABEL = {
 }
 
 export default function ActorIntelligenceTab() {
+  const [error, setError] = useState('')
   const [overview, setOverview] = useState(null)
   const [actors,   setActors]   = useState([])
   const [loading,  setLoading]  = useState(true)
@@ -31,11 +32,11 @@ export default function ActorIntelligenceTab() {
     ]).then(([ov, ac]) => {
       setOverview(ov.data)
       setActors(ac.data.actors || [])
-    }).catch(console.error).finally(() => setLoading(false))
+    }).catch(() => setError('Could not load risk data. Please retry.')).finally(() => setLoading(false))
   }, [])
 
   const toggle = key => {
-    if (sort === key) setDesc(d => !d)
+    if (sort === key) {setDesc(d => !d)}
     else { setSort(key); setDesc(true) }
   }
 
@@ -50,7 +51,8 @@ export default function ActorIntelligenceTab() {
       return desc ? bv - av : av - bv
     })
 
-  if (loading) return <div className="fd-loading">Loading actor intelligence…</div>
+  if (error) {return <div role="alert">{error} <button onClick={() => window.location.reload()}>Retry</button></div>}
+  if (loading) {return <div className="fd-loading">Loading actor intelligence…</div>}
 
   return (
     <div className="actor-tab">
@@ -84,7 +86,7 @@ export default function ActorIntelligenceTab() {
         Each row = a behavioural actor fingerprint (state × return reason). Fraud is committed by actors, not SKUs.
       </p>
 
-      <input
+      <input aria-label="Search state or reason…"
         className="fd-search"
         placeholder="Search state or reason…"
         value={filter}
@@ -92,6 +94,7 @@ export default function ActorIntelligenceTab() {
         style={{ marginBottom: '12px', width: '280px' }}
       />
 
+      <p>State and reason rows describe return cohorts, not individual customers. ShopDeck customer identities require source verification.</p>
       <div className="fd-table-wrap">
         <table className="fd-table">
           <thead>

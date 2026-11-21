@@ -1,7 +1,7 @@
 // Shared formatters for Flipkart P&L views.
 
 export const fmt = (v, d = 0) => {
-  if (v == null) return '—'
+  if (v == null) {return '—'}
   const n = Number(v)
   const abs = Math.abs(n).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d })
   return (n < 0 ? '-' : '') + '₹' + abs
@@ -14,6 +14,6 @@ const parseLocalDate = s => s ? new Date(s + 'T00:00:00') : null
 
 export const fmtPeriod = (start, end) => {
   const s = parseLocalDate(start), e = parseLocalDate(end)
-  if (!s || !e) return '—'
+  if (!s || !e) {return '—'}
   return `${s.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })} — ${e.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`
 }

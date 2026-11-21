@@ -7,11 +7,13 @@ class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null } }
   static getDerivedStateFromError(e) { return { error: e } }
   render() {
-    if (this.state.error) return (
-      <pre style={{ padding: 24, color: 'red', whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 13 }}>
-        {this.state.error?.message}{'\n\n'}{this.state.error?.stack}
-      </pre>
-    )
+    if (this.state.error) {return (
+      <div role="alert" style={{ padding: 24 }}>
+        <h1>Something went wrong</h1>
+        <p>Reload to recover. Your saved records are safe.</p>
+        <button className="btn btn-ghost" onClick={() => window.location.reload()}>Reload application</button>
+      </div>
+    )}
     return this.props.children
   }
 }
@@ -21,7 +23,12 @@ import Register from './pages/Register'
 // Route pages are code-split so heavy deps (recharts) load
 // only when their page is visited — keeps the initial bundle small.
 const Dashboard = lazy(() => import('./pages/Dashboard'))
-const SKUs = lazy(() => import('./pages/SKUs'))
+
+const ProductLayout = lazy(() => import('./pages/Product/ProductLayout'))
+const UnitEconomics = lazy(() => import('./pages/Product/UnitEconomics'))
+const Catalogue = lazy(() => import('./pages/Product/Catalogue'))
+const ProductProfile = lazy(() => import('./pages/Product/ProductProfile'))
+const CategoriesPage = lazy(() => import('./pages/Product/Categories'))
 const Pricing = lazy(() => import('./pages/Pricing'))
 const Vendors = lazy(() => import('./pages/Vendors'))
 const PnLList = lazy(() => import('./pages/PnL/PnLList'))
@@ -49,12 +56,13 @@ const RouteLoader = () => (
 )
 
 function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth()
-  if (loading) return (
+  const { user, loading, error, retrySession } = useAuth()
+  if (error) {return <div role="alert">{error} <button onClick={retrySession}>Retry</button></div>}
+  if (loading) {return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh' }}>
       <div className="loader" style={{ width:32, height:32 }} />
     </div>
-  )
+  )}
   return user ? children : <Navigate to="/login" replace />
 }
 
@@ -63,8 +71,9 @@ function ProtectedRoute({ children }) {
 // to enabled, so we only block on an explicit `false`. Settings is never
 // gated — it's where an owner re-enables modules.
 function RequireModule({ module, children }) {
-  const { modules } = useCompany()
-  if (modules && modules[module] === false) return (
+  const { modules, contextReady } = useCompany()
+  if (!contextReady) {return <div role="status">Loading company access…</div>}
+  if (modules && modules[module] === false) {return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'60vh', gap:10, textAlign:'center', padding:24 }}>
       <div style={{ fontSize:15, fontWeight:600 }}>This module is turned off for this company</div>
       <div style={{ fontSize:13, color:'var(--text-2)', maxWidth:380 }}>
@@ -72,7 +81,7 @@ function RequireModule({ module, children }) {
       </div>
       <Link to="/settings" style={{ fontSize:13, textDecoration:'underline' }}>Go to Settings</Link>
     </div>
-  )
+  )}
   return children
 }
 
@@ -86,7 +95,15 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="skus/intro" element={<RequireModule module="skus"><SKUsIntro /></RequireModule>} />
-        <Route path="skus" element={<RequireModule module="skus"><SKUs /></RequireModule>} />
+        <Route path="skus" element={<Navigate to="/product/unit-economics" replace />} />
+        <Route path="product" element={<RequireModule module="skus"><ProductLayout /></RequireModule>}>
+          <Route index element={<Navigate to="catalogue" replace />} />
+          <Route path="catalogue" element={<Catalogue />} />
+          <Route path="catalogue/:skuId" element={<ProductProfile />} />
+          <Route path="unit-economics" element={<UnitEconomics />} />
+          <Route path="inventory" element={<Navigate to="/product/catalogue" replace />} />
+          <Route path="categories" element={<CategoriesPage />} />
+        </Route>
         <Route path="calculator" element={<RequireModule module="calculator"><ProfitCalculator /></RequireModule>} />
         <Route path="ledger" element={<RequireModule module="ledger"><Ledger /></RequireModule>} />
         <Route path="billing" element={<RequireModule module="billing"><Billing /></RequireModule>} />

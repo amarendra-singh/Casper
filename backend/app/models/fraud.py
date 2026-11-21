@@ -5,23 +5,21 @@ OrderEvent     — one row per order from any platform upload.
 SkuRiskScore   — computed risk intelligence per SKU per platform (recalculated on every upload).
 FraudAlert     — specific actionable alert with evidence, generated after each upload.
 """
+from app.core.time import utcnow
+
 
 from datetime import datetime, date
 from typing import Optional
-from sqlalchemy import String, Float, Boolean, DateTime, Date, Integer, ForeignKey, Text
+from sqlalchemy import String, Float, Boolean, DateTime, Date, Integer, ForeignKey, Text, Index, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
 
 class OrderEvent(Base):
     __tablename__ = "order_events"
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    company_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
-    report_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("pnl_reports.id", ondelete="CASCADE"), nullable=True)
-    platform_id: Mapped[int] = mapped_column(Integer, ForeignKey("platforms.id"), nullable=False)
-    sku_pricing_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("sku_pricing.id"), nullable=True)
-
+    # These exist in the database from migration e1f2a3b4c5d6 but were never
+    # declared here, so autogenerate kept proposing to drop them. order_events
+    # is the fraud fact table (2.6k rows and growing) — they stay.
     # Raw order identifiers
     external_order_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     sku_platform_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -62,6 +60,25 @@ class OrderEvent(Base):
     sale_amount: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     settled_amount: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    company_id: Mapped[int] = mapped_column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
+    report_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("pnl_reports.id", ondelete="CASCADE"), nullable=True)
+    platform_id: Mapped[int] = mapped_column(Integer, ForeignKey("platforms.id"), nullable=False)
+    sku_pricing_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("sku_pricing.id"), nullable=True)
+
+    is_current: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+
+    __table_args__ = (
+        Index("ix_order_events_order_date", "order_date"),
+        Index("ix_order_events_platform_id", "platform_id"),
+        Index("ix_order_events_report_id", "report_id"),
+        Index("ix_order_events_sku", "sku_platform_name"),
+
+        Index('uq_standalone_order_identity', 'company_id', 'platform_id', 'external_order_id', 'sku_platform_name',
+              unique=True, sqlite_where=report_id.is_(None) & external_order_id.isnot(None) & is_current.is_(True),
+              postgresql_where=report_id.is_(None) & external_order_id.isnot(None) & is_current.is_(True)),
+    )
+
     # Relationships
     report: Mapped["PnlReport"] = relationship("PnlReport")
     platform: Mapped["Platform"] = relationship("Platform")
@@ -74,13 +91,17 @@ class SkuRiskScore(Base):
     Z-score based — adapts as more data accumulates.
     """
     __tablename__ = "sku_risk_scores"
+    __table_args__ = (
+        Index("ix_sku_risk_platform", "platform_id"),
+        Index("ix_sku_risk_tier", "risk_tier"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    company_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
+    company_id: Mapped[int] = mapped_column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
     sku_pricing_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("sku_pricing.id"), nullable=True)
     platform_id: Mapped[int] = mapped_column(Integer, ForeignKey("platforms.id"), nullable=False)
     sku_platform_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    computed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    computed_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     # Raw counts
     gross_orders: Mapped[int] = mapped_column(Integer, default=0)
@@ -138,7 +159,7 @@ class FraudAlert(Base):
     __tablename__ = "fraud_alerts"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    company_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
+    company_id: Mapped[int] = mapped_column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
     platform_id: Mapped[int] = mapped_column(Integer, ForeignKey("platforms.id"), nullable=False)
     report_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("pnl_reports.id", ondelete="CASCADE"), nullable=True)
 
@@ -151,7 +172,7 @@ class FraudAlert(Base):
     sku_platform_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     amount: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # ₹ impact
     is_resolved: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     platform: Mapped["Platform"] = relationship("Platform")
 
@@ -165,7 +186,7 @@ class ReturnReasonCluster(Base):
     __tablename__ = "return_reason_clusters"
 
     id:                Mapped[int]           = mapped_column(primary_key=True, autoincrement=True)
-    company_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
+    company_id: Mapped[int] = mapped_column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
     platform_id:       Mapped[int]           = mapped_column(Integer, ForeignKey("platforms.id"), nullable=False)
     return_reason:     Mapped[str]           = mapped_column(String(255), nullable=False)
     return_sub_reason: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
@@ -185,7 +206,7 @@ class StateRiskProfile(Base):
     __tablename__ = "state_risk_profiles"
 
     id:           Mapped[int]             = mapped_column(primary_key=True, autoincrement=True)
-    company_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
+    company_id: Mapped[int] = mapped_column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
     state_code:   Mapped[str]             = mapped_column(String(10),  nullable=False)
     state_name:   Mapped[str]             = mapped_column(String(100), nullable=False)
     total_orders: Mapped[int]             = mapped_column(Integer, default=0)
@@ -205,10 +226,13 @@ class ActorRiskProfile(Base):
       return_rate(0-25) + fraud_reason_rate(0-30) + velocity(0-25) + repeat_pattern(0-20)
     """
     __tablename__ = "actor_risk_profiles"
+    # An actor is a buyer identity. Globally unique meant the second company
+    # to see the same buyer could not record its own risk profile for them.
+    __table_args__ = (UniqueConstraint("company_id", "actor_key", name="uq_actor_company_key"),)
 
     id:                 Mapped[int]            = mapped_column(primary_key=True, autoincrement=True)
-    company_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
-    actor_key:          Mapped[str]            = mapped_column(String(64), nullable=False, unique=True)
+    company_id: Mapped[int] = mapped_column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
+    actor_key:          Mapped[str]            = mapped_column(String(64), nullable=False, index=True)
     state_name:         Mapped[Optional[str]]  = mapped_column(String(100), nullable=True)
     dominant_reason:    Mapped[Optional[str]]  = mapped_column(String(255), nullable=True)
     fraud_signal_type:  Mapped[Optional[str]]  = mapped_column(String(50),  nullable=True)
@@ -219,3 +243,9 @@ class ActorRiskProfile(Base):
     actor_fraud_score:  Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     risk_tier:          Mapped[str]            = mapped_column(String(20), default="GREEN")
     computed_at:        Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+# Forward references avoid runtime import cycles between mapped models.
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.models.pnl import PnlReport
+    from app.models.platform import Platform

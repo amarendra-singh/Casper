@@ -13,11 +13,11 @@ import './ProfitCalculator.css'
 
 const num = v => (v === '' || v == null ? 0 : parseFloat(v) || 0)
 const r2 = n => Math.round(n * 100) / 100
-const rupee = n => `₹${(r2(n)).toLocaleString('en-IN')}`
+const rupee = n => n == null ? 'No finite break-even' : `₹${(r2(n)).toLocaleString('en-IN')}`
 const pct1 = n => `${(Math.round(n * 10) / 10).toLocaleString('en-IN')}%`
 
 // Money fields resolve to ₹ from either unit; rate fields are always %.
-const MONEY = ['commission', 'shipping', 'paymentFee', 'ads', 'rtoShip', 'cogs', 'packaging', 'other']
+
 
 const GROUPS = [
   { title: 'Revenue', fields: [{ key: 'price', label: 'Selling price', hint: 'What the customer pays', money: false, unit: '₹' }] },
@@ -84,7 +84,8 @@ export function calc(v) {
   const returnLoss = adsAmt + shipLegsAmt + haircutAmt
 
   const rto = num(v.rtoPct) / 100, cancel = num(v.cancelPct) / 100, ret = num(v.returnPct) / 100
-  const delivered = Math.max(0, 1 - rto - cancel - ret)
+  const valid = [rto, cancel, ret, hc].every(x => Number.isFinite(x) && x >= 0 && x <= 1) && rto + cancel + ret <= 1
+  const delivered = valid ? 1 - rto - cancel - ret : 0
   const rtoDrag = rto * rtoLoss, cancelDrag = cancel * cancelLoss, returnDrag = ret * returnLoss
   const totalDrag = rtoDrag + cancelDrag + returnDrag
   const blendedProfit = delivered * deliveredProfit - totalDrag
@@ -104,12 +105,12 @@ export function calc(v) {
   const dragFrac = rto * lossFrac + cancel * lossFrac + ret * retLossFrac
   const dragFix = rto * lossFix + cancel * lossFix + ret * retLossFix
   const denom = delivered * (1 - dFrac) - dragFrac
-  const breakeven = denom > 0 ? (delivered * dFix + dragFix) / denom : 0
+  const breakeven = denom > 0 ? (delivered * dFix + dragFix) / denom : null
 
   const gstOnSale = P * num(v.gstPct) / 100
 
   return {
-    commissionAmt, fwd, payAmt, adsAmt, netSettlement, productCost, deliveredProfit,
+    valid, commissionAmt, fwd, payAmt, adsAmt, netSettlement, productCost, deliveredProfit,
     rtoLoss, cancelLoss, returnLoss, haircutAmt,
     rtoDrag, cancelDrag, returnDrag, totalDrag, blendedProfit, deliveredShare: delivered,
     deliveredMarginCost, deliveredMarginRev, netMargin, breakeven, gstOnSale, own,
@@ -128,6 +129,7 @@ export default function ProfitCalculator() {
 
   return (
     <div className="pcalc">
+      {!o.valid && <p role="alert">Enter rates between 0% and 100%. RTO, cancellation and return rates must total at most 100%; each is a share of all attempted orders. Results are unavailable until corrected.</p>}
       <header className="pcalc-head">
         <div>
           <h1 className="pcalc-title">Profit calculator</h1>
@@ -175,6 +177,7 @@ export default function ProfitCalculator() {
           {/* Compact summary rail */}
           <div className="pcalc-results">
             <div className="pcalc-result-card">
+              {o.valid ? <>
               <div className={`pcalc-hero ${blendedPos ? 'pos' : 'neg'}`}>
                 <span className="pcalc-hero-label">Blended profit / order</span>
                 <span className="pcalc-hero-val">{rupee(o.blendedProfit)}</span>
@@ -183,15 +186,16 @@ export default function ProfitCalculator() {
               <div className="pcalc-metrics">
                 <Metric label="Net margin" hint="blended, on revenue" val={pct1(o.netMargin)} tone={blendedPos ? 'pos' : 'neg'} />
                 <Metric label="Delivered profit" hint="best case" val={rupee(o.deliveredProfit)} tone={deliveredPos ? 'pos' : 'neg'} />
-                <Metric label="Break-even price" hint="failure-adjusted" val={rupee(o.breakeven)} tone="neutral" />
+                <Metric label="Break-even price" hint="failure-adjusted" val={o.valid ? rupee(o.breakeven) : 'Invalid rates'} tone="neutral" />
                 <Metric label="Failure drag" hint="per order" val={`−${rupee(o.totalDrag)}`} tone="neg" />
               </div>
+              </> : <p role="status">Correct the invalid rates to calculate results.</p>}
               <p className="pcalc-note">Open the <b>Overview</b> tab for the full step-by-step calculation.</p>
             </div>
           </div>
         </div>
       ) : (
-        <Overview v={v} o={o} own={own} />
+        o.valid ? <Overview v={v} o={o} own={own} /> : <p role="status">Correct the rates in Calculator before viewing results.</p>
       )}
     </div>
   )
@@ -243,7 +247,7 @@ function Overview({ v, o, own }) {
             <Row label="Blended profit / order" val={rupee(o.blendedProfit)} kind={blendedPos ? 'pos' : 'neg-bold'} />
           </div>
           <div className="pcalc-metrics">
-            <Metric label="Break-even price" hint="failure-adjusted" val={rupee(o.breakeven)} tone="neutral" />
+            <Metric label="Break-even price" hint="failure-adjusted" val={o.valid ? rupee(o.breakeven) : 'Invalid rates'} tone="neutral" />
             <Metric label="Return haircut" hint="COGS lost / return" val={rupee(o.haircutAmt)} tone="neutral" />
             <Metric label="Channel" val={own ? 'Own website' : 'Marketplace'} tone="muted" />
             <Metric label="GST on sale" hint={`${num(v.gstPct)}% · info`} val={rupee(o.gstOnSale)} tone="muted" />
@@ -264,7 +268,7 @@ function MoneyField({ f, field, price, onChange }) {
     ? `= ${rupee(amt)}`
     : `= ${price > 0 ? pct1(amt / price * 100) : '—'} of price`
   const toUnit = u => {
-    if (u === field.u) return
+    if (u === field.u) {return}
     const nv = u === 'pct' ? (price > 0 ? String(r2(amt / price * 100)) : field.v) : String(r2(amt))
     onChange({ v: nv, u })
   }
@@ -290,7 +294,7 @@ function RateField({ f, value, onChange }) {
       <span className="pcalc-flabel">{f.label}{f.hint && <span className="pcalc-fhint">{f.hint}</span>}</span>
       <span className="pcalc-input-wrap">
         <span className="pcalc-unit">{f.unit}</span>
-        <input type="number" inputMode="decimal" min="0" step="any" className="pcalc-input"
+        <input type="number" inputMode="decimal" min="0" max="100" step="any" className="pcalc-input"
           value={value} onChange={e => onChange(e.target.value)} aria-label={f.label} />
       </span>
     </label>

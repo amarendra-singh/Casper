@@ -36,22 +36,22 @@ export default function Register() {
         <form onSubmit={handleSubmit} className="login-form">
           <div className="input-group">
             <label htmlFor="reg-name">Your name</label>
-            <input id="reg-name" className="input" placeholder="Priya Sharma"
-              value={form.name} onChange={e => set('name', e.target.value)} required autoFocus />
+            <input aria-label={"Your name"} id="reg-name" className="input" placeholder="Priya Sharma"
+              value={form.name} onChange={e => set('name', e.target.value)} required  />
           </div>
           <div className="input-group">
             <label htmlFor="reg-email">Email</label>
-            <input id="reg-email" className="input" type="email" placeholder="you@example.com"
+            <input aria-label={"Email"} id="reg-email" className="input" type="email" placeholder="you@example.com"
               value={form.email} onChange={e => set('email', e.target.value)} required />
           </div>
           <div className="input-group">
             <label htmlFor="reg-password">Password</label>
-            <input id="reg-password" className="input" type="password" placeholder="••••••••"
-              value={form.password} onChange={e => set('password', e.target.value)} required minLength={6} />
+            <input aria-label={"Password"} id="reg-password" className="input" type="password" placeholder="••••••••"
+              value={form.password} onChange={e => set('password', e.target.value)} required minLength={8} maxLength={1024} />
           </div>
           <div className="input-group">
             <label htmlFor="reg-company">Company name</label>
-            <input id="reg-company" className="input" placeholder="Shringar House Jewellery"
+            <input aria-label={"Company name"} id="reg-company" className="input" placeholder="Shringar House Jewellery"
               value={form.company_name} onChange={e => set('company_name', e.target.value)} required />
           </div>
           {error && <div className="login-error">{error}</div>}

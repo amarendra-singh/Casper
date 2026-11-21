@@ -18,6 +18,8 @@ from sqlalchemy import select
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_active_company, get_company_scope
 from app.models.user import User
+from app.models.company import CompanyRole
+from app.core.dependencies import require_company_role
 from app.models.fraud import FraudAlert
 from app.services.fraud import (
     get_fraud_dashboard,
@@ -129,7 +131,7 @@ async def resolve_alert(
     alert_id: int,
     _current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin)),
 ):
     """Mark a fraud alert as resolved."""
     alert = await db.get(FraudAlert, alert_id)
@@ -182,13 +184,15 @@ async def backfill_fraud_for_report(
     report_id: int,
     _current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin)),
 ):
     """
     Reprocess an existing uploaded report for advanced fraud intelligence.
     Use when new fraud signals (velocity, fee overcharge) have been added.
     """
-    result = await reprocess_report_for_fraud(db, report_id)
+    from app.core.dependencies import require_role_in_company
+    await require_role_in_company(db, _current_user, company.id)
+    result = await reprocess_report_for_fraud(db, report_id, company.id)
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     return result

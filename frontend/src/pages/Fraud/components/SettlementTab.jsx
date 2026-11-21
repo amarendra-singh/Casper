@@ -8,7 +8,7 @@ const SEV_STYLE = {
 }
 
 export default function SettlementTab({ data }) {
-  if (!data) return <div className="fd-empty">Loading…</div>
+  if (!data) {return <div className="fd-empty">Loading…</div>}
 
   return (
     <div className="fd-settlement">
@@ -18,7 +18,7 @@ export default function SettlementTab({ data }) {
           <div className="fd-sk-val" style={{ color: data.total_gap < 0 ? '#ef4444' : '#22c55e' }}>
             {data.total_gap < 0 ? '−' : '+'}{money(data.total_gap)}
           </div>
-          <div className="fd-sk-lbl">Total settlement gap (all reports)</div>
+          <div className="fd-sk-lbl">Pricing target variance (all reports)</div>
         </div>
         <div className="fd-settle-kpi">
           <div className="fd-sk-val">{data.gap_count}</div>

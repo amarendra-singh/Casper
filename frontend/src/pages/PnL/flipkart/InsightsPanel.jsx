@@ -6,7 +6,7 @@ import { Undo, XMark, Check, Warn } from './glyphs'
  * Insights tab — KPIs, variance bar chart, waterfall, return analysis, margin distribution.
  */
 export default function InsightsPanel({ report, insightsData }) {
-  if (!insightsData) return null
+  if (!insightsData) {return null}
 
   return (
     <div className="pnl-body pnl-insights-body pnl-animate-in">

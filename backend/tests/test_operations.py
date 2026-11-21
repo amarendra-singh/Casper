@@ -38,7 +38,7 @@ def test_funnel_pct_of_dispatched():
 
 def test_funnel_zero_dispatched_no_div_zero():
     out = build_operations(_units(gross=0, rto=0, rvp=0, cancelled=0, net=0), {}, [], [])
-    assert all(f["pct"] == 0.0 for f in out["funnel"])
+    assert all(f["pct"] is None for f in out["funnel"])
 
 
 # ── Fees waterfall ───────────────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ def test_fees_other_bucket_balances_to_total_expenses():
     out = build_operations(_units(), _fees(), [], [])
     labels = {w["label"]: w["value"] for w in out["fees"]}
     assert labels["Gross sales (GMV)"] == 100000.0
-    assert labels["Other fees"] == 5500.0
+    assert labels["Other adjustments / returns (unclassified)"] == 5500.0
     assert labels["Net settlement"] == 70000.0
 
 

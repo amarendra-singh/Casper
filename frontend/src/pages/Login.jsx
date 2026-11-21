@@ -18,8 +18,18 @@ export default function Login() {
       await login(email, password)
       navigate('/')
     } catch (err) {
-      const detail = err.response?.data?.detail
-      setError(Array.isArray(detail) ? 'Invalid credentials' : (detail || 'Invalid credentials'))
+      // Only a 4xx from the server means the credentials were actually wrong.
+      // With no response at all (backend down, proxy timeout) `detail` is
+      // undefined, and defaulting to "Invalid credentials" sends you off
+      // checking your password when the server simply is not running.
+      if (!err.response) {
+        setError('Cannot reach the server. Is the backend running on port 8765?')
+      } else if (err.response.status >= 500) {
+        setError(`Server error (${err.response.status}). Check the backend log.`)
+      } else {
+        const detail = err.response.data?.detail
+        setError(Array.isArray(detail) ? 'Invalid credentials' : (detail || 'Invalid credentials'))
+      }
     } finally {
       setLoading(false)
     }
@@ -35,12 +45,12 @@ export default function Login() {
         <form onSubmit={handleSubmit} className="login-form">
           <div className="input-group">
             <label htmlFor="login-email">Email</label>
-            <input id="login-email" className="input" type="email" placeholder="admin@casper.com"
-              value={email} onChange={e => setEmail(e.target.value)} required autoFocus />
+            <input aria-label={"Email"} id="login-email" className="input" type="email" placeholder="admin@casper.com"
+              value={email} onChange={e => setEmail(e.target.value)} required  />
           </div>
           <div className="input-group">
             <label htmlFor="login-password">Password</label>
-            <input id="login-password" className="input" type="password" placeholder="••••••••"
+            <input aria-label={"Password"} id="login-password" className="input" type="password" placeholder="••••••••"
               value={password} onChange={e => setPassword(e.target.value)} required />
           </div>
           {error && <div className="login-error">{error}</div>}

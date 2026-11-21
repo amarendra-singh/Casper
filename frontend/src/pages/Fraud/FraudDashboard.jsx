@@ -25,7 +25,7 @@ export default function FraudDashboard() {
   const onCustomerFile = async (e) => {
     const file = e.target.files?.[0]
     e.target.value = ''                        // allow re-selecting the same file
-    if (!file) return
+    if (!file) {return}
     setBusy(true); setMsg(null)
     try {
       const fd = new FormData()
@@ -47,8 +47,7 @@ export default function FraudDashboard() {
         <div>
           <h1 className="fd-title">Fraud Intelligence</h1>
           <p className="fd-subtitle">
-            Actor-centric fraud detection — customers and platforms are the fraud actors.
-            SKU vulnerability is derived from actor patterns.
+            Heuristic risk signals for investigation. Return cohorts are separate from identified customers; scores do not prove fraud.
           </p>
         </div>
         <div className="fd-actions">

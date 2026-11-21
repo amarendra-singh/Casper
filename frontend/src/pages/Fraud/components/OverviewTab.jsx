@@ -9,7 +9,7 @@ const VERDICT = {
 }
 
 export default function OverviewTab({ overview, onResolve }) {
-  if (!overview) return null
+  if (!overview) {return null}
   const v = VERDICT[overview.verdict] || VERDICT.CLEAN
 
   return (

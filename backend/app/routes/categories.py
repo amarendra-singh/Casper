@@ -1,9 +1,11 @@
+from app.core.dependencies import require_company_role
+from app.models.company import CompanyRole
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
-from app.core.dependencies import require_admin_or_above, require_any, get_active_company
+from app.core.dependencies import require_admin_or_above, require_any, get_active_company, get_company_scope
 from app.models.category import Category
 from app.schemas.category import CategoryCreate, CategoryUpdate, CategoryResponse
 
@@ -13,10 +15,10 @@ router = APIRouter(prefix="/categories", tags=["Categories"])
 @router.get("/", response_model=list[CategoryResponse])
 async def list_categories(
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     _=Depends(require_any),
 ):
-    result = await db.execute(select(Category).where(Category.company_id == company.id).order_by(Category.name))
+    result = await db.execute(select(Category).where(Category.company_id.in_(scope.ids)).order_by(Category.name))
     return result.scalars().all()
 
 
@@ -24,8 +26,8 @@ async def list_categories(
 async def create_category(
     payload: CategoryCreate,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    _=Depends(require_admin_or_above),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin)),
+    _=Depends(require_any),
 ):
     existing = await db.execute(select(Category).where(Category.name == payload.name, Category.company_id == company.id))
     if existing.scalar_one_or_none():
@@ -49,8 +51,8 @@ async def update_category(
     category_id: int,
     payload: CategoryUpdate,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    _=Depends(require_admin_or_above),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin)),
+    _=Depends(require_any),
 ):
     result = await db.execute(select(Category).where(Category.company_id == company.id, Category.id == category_id))
     category = result.scalar_one_or_none()
@@ -69,8 +71,8 @@ async def update_category(
 async def delete_category(
     category_id: int,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
-    _=Depends(require_admin_or_above),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin)),
+    _=Depends(require_any),
 ):
     result = await db.execute(select(Category).where(Category.company_id == company.id, Category.id == category_id))
     category = result.scalar_one_or_none()

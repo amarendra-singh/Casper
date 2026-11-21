@@ -11,7 +11,7 @@ export default function PricingIntro() {
       <IntroSection title="What this does">
         <p>
           The Pricing page is a <strong>focused form</strong> for entering or editing one SKU's
-          cost inputs per platform. It shows every field — Price, Package, Inbound Logistics,
+          cost inputs per platform. It shows every field — Price, Package, Logistics,
           Addons, Misc, CR, Damage, GST — in a clean card layout instead of the wide table
           on the SKUs page.
         </p>
@@ -29,7 +29,7 @@ export default function PricingIntro() {
         <ul>
           <li><strong>Price</strong> — raw product cost (vendor invoice, no overhead)</li>
           <li><strong>Package</strong> — box + label + tape per unit</li>
-          <li><strong>Inbound Logistics</strong> — vendor → warehouse cost (outbound is platform's job)</li>
+          <li><strong>Logistics</strong> — vendor → warehouse cost (outbound is platform's job)</li>
           <li><strong>Addons</strong> — free gifts or extras bundled with each unit</li>
           <li><strong>Misc</strong> — overhead per unit (rent ÷ target units, electricity, manpower, etc.)</li>
           <li><strong>CR %</strong> — customer return target ceiling; CR ₹ = CR % × platform reverse-ship cost</li>
@@ -71,7 +71,7 @@ Target Post-GST = Target Pre-GST × (1 + GST %)`}
         </ul>
         <Callout variant="warn">
           If a platform's reverse-shipping cost changes, update it in <strong>Settings → Platforms</strong>.
-          The CR Reserve in every SKU auto-recomputes on next load.
+          Review saved SKU prices after changing the charge; existing snapshots stay fixed until refreshed.
         </Callout>
       </IntroSection>
 

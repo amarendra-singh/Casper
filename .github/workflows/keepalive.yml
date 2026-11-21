@@ -1,0 +1,33 @@
+name: keep-alive
+
+# Pings the deployed app so Railway doesn't idle it out.
+# Set a repo secret KEEPALIVE_URL to your Railway URL (the login page),
+# e.g. https://casper-production.up.railway.app/
+#
+# Note: GitHub's scheduler is best-effort — "*/4" asks for every 4 minutes but
+# runs may be delayed under load, and scheduled workflows are paused after 60
+# days with no repo activity. For a hard 4-minute guarantee use an external
+# pinger (cron-job.org / UptimeRobot) pointed at the same URL — see RAILWAY.md.
+
+on:
+  schedule:
+    - cron: "*/4 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit the app URL
+        run: |
+          URL="${{ secrets.KEEPALIVE_URL }}"
+          if [ -z "$URL" ]; then
+            echo "KEEPALIVE_URL secret is not set — skipping."
+            exit 0
+          fi
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$URL")
+          echo "GET $URL -> $code"
+          case "$code" in
+            2*|3*) echo "App is awake." ;;
+            *) echo "Unexpected status $code"; exit 1 ;;
+          esac

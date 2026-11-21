@@ -1,3 +1,4 @@
+from app.models.company import CompanyRole
 """
 P&L Routes
 
@@ -14,7 +15,8 @@ from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-UPLOADS_DIR = Path(__file__).parent.parent.parent / "uploads" / "pnl"
+from app.core.config import settings
+UPLOADS_DIR = Path(settings.UPLOADS_DIR)
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Max accepted upload size — guards against memory-exhaustion DoS via huge files.
@@ -22,7 +24,7 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_any, require_admin_or_above, get_active_company, get_company_scope, require_role_in_company
+from app.core.dependencies import get_current_user, require_any, require_admin_or_above, get_active_company, get_company_scope, require_role_in_company, require_company_role
 from app.core.logging_config import pnl_logger, app_logger
 from app.models.user import User
 from app.models.pnl import PnlReport, PnlSkuRow
@@ -79,7 +81,8 @@ async def upload_pnl(
         )
 
     # Read file bytes
-    file_bytes = await file.read()
+    await require_role_in_company(db, current_user, company.id)
+    file_bytes = await file.read(MAX_UPLOAD_BYTES + 1)
     if len(file_bytes) == 0:
         pnl_logger.warning(f"Upload rejected — empty file: {file.filename}")
         raise HTTPException(
@@ -97,8 +100,10 @@ async def upload_pnl(
     pnl_logger.info(f"File read — size={len(file_bytes)} bytes")
 
     # Resolve platform name for platform-specific parsing
-    plat_obj = await db.get(Platform, platform_id)
-    platform_name = plat_obj.name.lower() if plat_obj else "flipkart"
+    plat_obj = await db.scalar(select(Platform).where(Platform.id == platform_id, Platform.company_id == company.id))
+    if plat_obj is None:
+        raise HTTPException(status_code=404, detail="Platform not found")
+    platform_name = plat_obj.name.lower()
 
     # Auto-extract period from file (platform-specific)
     try:
@@ -118,6 +123,8 @@ async def upload_pnl(
 
     # Duplicate check using extracted period
     existing = await check_duplicate(db, platform_id, period_start, period_end, company.id)
+    if existing and (existing.period_start != period_start or existing.period_end != period_end):
+        raise HTTPException(status_code=409, detail="Report dates overlap an existing report. Only identical periods can be replaced; resolve coverage before importing.")
     if existing and not force:
         pnl_logger.warning(f"Duplicate detected — existing report_id={existing.id} period={period_start}→{period_end}")
         plat = await db.get(Platform, platform_id)
@@ -129,19 +136,17 @@ async def upload_pnl(
                 "platform_name": plat.name if plat else "Unknown",
                 "period_start": str(existing.period_start),
                 "period_end": str(existing.period_end),
-                "uploaded_at": existing.uploaded_at.isoformat(),
+                "uploaded_at": existing.uploaded_at.isoformat() + ('Z' if existing.uploaded_at.tzinfo is None else ''),
                 "filename": existing.filename,
             },
         )
 
-    if existing and force:
-        pnl_logger.info(f"Force replace — deleting existing report_id={existing.id}")
-        # Delete old saved file if present
-        for old_file in UPLOADS_DIR.glob(f"{existing.id}.*"):
-            old_file.unlink(missing_ok=True)
-        await delete_report(db, existing.id, company.id)
-
     # Full parse + store
+    import uuid
+    staged_path = UPLOADS_DIR / f".staged-{uuid.uuid4().hex}"
+    staged_path.write_bytes(file_bytes)
+    saved_path = None
+    old_paths = list(UPLOADS_DIR.glob(f"{existing.id}.*")) if existing else []
     try:
         result = await parse_and_store(
             session=db,
@@ -153,11 +158,19 @@ async def upload_pnl(
             period_end=period_end,
             company_id=company.id,
             platform_name=platform_name,
+            replace_report_id=existing.id if existing and force else None,
         )
         # Save original file to disk for future reference / debugging
         ext = Path(file.filename).suffix or ".xlsx"
         saved_path = UPLOADS_DIR / f"{result.report_id}{ext}"
-        saved_path.write_bytes(file_bytes)
+        staged_path.replace(saved_path)
+        await db.commit()
+        for old_path in old_paths:
+            if old_path != saved_path:
+                try:
+                    old_path.unlink(missing_ok=True)
+                except OSError:
+                    pnl_logger.warning("Could not remove superseded source file %s", old_path)
         pnl_logger.info(
             f"Upload complete — report_id={result.report_id} "
             f"matched={result.matched_skus} unmatched={result.unmatched_skus} "
@@ -165,9 +178,13 @@ async def upload_pnl(
             f"file_saved={saved_path}"
         )
     except Exception as e:
+        await db.rollback()
+        staged_path.unlink(missing_ok=True)
+        if saved_path and saved_path not in old_paths:
+            saved_path.unlink(missing_ok=True)
         pnl_logger.error(f"Parse failed — {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Failed to parse report: {str(e)}",
         )
 
@@ -177,7 +194,7 @@ async def upload_pnl(
         'net_units':                 'Net Units',
         'commission_fee':            'Commission Fee',
     }
-    parse_warnings: list[str] = []
+    parse_warnings: list[str] = list(result.parse_warnings)
     if result.total_skus > 0:
         for field, label in CRITICAL_FIELDS.items():
             null_count_result = await db.execute(
@@ -204,7 +221,7 @@ async def upload_shopdeck_customers(
     persist: bool = Form(default=True),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any),
-    company=Depends(get_active_company),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin)),
 ):
     """
     Upload a ShopDeck customer export (CSV) → score customers by RTO/cancel
@@ -214,7 +231,7 @@ async def upload_shopdeck_customers(
     from app.services.shopdeck_customers import (
         parse_customer_csv, build_customer_fraud, ingest_customer_fraud,
     )
-    raw = await file.read()
+    raw = await file.read(MAX_UPLOAD_BYTES + 1)
     if len(raw) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                             detail="File too large")
@@ -246,11 +263,11 @@ async def pnl_statement(
     report_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
 ):
     """Full contribution-margin income statement for one report."""
     from app.services.pnl_statement import compute_pnl_statement
-    stmt = await compute_pnl_statement(db, report_id, company.id)
+    stmt = await compute_pnl_statement(db, report_id, scope.ids)
     if stmt is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
     return stmt
@@ -261,11 +278,11 @@ async def pnl_rows(
     report_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
 ):
     """Per-SKU P&L rows with per-number calc breakdowns (backend single source of truth)."""
     from app.services.pnl_statement import compute_pnl_rows
-    result = await compute_pnl_rows(db, report_id, company.id)
+    result = await compute_pnl_rows(db, report_id, scope.ids)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
     return result
@@ -301,19 +318,19 @@ async def pnl_unmatched_skus(
     report_id: int | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
 ):
     """SKUs seen in uploads with no cost match — the 'hidden' SKUs to add to the master."""
     from app.services.pnl_statement import compute_unmatched_skus
-    return await compute_unmatched_skus(db, company.id, report_id)
+    return await compute_unmatched_skus(db, scope.ids, report_id)
 
 
 @router.post("/hidden-skus/add")
 async def pnl_add_hidden_sku(
     payload: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin_or_above),
-    company=Depends(get_active_company),
+    current_user: User = Depends(require_any),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin)),
 ):
     """
     Add pricing for one hidden SKU and re-match the report in the same call, so the
@@ -349,11 +366,17 @@ async def pnl_add_hidden_sku(
                                     detail=f"{k} must be a number")
     for k in ("vendor_id", "category_id"):
         if payload.get(k) not in (None, ""):
-            costs[k] = int(payload[k])
+            try:
+                costs[k] = int(payload[k])
+            except (TypeError, ValueError):
+                raise HTTPException(status_code=422, detail=f"{k} must be an integer")
     if payload.get("vendor_sku"):
         costs["vendor_sku"] = str(payload["vendor_sku"]).strip()
 
-    result = await quick_add_hidden_sku(db, company.id, int(report_id), name, price, costs)
+    try:
+        result = await quick_add_hidden_sku(db, company.id, int(report_id), name, price, costs)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     if not result.get("created"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail=result.get("error") or "Could not add SKU")
@@ -366,13 +389,14 @@ async def pnl_add_hidden_sku(
 async def pnl_rematch(
     report_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin_or_above),
-    company=Depends(get_active_company),
+    current_user: User = Depends(require_any),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin)),
 ):
     """Re-link a report's unmatched rows against pricing that exists now."""
     from app.services.pnl_statement import rematch_report, compute_unmatched_skus
     matched = await rematch_report(db, report_id, company.id)
     remaining = await compute_unmatched_skus(db, company.id, report_id)
+    await db.commit()
     return {"rows_matched": matched, "remaining_hidden": len(remaining)}
 
 
@@ -382,11 +406,11 @@ async def pnl_rematch(
 async def list_reports(
     platform_id: int | None = None,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     _=Depends(require_any),
 ):
     """List all P&L reports, optionally filtered by platform."""
-    reports = await get_all_reports(db, company.id, platform_id=platform_id)
+    reports = await get_all_reports(db, scope.ids, platform_id=platform_id)
 
     result = []
     for r in reports:
@@ -411,6 +435,7 @@ async def list_reports(
             filename=r.filename,
             uploaded_at=r.uploaded_at,
             status=r.status,
+            processing_warnings=r.processing_warnings,
             gross_sales=r.gross_sales,
             net_sales=r.net_sales,
             bank_settlement=r.bank_settlement,
@@ -439,19 +464,22 @@ def _build_sku_row_response(row) -> PnlSkuRowResponse:
     return_rate = round((gross - net) / gross * 100, 1) if gross > 0 else None
 
     sp = row.sku_pricing  # may be None if unmatched
-    casper_expected_bs   = sp.bank_settlement if sp else row.casper_expected_bs
-    casper_breakeven     = sp.breakeven if sp else None
-    gst_pct              = sp.gst if sp else None
-    casper_breakeven_gst = round(sp.breakeven * (1 + (gst_pct or 0) / 100), 2) if sp else None
+    from app.services.pnl_statement import _cost_basis
+    cb, frozen = _cost_basis(row)
+    casper_expected_bs   = row.casper_expected_bs if frozen else (sp.bank_settlement if sp else row.casper_expected_bs)
+    casper_breakeven     = cb["breakeven"]
+    gst_pct              = cb["gst"]
+    casper_breakeven_gst = round(casper_breakeven * (1 + (gst_pct or 0) / 100), 2) if casper_breakeven is not None else None
     # Target Pre-GST = breakeven + profit_amt (matches SKU page math)
-    target_pre_gst       = round(sp.breakeven + (sp.net_profit_amt or 0), 0) if sp else None
+    target_pre_gst       = round(casper_expected_bs / (1 + (gst_pct or 0) / 100), 2) if casper_expected_bs is not None else None
     # Target Post-GST = bank_settlement on sku_pricing (already includes GST)
-    target_post_gst      = round(sp.bank_settlement, 0) if sp else None
+    target_post_gst      = casper_expected_bs
 
     return PnlSkuRowResponse(
         id=row.id,
         platform_sku_name=row.platform_sku_name,
         sku_pricing_id=row.sku_pricing_id,
+        sku_id=sp.sku_id if sp else None,
         gross_units=row.gross_units,
         rto_units=row.rto_units,
         rvp_units=row.rvp_units,
@@ -480,20 +508,20 @@ def _build_sku_row_response(row) -> PnlSkuRowResponse:
         variance_margin_pct=row.variance_margin_pct,
         is_matched=row.sku_pricing_id is not None,
         # Unit Economics breakdown
-        casper_price=sp.price if sp else None,
-        casper_package=sp.package if sp else None,
-        casper_logistics=sp.logistics if sp else None,
-        casper_addons=sp.addons if sp else None,
-        casper_misc_total=sp.misc_total if sp else None,
-        casper_cr_pct=sp.cr_percentage if sp else None,
-        casper_cr_amt=sp.cr_cost if sp else None,
-        casper_dmg_pct=sp.damage_percentage if sp else None,
-        casper_dmg_amt=sp.damage_cost if sp else None,
+        casper_price=cb["cogs"] if frozen else (sp.price if sp else None),
+        casper_package=None if frozen else (sp.package if sp else None),
+        casper_logistics=None if frozen else (sp.logistics if sp else None),
+        casper_addons=None if frozen else (sp.addons if sp else None),
+        casper_misc_total=cb["overhead"] if frozen else (sp.misc_total if sp else None),
+        casper_cr_pct=None if frozen else (sp.cr_percentage if sp else None),
+        casper_cr_amt=None if frozen else (sp.cr_cost if sp else None),
+        casper_dmg_pct=None if frozen else (sp.damage_percentage if sp else None),
+        casper_dmg_amt=None if frozen else (sp.damage_cost if sp else None),
         # Profitability
         casper_breakeven=casper_breakeven,
         casper_breakeven_gst=casper_breakeven_gst,
-        casper_profit_pct=sp.profit_percentage if sp else None,
-        casper_profit_amt=sp.net_profit_amt if sp else None,
+        casper_profit_pct=row.casper_expected_profit_pct if frozen else (sp.profit_percentage if sp else None),
+        casper_profit_amt=round(target_pre_gst - casper_breakeven, 2) if frozen and target_pre_gst is not None else (sp.net_profit_amt if sp else None),
         casper_gst_pct=gst_pct,
         # Bank Settlement (target)
         casper_target_pre_gst=target_pre_gst,
@@ -505,11 +533,11 @@ def _build_sku_row_response(row) -> PnlSkuRowResponse:
 async def get_report(
     report_id: int,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     _=Depends(require_any),
 ):
     """Full report with all SKU rows. Casper-derived fields are LIVE from sku_pricing."""
-    report = await get_report_detail(db, report_id, company.id)
+    report = await get_report_detail(db, report_id, scope.ids)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found.")
 
@@ -528,6 +556,7 @@ async def get_report(
         filename=report.filename,
         uploaded_at=report.uploaded_at,
         status=report.status,
+        processing_warnings=report.processing_warnings,
         gross_sales=report.gross_sales,
         net_sales=report.net_sales,
         bank_settlement=report.bank_settlement,
@@ -596,10 +625,13 @@ async def remove_report(
 async def download_report_file(
     report_id: int,
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     _=Depends(require_any),
 ):
     """Download the original uploaded Excel file for a report."""
+    report = await get_report_detail(db, report_id, scope.ids)
+    if report is None:
+        raise HTTPException(status_code=404, detail="Report not found")
     matches = list(UPLOADS_DIR.glob(f"{report_id}.*"))
     if not matches:
         raise HTTPException(status_code=404, detail="Original file not available.")
@@ -616,17 +648,17 @@ async def download_report_file(
 @router.get("/dashboard")
 async def dashboard_summary(
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     _=Depends(require_any),
 ):
     """Aggregated P&L stats across all platforms and periods for the dashboard."""
-    return await get_dashboard_summary(db, company.id)
+    return await get_dashboard_summary(db, scope.ids)
 
 
 @router.get("/platforms-with-reports")
 async def platforms_with_reports(
     db: AsyncSession = Depends(get_db),
-    company=Depends(get_active_company),
+    scope=Depends(get_company_scope),
     _=Depends(require_any),
 ):
     """
@@ -636,7 +668,7 @@ async def platforms_with_reports(
     result = await db.execute(
         select(Platform.id, Platform.name)
         .join(PnlReport, PnlReport.platform_id == Platform.id)
-        .where(PnlReport.company_id == company.id)
+        .where(PnlReport.company_id.in_(scope.ids))
         .distinct()
         .order_by(Platform.name)
     )
@@ -666,11 +698,14 @@ async def upload_fk_orders(
         compute_actor_risk_profiles,
     )
 
-    file_bytes = await file.read()
+    await require_role_in_company(db, _current_user, company.id)
+    file_bytes = await file.read(MAX_UPLOAD_BYTES + 1)
+    if len(file_bytes) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File exceeds the 25 MB limit")
 
     # Find Flipkart platform
     fk_result = await db.execute(
-        select(Platform).where(Platform.name.ilike("%flipkart%"))
+        select(Platform).where(Platform.name.ilike("%flipkart%"), Platform.company_id == company.id).order_by(Platform.id)
     )
     fk = fk_result.scalars().first()
     if not fk:
@@ -698,3 +733,24 @@ async def upload_fk_orders(
         "fraud_signals":   fraud_signals,
         "platform":        fk.name,
     }
+
+
+from pydantic import BaseModel, Field
+
+class MarketplaceLinkInput(BaseModel):
+    report_id: int
+    sku_id: int
+    platform_sku_name: str = Field(min_length=1, max_length=255)
+
+
+@router.post("/marketplace-link")
+async def link_marketplace_sku(payload: MarketplaceLinkInput, db: AsyncSession = Depends(get_db),
+    company=Depends(require_company_role(CompanyRole.owner, CompanyRole.admin))):
+    from app.services.marketplace_identity import link_identity
+    from sqlalchemy.exc import IntegrityError
+    try:
+        return await link_identity(db, company.id, payload.report_id, payload.platform_sku_name, payload.sku_id)
+    except (ValueError, IntegrityError) as exc:
+        await db.rollback()
+        detail = str(exc) if isinstance(exc, ValueError) else 'Mapping changed concurrently; refresh and retry'
+        raise HTTPException(409, detail) from exc

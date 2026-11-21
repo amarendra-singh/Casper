@@ -7,6 +7,8 @@ Design principles:
 - Store unmatched SKUs with sku_pricing_id=null (no silent data loss)
 - Duplicate detection by platform + period
 """
+from app.core.time import utcnow
+
 
 from datetime import datetime, date
 from typing import Optional, Tuple
@@ -15,6 +17,7 @@ import openpyxl
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
+from app.services.scope import company_ids
 from app.models.pnl import PnlReport, PnlSkuRow
 from app.models.sku import SkuPlatformConfig, SkuPricing
 from app.models.platform import Platform
@@ -788,11 +791,11 @@ async def check_duplicate(
         select(PnlReport).where(
             PnlReport.company_id == company_id,
             PnlReport.platform_id == platform_id,
-            PnlReport.period_start == period_start,
-            PnlReport.period_end == period_end,
+            PnlReport.period_start <= period_end,
+            PnlReport.period_end >= period_start,
         )
     )
-    return result.scalar_one_or_none()
+    return result.scalars().first()
 
 
 # ── Helpers for parse_and_store ───────────────────────────────────────────────
@@ -824,11 +827,11 @@ async def _build_pricing_lookup(session: AsyncSession, platform_id: int, company
     """
     Build a case-insensitive map: platform SKU name (upper) → SkuPricing.
 
-    Two sources, in priority order:
+    Two identity sources:
       1. the SKU's own name (Sku.shringar_sku) — the common case, where the seller
          lists under the same code they use internally;
       2. an explicit per-platform alias (SkuPlatformConfig.platform_sku_name),
-         which overrides (1) when the marketplace name differs.
+         which adds marketplace names. Conflicts between different SKUs stay unresolved.
 
     Matching on aliases ALONE silently hid SKUs that exist in the master but had
     no alias row, so their sales were dropped from P&L.
@@ -836,6 +839,17 @@ async def _build_pricing_lookup(session: AsyncSession, platform_id: int, company
     from app.models.sku import Sku
 
     lookup: dict[str, SkuPricing] = {}
+    ambiguous = set()
+
+    def register(name, pricing):
+        key = name.strip().upper()
+        if not key or key in ambiguous:
+            return
+        if key in lookup and lookup[key].sku_id != pricing.sku_id:
+            ambiguous.add(key)
+            lookup.pop(key)
+            return
+        lookup[key] = pricing
 
     # 1. Base: this platform's pricing keyed by the SKU's own name.
     base = await session.execute(
@@ -845,9 +859,9 @@ async def _build_pricing_lookup(session: AsyncSession, platform_id: int, company
     )
     for pricing, shringar_sku in base.all():
         if shringar_sku:
-            lookup[shringar_sku.strip().upper()] = pricing
+            register(shringar_sku, pricing)
 
-    # 2. Aliases win where the marketplace name differs from the internal code.
+    # 2. Explicit marketplace aliases; never choose between conflicting SKUs.
     config_result = await session.execute(
         select(SkuPlatformConfig).where(
             SkuPlatformConfig.platform_id == platform_id,
@@ -864,8 +878,19 @@ async def _build_pricing_lookup(session: AsyncSession, platform_id: int, company
         pricing_by_id = {sp.id: sp for sp in pricing_result.scalars().all()}
         for cfg in configs:
             if cfg.platform_sku_name and cfg.sku_pricing_id in pricing_by_id:
-                lookup[cfg.platform_sku_name.strip().upper()] = pricing_by_id[cfg.sku_pricing_id]
+                register(cfg.platform_sku_name, pricing_by_id[cfg.sku_pricing_id])
 
+    from app.services.marketplace_identity import identity_candidates
+    candidates = await identity_candidates(session, company_id, platform_id)
+    channel_pricing = {p.sku_id: p for p in (await session.scalars(select(SkuPricing).where(
+        SkuPricing.company_id == company_id, SkuPricing.platform_id == platform_id))).all()}
+    for name, ids in candidates.items():
+        if len(ids) != 1:
+            lookup.pop(name, None)
+            continue
+        pricing = channel_pricing.get(next(iter(ids)))
+        if pricing is not None:
+            register(name, pricing)
     return lookup
 
 
@@ -879,7 +904,7 @@ def _build_report_model(summary: dict, platform_id: int, filename: str,
         period_end=period_end,
         filename=filename,
         uploaded_by=uploaded_by,
-        uploaded_at=datetime.utcnow(),
+        uploaded_at=utcnow(),
         status="done",
         # Common fields
         gross_sales=summary.get("gross_sales"),
@@ -914,6 +939,23 @@ def _build_report_model(summary: dict, platform_id: int, filename: str,
     )
 
 
+def pricing_snapshot(sp, actual_bs=None, net_units=None):
+    """One cost and target snapshot contract for upload and later cost recovery."""
+    expected = sp.bank_settlement
+    expected_total = round(expected * (net_units or 0), 2) if expected is not None else None
+    return dict(
+        sku_pricing_id=sp.id, casper_expected_bs=expected,
+        casper_expected_profit_pct=sp.profit_percentage,
+        variance_bs=round(actual_bs - expected_total, 2) if actual_bs is not None and expected_total is not None else None,
+        # Imported margin and target markup have different denominators.
+        variance_margin_pct=None,
+        snap_cogs_per_unit=sp.price,
+        snap_fulfillment_per_unit=(sp.package or 0) + (sp.logistics or 0) + (sp.addons or 0),
+        snap_return_per_unit=(sp.cr_cost or 0) + (sp.damage_cost or 0),
+        snap_overhead_per_unit=sp.misc_total, snap_breakeven=sp.breakeven, snap_gst=sp.gst,
+    )
+
+
 def _build_sku_row(raw: dict, report_id: int, matched_pricing: Optional[SkuPricing], company_id: int) -> PnlSkuRow:
     """
     Build a PnlSkuRow from parsed raw data + matched Casper pricing.
@@ -929,32 +971,7 @@ def _build_sku_row(raw: dict, report_id: int, matched_pricing: Optional[SkuPrici
     )
 
     if matched_pricing is not None:
-        sp           = matched_pricing
-        actual_bs    = raw.get("bank_settlement_projected")
-        net_units    = raw.get("net_units") or 0
-        expected_bs  = sp.bank_settlement
-        expected_tot = round(expected_bs * net_units, 2) if expected_bs else None
-        variance_bs  = round(actual_bs - expected_tot, 2) if (actual_bs is not None and expected_tot is not None) else None
-
-        actual_margin   = raw.get("net_margin_pct")
-        expected_margin = sp.profit_percentage
-        variance_margin = round(actual_margin - expected_margin, 2) if (actual_margin is not None and expected_margin) else None
-
-        casper_fields = dict(
-            sku_pricing_id=sp.id,
-            casper_expected_bs=expected_bs,
-            casper_expected_profit_pct=sp.profit_percentage,
-            variance_bs=variance_bs,
-            variance_margin_pct=variance_margin,
-            # Freeze the cost basis at upload time so this report's profit never
-            # moves when SKU pricing is edited later (closed periods stay closed).
-            snap_cogs_per_unit=sp.price,
-            snap_fulfillment_per_unit=(sp.package or 0) + (sp.logistics or 0) + (sp.addons or 0),
-            snap_return_per_unit=(sp.cr_cost or 0) + (sp.damage_cost or 0),
-            snap_overhead_per_unit=sp.misc_total,
-            snap_breakeven=sp.breakeven,
-            snap_gst=sp.gst,
-        )
+        casper_fields = pricing_snapshot(matched_pricing, raw.get("bank_settlement_projected"), raw.get("net_units"))
 
     row = PnlSkuRow(
         company_id=company_id,
@@ -977,12 +994,29 @@ async def parse_and_store(
     period_end,
     company_id: int,
     platform_name: str = "flipkart",
+    replace_report_id: int | None = None,
 ) -> PnlUploadResult:
     """
     Main entry point. Parse xlsx, match SKUs against Casper pricing, store report + rows.
     Dispatches to platform-specific parser based on platform_name.
     Returns upload result with match counts.
     """
+    old = None
+    if replace_report_id is not None:
+        old = await session.scalar(select(PnlReport).where(
+            PnlReport.id == replace_report_id, PnlReport.company_id == company_id,
+            PnlReport.platform_id == platform_id,
+        ))
+        if old is None or old.period_start != period_start or old.period_end != period_end:
+            raise ValueError("Replacement must reference an owned report with the identical platform and period")
+    overlaps = select(PnlReport.id).where(
+        PnlReport.company_id == company_id, PnlReport.platform_id == platform_id,
+        PnlReport.period_start <= period_end, PnlReport.period_end >= period_start,
+    )
+    if old is not None:
+        overlaps = overlaps.where(PnlReport.id != old.id)
+    if await session.scalar(overlaps.limit(1)) is not None:
+        raise ValueError("Overlapping report coverage must be resolved before importing")
     _pname = platform_name.lower()
     if _pname == "meesho":
         summary, sku_rows_raw = _parse_meesho_workbook(file_bytes)
@@ -1005,6 +1039,11 @@ async def parse_and_store(
     report = _build_report_model(summary, platform_id, filename, uploaded_by, period_start, period_end, company_id)
     session.add(report)
     await session.flush()  # need report.id for child rows
+    if replace_report_id is not None:
+        old = await session.scalar(select(PnlReport).where(PnlReport.id == replace_report_id, PnlReport.company_id == company_id))
+        if old is not None:
+            await session.delete(old)
+            await session.flush()
 
     matched = unmatched = 0
     for raw in sku_rows_raw:
@@ -1015,35 +1054,47 @@ async def parse_and_store(
             unmatched += 1
         session.add(_build_sku_row(raw, report.id, sp, company_id))
 
+    processing_warnings = []
     # ── Extract + store order-level events for fraud intelligence ─────────────
     try:
-        if _pname == "flipkart":
-            order_events = extract_order_events_fk(file_bytes)
-        elif _pname == "meesho":
-            order_events = extract_order_events_meesho(file_bytes)
-        elif _pname == "snapdeal" and _is_snapdeal_cpr(file_bytes):
-            order_events = extract_order_events_snapdeal_cpr(file_bytes)
-        else:
-            order_events = []
+        async with session.begin_nested():
+            if _pname == "flipkart":
+                order_events = extract_order_events_fk(file_bytes)
+            elif _pname == "meesho":
+                order_events = extract_order_events_meesho(file_bytes)
+            elif _pname == "snapdeal" and _is_snapdeal_cpr(file_bytes):
+                order_events = extract_order_events_snapdeal_cpr(file_bytes)
+            else:
+                order_events = []
 
-        await store_order_events(session, order_events, report.id, platform_id, company_id)
+            await store_order_events(session, order_events, report.id, platform_id, company_id)
     except Exception:
+        from app.core.logging_config import pnl_logger
+        pnl_logger.exception("Optional fraud processing failed")
+        processing_warnings.append("Fraud processing incomplete; reprocess this report to retry")
         pass  # Never fail a P&L upload due to fraud extraction error
 
-    await session.commit()
+    await session.flush()
 
     # ── Recompute risk scores + generate fraud alerts ─────────────────────────
     try:
-        await compute_sku_risk_scores(session, platform_id, company_id)
-        await session.commit()
-        await compute_return_reason_clusters(session, company_id)
-        await compute_state_risk_profiles(session, company_id)
-        await compute_actor_risk_profiles(session, company_id)
-        await generate_fraud_alerts(session, platform_id, report.id, company_id)
-        await session.commit()
+        async with session.begin_nested():
+            await compute_sku_risk_scores(session, platform_id, company_id)
+            await session.flush()
+            await compute_return_reason_clusters(session, company_id)
+            await compute_state_risk_profiles(session, company_id)
+            await compute_actor_risk_profiles(session, company_id)
+            await generate_fraud_alerts(session, platform_id, report.id, company_id)
+            await session.flush()
     except Exception:
+        from app.core.logging_config import pnl_logger
+        pnl_logger.exception("Optional fraud processing failed")
+        processing_warnings.append("Fraud processing incomplete; reprocess this report to retry")
         pass  # Risk score / alert failure is non-critical
 
+    report.processing_warnings = list(dict.fromkeys(processing_warnings))
+    report.status = "done_with_warnings" if processing_warnings else "done"
+    await session.flush()
     return PnlUploadResult(
         report_id=report.id,
         platform_name=platform_name,
@@ -1053,14 +1104,19 @@ async def parse_and_store(
         matched_skus=matched,
         unmatched_skus=unmatched,
         duplicate=False,
+        parse_warnings=processing_warnings,
     )
 
 
 async def get_all_reports(session: AsyncSession, company_id: int, platform_id: Optional[int] = None) -> list[PnlReport]:
     """List all reports for a company, optionally filtered by platform."""
-    q = select(PnlReport).where(PnlReport.company_id == company_id).order_by(PnlReport.period_start.desc())
+    q = select(PnlReport).where(PnlReport.company_id.in_(company_ids(company_id))).order_by(PnlReport.period_start.desc())
     if platform_id:
-        q = q.where(PnlReport.platform_id == platform_id)
+        if len(company_ids(company_id)) > 1:
+            name = await session.scalar(select(Platform.name).where(Platform.id == platform_id, Platform.company_id.in_(company_ids(company_id))))
+            q = q.join(Platform).where(Platform.name == name)
+        else:
+            q = q.where(PnlReport.platform_id == platform_id)
     result = await session.execute(q)
     return result.scalars().all()
 
@@ -1074,7 +1130,7 @@ async def get_report_detail(session: AsyncSession, report_id: int, company_id: i
             selectinload(PnlReport.sku_rows)
             .selectinload(PnlSkuRow.sku_pricing)
         )
-        .where(PnlReport.id == report_id, PnlReport.company_id == company_id)
+        .where(PnlReport.id == report_id, PnlReport.company_id.in_(company_ids(company_id)))
     )
     return result.scalar_one_or_none()
 
@@ -1085,7 +1141,26 @@ async def delete_report(session: AsyncSession, report_id: int, company_id: int) 
     report = result.scalar_one_or_none()
     if not report:
         return False
+    platform_id = report.platform_id
     await session.delete(report)
+    await session.flush()
+    await compute_sku_risk_scores(session, platform_id, company_id)
+    await compute_return_reason_clusters(session, company_id)
+    await compute_state_risk_profiles(session, company_id)
+    await compute_actor_risk_profiles(session, company_id)
+    # Regenerate current alerts from surviving source reports, or clear current
+    # alerts if no report remains. Resolved alerts are historical evidence.
+    from sqlalchemy import delete
+    from app.models.fraud import FraudAlert
+    remaining = await session.scalar(select(PnlReport.id).where(
+        PnlReport.company_id == company_id, PnlReport.platform_id == platform_id
+    ).order_by(PnlReport.period_end.desc(), PnlReport.id.desc()).limit(1))
+    if remaining is not None:
+        await generate_fraud_alerts(session, platform_id, remaining, company_id)
+    else:
+        await session.execute(delete(FraudAlert).where(
+            FraudAlert.company_id == company_id, FraudAlert.platform_id == platform_id,
+            FraudAlert.is_resolved.is_(False)))
     await session.commit()
     return True
 
@@ -1098,14 +1173,21 @@ async def get_dashboard_summary(session: AsyncSession, company_id: int) -> dict:
     result = await session.execute(
         select(PnlReport, Platform.name.label("platform_name"))
         .join(Platform, Platform.id == PnlReport.platform_id)
-        .where(PnlReport.company_id == company_id)
+        .where(PnlReport.company_id.in_(company_ids(company_id)))
         .order_by(PnlReport.period_start)
     )
     rows = result.all()
+    from app.services.scope import unambiguous_report_ids
+    eligible = set((await session.scalars(unambiguous_report_ids(company_id))).all())
+    excluded = [report.id for report, _ in rows if report.id not in eligible]
+    rows = [(report, name) for report, name in rows if report.id in eligible]
+    coverage_warnings = ([f"{len(excluded)} reports excluded because their date coverage overlaps. Resolve overlapping source reports before relying on totals."] if excluded else [])
+
 
     if not rows:
         return {
             "platforms": [], "monthly": [],
+            "coverage_warnings": coverage_warnings, "excluded_report_ids": excluded,
             "total_bank_settlement": 0, "total_gross_sales": 0,
             "total_net_earnings": 0, "report_count": 0,
             "latest_period_start": None, "latest_period_end": None,
@@ -1118,6 +1200,7 @@ async def get_dashboard_summary(session: AsyncSession, company_id: int) -> dict:
         if pid not in plat_map:
             plat_map[pid] = {
                 "platform_id":       pid,
+                "company_id": report.company_id,
                 "platform_name":     pname,
                 "bank_settlement":   0.0,
                 "gross_sales":       0.0,
@@ -1136,6 +1219,18 @@ async def get_dashboard_summary(session: AsyncSession, company_id: int) -> dict:
         p["net_units"]       += report.net_units or report.net_orders or 0
         p["report_count"]    += 1
 
+    rate_rows = await session.execute(
+        select(PnlReport.platform_id, func.sum(PnlSkuRow.gross_units),
+               func.sum(PnlSkuRow.rto_units), func.sum(PnlSkuRow.rvp_units))
+        .join(PnlReport, PnlReport.id == PnlSkuRow.report_id)
+        .where(PnlReport.id.in_(eligible), PnlSkuRow.company_id.in_(company_ids(company_id)))
+        .group_by(PnlReport.platform_id)
+    )
+    rates = {pid: (gross, rto, returned) for pid, gross, rto, returned in rate_rows}
+    for pid, platform in plat_map.items():
+        gross, rto, returned = rates.get(pid, (None, None, None))
+        platform['rto_rate'] = round(rto / gross * 100, 1) if gross and rto is not None else None
+        platform['return_rate'] = round(returned / gross * 100, 1) if gross and returned is not None else None
     total_bs = sum(p["bank_settlement"] for p in plat_map.values())
     platforms = []
     for p in sorted(plat_map.values(), key=lambda x: -x["bank_settlement"]):
@@ -1173,6 +1268,7 @@ async def get_dashboard_summary(session: AsyncSession, company_id: int) -> dict:
 
     all_reports = [r for r, _ in rows]
     return {
+        "coverage_warnings": coverage_warnings, "excluded_report_ids": excluded,
         "platforms":             platforms,
         "monthly":               monthly,
         "total_bank_settlement": round(total_bs, 2),

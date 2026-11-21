@@ -1,6 +1,7 @@
+from app.core.time import utcnow
 from datetime import datetime, date
 from typing import Optional
-from sqlalchemy import String, Float, Boolean, DateTime, Date, Integer, ForeignKey, Text
+from sqlalchemy import String, Float, Boolean, DateTime, Date, Integer, ForeignKey, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
@@ -9,13 +10,14 @@ class PnlReport(Base):
     __tablename__ = "pnl_reports"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    company_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
+    company_id: Mapped[int] = mapped_column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
     platform_id: Mapped[int] = mapped_column(Integer, ForeignKey("platforms.id"), nullable=False)
     period_start: Mapped[date] = mapped_column(Date, nullable=False)
     period_end: Mapped[date] = mapped_column(Date, nullable=False)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     uploaded_by: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
-    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    processing_warnings: Mapped[list | None] = mapped_column(JSON, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="done")  # processing | done | error
 
     # Summary totals (from Sheet 1)
@@ -60,7 +62,7 @@ class PnlSkuRow(Base):
     __tablename__ = "pnl_sku_rows"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    company_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
+    company_id: Mapped[int] = mapped_column(Integer, ForeignKey("companies.id"), nullable=False, index=True)
     report_id: Mapped[int] = mapped_column(Integer, ForeignKey("pnl_reports.id", ondelete="CASCADE"), nullable=False)
 
     # Raw from Flipkart
@@ -118,3 +120,10 @@ class PnlSkuRow(Base):
     def cogs(self) -> Optional[float]:
         """Purchase cost per unit from sku_pricing.price — the real COGS."""
         return self.sku_pricing.price if self.sku_pricing else None
+
+# Forward references avoid runtime import cycles between mapped models.
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.models.platform import Platform
+    from app.models.user import User
+    from app.models.sku import SkuPricing

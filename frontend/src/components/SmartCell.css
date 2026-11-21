@@ -12,6 +12,23 @@
     pointer-events: auto;
   }
 
+  /* The hidden span that sizes the cell to its content. It was only ever styled
+     in pages/SKUs.css, so SmartCell rendered the text visibly — overlapping its
+     own input — on any page that does not load that stylesheet. Kept here so the
+     component stands on its own; scoped to .sc-wrap so it cannot fight the grid. */
+  .sc-wrap .ec-sizer {
+    visibility: hidden;
+    white-space: pre;
+    display: block;
+    padding: 0 8px;
+    height: 32px;
+    line-height: 32px;
+    font-size: 12px;
+    font-family: var(--font-ui);
+    pointer-events: none;
+    min-width: 0;
+  }
+
   /* The input */
   .sc-input {
     width: 100%;
@@ -83,7 +100,10 @@
     color: var(--text-3);
     font-family: var(--font-mono);
     margin-left: 8px;
-    flex-shrink: 0;
+    flex-shrink: 1;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
   
   /* Add new */

@@ -95,3 +95,205 @@
 
 .lg-loading { display: flex; justify-content: center; padding: 48px; }
 .lg-empty { text-align: center; padding: 48px 16px; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 14px; }
+
+/* ── Bill Discrepancies ──────────────────────────────────────────────────── */
+.bd-upload {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 22px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-1);
+  margin-bottom: 14px;
+}
+.bd-pick { display: flex; flex-direction: column; gap: 6px; }
+.bd-pick-label { font-size: 12px; font-weight: 600; color: var(--text-2); }
+.bd-pick-label small { font-weight: 400; color: var(--text-3); }
+.bd-pick-row { display: flex; align-items: center; gap: 8px; }
+
+/* The real input is hidden; the label is the button. */
+.bd-btn {
+  display: inline-block;
+  padding: 6px 13px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-2);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-1);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s;
+}
+.bd-btn:hover { background: var(--bg-3); border-color: var(--text-3); }
+.bd-btn input { display: none; }
+.bd-fname {
+  font-size: 11.5px;
+  color: var(--text-3);
+  font-family: var(--font-mono, monospace);
+  max-width: 230px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bd-fname.on { color: var(--text-1); }
+.bd-clear {
+  border: none; background: none; cursor: pointer;
+  color: var(--text-3); font-size: 13px; line-height: 1; padding: 2px 4px;
+}
+.bd-clear:hover { color: #EC2D6E; }
+.bd-run {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bd-run:hover { opacity: .92; }
+.bd-run:disabled { opacity: .5; cursor: not-allowed; }
+
+.bd-hint, .bd-foot { font-size: 12.5px; color: var(--text-3); line-height: 1.6; margin: 10px 2px; }
+.bd-stats { margin-bottom: 16px; }
+.bd-sec { margin-bottom: 20px; }
+.bd-h { font-size: 13px; font-weight: 600; margin: 0 0 8px; color: var(--text-1); }
+.bd-h small { color: var(--text-3); font-weight: 500; margin-left: 6px; }
+
+.bd-table { font-size: 12.5px; }
+.bd-table td, .bd-table th { white-space: nowrap; }
+.bd-table .nowrap { white-space: nowrap; }
+/* Product / item names are the only free-text column — let them wrap and cap
+   their width so one long description can't stretch the whole table. */
+.bd-table .bd-prod {
+  white-space: normal;
+  max-width: 320px;
+  line-height: 1.35;
+  color: var(--text-2);
+}
+/* A hairline marks where each new bill starts, since ref/date only print once. */
+.bd-table tr.bd-first td { border-top: 1px solid var(--border); }
+.bd-ok-dash { color: var(--text-3); }
+
+.bd-flag {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 1px 6px;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.bd-warn { background: rgba(199, 127, 43, 0.14); color: #A9661F; }
+.bd-bad  { background: rgba(236, 45, 110, 0.13); color: #C21E56; }
+.bd-ok   { background: rgba(31, 169, 104, 0.14); color: #157F4D; }
+
+/* Bill Discrepancies — inline match controls */
+.bd-note {
+  padding: 8px 12px;
+  margin: 8px 0;
+  border-radius: 8px;
+  background: rgba(31, 169, 104, 0.10);
+  color: #157F4D;
+  font-size: 12.5px;
+}
+.bd-pack {
+  width: 52px;
+  padding: 3px 5px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg-1);
+  color: var(--text-1);
+  font-size: 12px;
+  font-family: var(--font-mono, monospace);
+  text-align: right;
+}
+.bd-apply {
+  padding: 3px 9px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.bd-apply:hover { opacity: .9; }
+
+/* SKU search cell — SmartCell needs a sized container inside the table. */
+.bd-skucell { min-width: 190px; }
+.bd-match-reason { display: block; max-width: 260px; white-space: normal; color: var(--text-3); font-size: 11px; margin-top: 4px; }
+.bd-skucell .sc-wrap { display: block; width: 100%; }
+.bd-match-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; white-space: normal; margin-top: 4px; }
+.bd-match-actions:empty { display: none; }
+.bd-skucell input { font-size: 11.5px; font-family: var(--font-mono, monospace); }
+
+/* Keep explicit supplier units compact within the reconciliation table. */
+.bd-table td form { display: grid; gap: 4px; min-width: 120px; }
+.bd-table td form input { width: 90px; max-width: 100%; }
+.bd-table td small { display: block; font-size: 11px; color: var(--text-muted, #64748b); }
+
+
+/* Editable supplier bills: compact desktop grid and labelled mobile rows. */
+.bd-editor { table-layout: fixed; min-width: 1560px; width: 100%; }
+.bd-editor th:nth-child(1) { width: 125px; }
+.bd-editor th:nth-child(2) { width: 78px; }
+.bd-editor th:nth-child(3) { width: auto; }
+.bd-editor th:nth-child(4) { width: 80px; }
+.bd-editor th:nth-child(5) { width: 90px; }
+.bd-editor th:nth-child(6) { width: 85px; }
+.bd-editor th:nth-child(7), .bd-editor th:nth-child(8) { width: 102px; }
+.bd-editor th:nth-child(9) { width: 104px; }
+.bd-editor th:nth-child(10) { width: 220px; }
+.bd-editor th:nth-child(11) { width: 108px; }
+.bd-editor th:nth-child(12) { width: 80px; }
+.bd-editor th:nth-child(13) { width: 140px; }
+.bd-editor th { background: var(--surface-2, #f8fafc); }
+.bd-editor td { padding: 10px 8px; vertical-align: top; white-space: normal; overflow-wrap: anywhere; }
+.bd-editor .bd-input { box-sizing: border-box; width: 100%; min-width: 0; height: 34px; padding: 6px 8px;
+  border: 1px solid var(--rule, #dce1e8); border-radius: 6px; background: var(--surface, #fff);
+  color: var(--ink, #17212f); font: inherit; transition: border-color .15s, box-shadow .15s; }
+.bd-editor .bd-input:hover { border-color: var(--muted, #8290a1); }
+.bd-editor .bd-input:focus { outline: none; border-color: #ec2d6e; box-shadow: 0 0 0 3px rgb(236 45 110 / 12%); }
+.bd-editor .bd-input-number { text-align: right; font-variant-numeric: tabular-nums; }
+.bd-editor .bd-input[readonly] { border-color: transparent; background: transparent; }
+.bd-editor .bd-skucell { min-width: 0; }
+.bd-editor .bd-skucell .sc-input { min-height: 34px; }
+.bd-editor .bd-match-reason { max-width: none; line-height: 1.45; }
+.bd-editor .bd-recorded > div + div { margin-top: 7px; }
+.bd-editor .bd-recorded small { line-height: 1.4; }
+.bd-editor .bd-dirty { background: rgb(236 45 110 / 3%); }
+.bd-editor .bd-dirty td:first-child { box-shadow: inset 3px 0 #ec2d6e; }
+.bd-editor .bd-save, .bd-editor .bd-review { box-sizing: border-box; display: flex; align-items: center;
+  justify-content: center; width: 100%; min-height: 34px; padding: 6px 8px; border: 1px solid transparent;
+  border-radius: 6px; font: inherit; font-size: 12px; font-weight: 600; text-decoration: none;
+  line-height: 1.35; cursor: pointer; text-align: center; }
+.bd-editor .bd-save { background: #ec2d6e; color: #fff; }
+.bd-editor .bd-save:disabled { background: var(--surface-2, #f1f5f9); color: var(--muted, #64748b); border-color: var(--rule, #e2e8f0); cursor: default; }
+.bd-editor .bd-review { margin-top: 6px; background: var(--surface, #fff); border-color: var(--rule, #dce1e8); color: var(--ink, #17212f); }
+.bd-editor .bd-review:hover { border-color: #ec2d6e; color: #c21e56; }
+.bd-editor .bd-save:focus-visible, .bd-editor .bd-review:focus-visible { outline: 2px solid #ec2d6e; outline-offset: 2px; }
+.bd-editor .bd-row-actions > small { margin-top: 7px; text-align: center; }
+@media (max-width: 767px) {
+  .bd-upload { flex-wrap: wrap; }
+  .bd-editor { display: block; min-width: 0; table-layout: auto; }
+  .bd-editor thead { display: none; }
+  .bd-editor tbody { display: block; }
+  .bd-editor tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 12px; gap: 10px 12px; border-bottom: 1px solid var(--rule); }
+  .bd-editor tbody td { display: block; padding: 0; border: 0 !important; min-width: 0; text-align: left; }
+  .bd-editor td::before { content: attr(data-label); display: block; color: var(--muted, #64748b); font-size: 11px; font-weight: 600; text-transform: capitalize; margin-bottom: 5px; }
+  .bd-editor .bd-field-item_name, .bd-editor .bd-skucell, .bd-editor .bd-row-actions { grid-column: 1 / -1; }
+  .bd-editor .bd-row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .bd-editor .bd-row-actions::before { display: none; }
+  .bd-editor .bd-save, .bd-editor .bd-review { width: auto; flex: 1; min-height: 40px; margin-top: 0; }
+  .bd-editor .bd-input { height: 40px; font-size: 16px; }
+  .bd-editor .bd-dirty td:first-child { box-shadow: none; }
+  .bd-editor tr.bd-dirty { box-shadow: inset 3px 0 #ec2d6e; }
+}
+
+.bd-editor .bd-one-piece { display: block; padding: 8px 4px; color: var(--muted, #64748b); white-space: nowrap; }

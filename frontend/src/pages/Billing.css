@@ -14,7 +14,7 @@
 .bl-rm-line { width: 26px; height: 26px; border: 1px solid var(--rule); background: var(--surface-2); border-radius: var(--r-sm, 8px); cursor: pointer; color: var(--muted); font-size: 12px; }
 .bl-rm-line:hover:not(:disabled) { color: var(--danger, #dc2626); border-color: var(--danger, #dc2626); }
 .bl-rm-line:disabled { opacity: .4; cursor: default; }
-@media (max-width: 720px) { .bl-line, .bl-line-head { grid-template-columns: 1fr 1fr; } .bl-line-head { display: none; } }
+@media (max-width: 720px) { .bl-line, .bl-line-head { grid-template-columns: 1fr 1fr; } .bl-line-head { display: grid; } }
 
 .bl-totals { margin-top: 12px; margin-left: auto; width: 260px; display: flex; flex-direction: column; gap: 6px; }
 .bl-totals > div { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
@@ -23,7 +23,7 @@
 .bl-grand span, .bl-grand b { color: var(--ink) !important; font-weight: 700; }
 
 .bl-status { display: inline-block; padding: 2px 9px; border-radius: var(--r-pill, 999px); font-size: 11px; font-weight: 700; }
-.bl-paid { width: 26px; height: 26px; border: 1px solid var(--emerald, #1FA968); background: var(--emerald-soft, rgba(31,169,104,.12)); color: var(--emerald, #1FA968); border-radius: var(--r-sm, 8px); cursor: pointer; font-size: 12px; margin-left: 4px; }
+.bl-paid { min-width: 26px; padding: 0 8px; height: 26px; border: 1px solid var(--emerald, #1FA968); background: var(--emerald-soft, rgba(31,169,104,.12)); color: var(--emerald, #1FA968); border-radius: var(--r-sm, 8px); cursor: pointer; font-size: 12px; margin-left: 4px; }
 .bl-aging-note { font-size: 12px; color: var(--muted); margin-top: 14px; }
 .bl-search { height: 34px; min-width: 240px; padding: 0 12px; font-size: 13px; color: var(--ink); background: var(--surface-2); border: 1px solid var(--rule); border-radius: var(--r-sm, 8px); }
 .bl-search:focus { outline: none; border-color: var(--pink); }
@@ -75,3 +75,7 @@
   .bl-noprint { display: none !important; }
   #invoice-print { box-shadow: none; border-radius: 0; width: 100%; padding: 0; }
 }
+
+.bl-line-field { min-width: 0; display: flex; flex-direction: column; }
+.bl-line-field > span { display: none; }
+@media (max-width: 720px) { .bl-line-head { display: none; } .bl-line-field > span { display: block; font-size: 12px; margin-bottom: 4px; color: var(--muted); } }

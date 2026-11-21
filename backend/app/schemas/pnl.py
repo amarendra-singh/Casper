@@ -9,6 +9,7 @@ class PnlSkuRowResponse(BaseModel):
     id: int
     platform_sku_name: str
     sku_pricing_id: Optional[int]
+    sku_id: Optional[int] = None
 
     # Units
     gross_units: Optional[int]
@@ -83,6 +84,7 @@ class PnlReportSummary(BaseModel):
     filename: str
     uploaded_at: datetime
     status: str
+    processing_warnings: list[str] | None = None
 
     # Key metrics for list card
     gross_sales: Optional[float]

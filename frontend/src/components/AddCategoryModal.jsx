@@ -1,15 +1,17 @@
-import { useState } from 'react'
+import ConfirmDialog from './ConfirmDialog'
+import { useState, useId } from 'react'
 import { createCategory, errText } from '../api/client'
 
 /**
  * AddCategoryModal
- * 
+ *
  * Props:
  * - name: pre-filled category name
  * - onSave: called with new category object
  * - onClose: cancel handler
  */
 export default function AddCategoryModal({ name, onSave, onClose }) {
+  const fieldId0 = useId()
   const [catName, setCatName] = useState(name)
   const [crPct,   setCrPct]   = useState('20')   // jewellery default
   const [dmgPct,  setDmgPct]  = useState('15')
@@ -23,6 +25,7 @@ export default function AddCategoryModal({ name, onSave, onClose }) {
   }
 
   const handleSave = async () => {
+    if (saving) {return}
     if (!catName.trim()) {
       setError('Category name is required')
       return
@@ -46,18 +49,17 @@ export default function AddCategoryModal({ name, onSave, onClose }) {
   }
 
   return (
-    <div className="overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal" style={{ maxWidth: 380 }}>
-
-        <div className="modal-title">Add New Category</div>
+    <ConfirmDialog open title="Add New Category" dialogRole="dialog"
+      onCancel={() => !saving && onClose()} onConfirm={handleSave}
+      confirmLabel="Save Category" confirmDisabled={saving || !catName.trim()}>
 
         <div className="input-group" style={{ marginBottom: 6 }}>
-          <label>Category Name *</label>
-          <input
+          <label htmlFor={fieldId0 + '-field-56'}>Category Name *</label>
+          <input aria-label={"Category Name *"} id={fieldId0 + '-field-56'}
             className="input"
             value={catName}
             onChange={e => setCatName(e.target.value)}
-            autoFocus
+
             onKeyDown={e => e.key === 'Enter' && handleSave()}
           />
         </div>
@@ -67,18 +69,18 @@ export default function AddCategoryModal({ name, onSave, onClose }) {
           gap: 8, marginBottom: 6,
         }}>
           <div className="input-group">
-            <label>Default CR %</label>
-            <input className="input" type="number" value={crPct}
+            <label htmlFor={fieldId0 + '-field-71'}>Default CR %</label>
+            <input id={fieldId0 + '-field-71'} aria-label="Default CR %" className="input" type="number" value={crPct}
               onChange={e => setCrPct(e.target.value)} placeholder="20" />
           </div>
           <div className="input-group">
-            <label>Default Dmg %</label>
-            <input className="input" type="number" value={dmgPct}
+            <label htmlFor={fieldId0 + '-field-76'}>Default Dmg %</label>
+            <input id={fieldId0 + '-field-76'} aria-label="Default Dmg %" className="input" type="number" value={dmgPct}
               onChange={e => setDmgPct(e.target.value)} placeholder="15" />
           </div>
           <div className="input-group">
-            <label>Default Profit %</label>
-            <input className="input" type="number" value={profPct}
+            <label htmlFor={fieldId0 + '-field-81'}>Default Profit %</label>
+            <input id={fieldId0 + '-field-81'} aria-label="Default Profit %" className="input" type="number" value={profPct}
               onChange={e => setProfPct(e.target.value)} placeholder="20" />
           </div>
         </div>
@@ -96,21 +98,6 @@ export default function AddCategoryModal({ name, onSave, onClose }) {
           </div>
         )}
 
-        <div className="form-actions">
-          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button
-            className="btn btn-gold"
-            onClick={handleSave}
-            disabled={saving || !catName.trim()}
-          >
-            {saving && (
-              <span className="loader" style={{ width: 14, height: 14, borderWidth: 2 }} />
-            )}
-            Save Category
-          </button>
-        </div>
-
-      </div>
-    </div>
+    </ConfirmDialog>
   )
 }

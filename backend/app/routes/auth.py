@@ -63,7 +63,7 @@ async def login(payload: LoginRequest, request: Request, db: AsyncSession = Depe
             detail="Account is inactive",
         )
 
-    token_data = {"sub": str(user.id)}
+    token_data = {"sub": str(user.id), "ver": user.token_version}
     companies = _companies_payload(await list_user_companies(db, user.id))
 
     return TokenResponse(
@@ -86,7 +86,7 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
         name=payload.name.strip(),
         email=payload.email,
         password_hash=hash_password(payload.password),
-        role=UserRole.admin,          # platform-level role; company role lives on membership
+        role=UserRole.viewer,          # platform-level role; company role lives on membership
         is_active=True,
     )
     db.add(user)
@@ -94,7 +94,7 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
     await create_company(db, user.id, payload.company_name)
     await db.commit()
 
-    token_data = {"sub": str(user.id)}
+    token_data = {"sub": str(user.id), "ver": user.token_version}
     companies = _companies_payload(await list_user_companies(db, user.id))
     return TokenResponse(
         access_token=create_access_token(token_data),
@@ -115,13 +115,28 @@ async def refresh(payload: RefreshRequest, db: AsyncSession = Depends(get_db)):
             detail="Invalid or expired refresh token",
         )
 
-    result = await db.execute(select(User).where(User.id == int(decoded["sub"])))
+    try:
+        uid = int(decoded.get("sub"))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    result = await db.execute(select(User).where(User.id == uid))
     user = result.scalar_one_or_none()
 
-    if not user or not user.is_active:
+    if not user or not user.is_active or decoded.get("ver", 0) != user.token_version:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
-    token_data = {"sub": str(user.id)}
+    from app.models.token import TokenBlacklist
+    from sqlalchemy.exc import IntegrityError
+    import hashlib
+    jti = decoded.get('jti') or hashlib.sha256(payload.refresh_token.encode()).hexdigest()
+    db.add(TokenBlacklist(jti=jti, token_type='refresh',
+        expires_at=datetime.fromtimestamp(decoded['exp'], timezone.utc).replace(tzinfo=None)))
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=401, detail='Refresh token has already been used')
+    token_data = {"sub": str(user.id), "ver": user.token_version}
 
     return TokenResponse(
         access_token=create_access_token(token_data),
@@ -145,6 +160,7 @@ async def change_password(
     if not verify_password(payload.current_password, current_user.password_hash):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
 
+    current_user.token_version += 1
     current_user.password_hash = hash_password(payload.new_password)
     db.add(current_user)
     await db.commit()
@@ -153,10 +169,10 @@ async def change_password(
 
 
 @router.post("/logout")
-async def logout(current_user: User = Depends(get_current_user)):
+async def logout(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """
-    Server-side logout acknowledgement.
-    Token revocation is client-side (remove from localStorage).
-    Future: invalidate via jti blacklist.
+    Revoke access and refresh tokens on every device by advancing the user version.
     """
-    return {"message": "Logged out successfully"}
+    current_user.token_version += 1
+    await db.commit()
+    return {"message": "Logged out on all devices successfully"}

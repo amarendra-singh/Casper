@@ -73,7 +73,7 @@ export default function Users() {
     onConfirm: () => doRemove(m),
   })
 
-  if (loading) return <div className="usr-loading"><div className="loader" style={{ width: 28, height: 28 }} /></div>
+  if (loading) {return <div className="usr-loading"><div className="loader" style={{ width: 28, height: 28 }} /></div>}
 
   return (
     <div className="usr">
