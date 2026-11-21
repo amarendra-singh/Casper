@@ -9,7 +9,7 @@
 
 - Casper runs locally at `http://127.0.0.1:5174` with its API on port 8766; port 8765 belongs to the Wedding project.
 - Backend 434 tests, frontend 149 tests, both lint checks, and frontend build passed.
-- Full GST correction and current run evidence: [2026-10-28 catalogue GST progress](../audit/runtime/2026-10-28-catalogue-gst-progress.md). Git push status is recorded there after completion.
+- Pushed the checked source and seven earlier local commits to `origin/main` at `b649cd7`. Full GST correction and run evidence: [2026-10-28 catalogue GST progress](../audit/runtime/2026-10-28-catalogue-gst-progress.md).
 
 ---
 
