@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Dashboard Card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg: #ebe7e3;
+    --card: #ffffff;
+    --card-tint: #f3eeea;
+    --ink: #0e0e10;
+    --ink-2:#1a1a1d;
+    --muted:#9b9a9c;
+    --muted-2:#c9c5c1;
+    --line:#ececec;
+    --chip:#0e0e10;
+    --pink:#ef2e6b;
+    --pink-2:#ff4b85;
+    --rose-bg:#fde9ef;
+    --grad-1:#ff5a8a;
+    --grad-2:#ff8a4c;
+    --grad-3:#ffd34d;
+    --grad-4:#7ad36a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:'Inter',ui-sans-serif,system-ui,sans-serif;
+    background:
+      radial-gradient(1200px 700px at 20% 10%, #f6efe9 0%, transparent 60%),
+      radial-gradient(900px 600px at 80% 90%, #efe7e1 0%, transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:48px 32px;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ============ CARD ============ */
+  .card{
+    width: 980px;
+    background: linear-gradient(180deg, #fbf4ee 0%, #f1e6dd 60%, #efe4dc 100%);
+    border-radius: 28px;
+    padding: 22px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.8) inset,
+      0 30px 60px -20px rgba(40,20,10,.18),
+      0 8px 20px -8px rgba(40,20,10,.08);
+    position:relative;
+    isolation:isolate;
+  }
+  .card::before{
+    content:"";
+    position:absolute; inset:0;
+    border-radius:inherit;
+    background:
+      radial-gradient(60% 50% at 90% 0%, rgba(255,180,200,.35), transparent 60%),
+      radial-gradient(50% 40% at 0% 100%, rgba(255,210,180,.35), transparent 60%);
+    pointer-events:none;
+    z-index:-1;
+  }
+
+  /* ============ TABLE HEADER ============ */
+  .table{
+    background:#fff;
+    border-radius: 18px;
+    padding: 14px 18px 6px;
+    box-shadow: 0 6px 16px -10px rgba(40,20,10,.18), 0 1px 0 #fff inset;
+  }
+  .thead, .trow{
+    display:grid;
+    grid-template-columns: 1.6fr 1.1fr 1fr .9fr .9fr .9fr .8fr .5fr;
+    align-items:center;
+    gap: 8px;
+  }
+  .thead{
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 6px 10px;
+    border-bottom: 1px solid #f1ece8;
+  }
+  .thead .col{ text-align:right; }
+  .thead .col.name{ text-align:left; }
+  .thead .col.rev{ text-align:left; padding-left: 4px; }
+
+  .trow{
+    padding: 12px 6px;
+    border-bottom: 1px solid #f5f1ed;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .trow:last-child{ border-bottom:none; }
+  .trow .col{ text-align:right; }
+  .trow .col.name{ text-align:left; display:flex; align-items:center; gap:10px; }
+  .trow .col.rev{ text-align:left; padding-left:4px; }
+
+  .avatar{
+    width:30px; height:30px; border-radius:50%;
+    background:#ddd; display:inline-block; flex:none;
+    box-shadow: 0 0 0 2px #fff, 0 2px 6px rgba(0,0,0,.08);
+    background-size:cover; background-position:center;
+  }
+  .a1{ background: radial-gradient(circle at 35% 30%, #ffd1b8, #d97a4a 70%); }
+  .a2{ background: radial-gradient(circle at 35% 30%, #cfe4ff, #3b82b8 70%); }
+  .a3{ background: radial-gradient(circle at 35% 30%, #ffd9a8, #b76a3a 70%); }
+
+  .pill{
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width: 38px; height: 26px; padding: 0 10px;
+    background: var(--chip); color:#fff;
+    border-radius: 999px;
+    font-weight: 700; font-size: 13px;
+    letter-spacing: .01em;
+  }
+  .pill.lg{ height:28px; min-width:42px; font-size:13px; }
+
+  .muted{ color: var(--muted); font-weight:500; }
+  .num{ font-variant-numeric: tabular-nums; }
+
+  .chev{
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--pink);
+    color: #fff;
+    display:inline-flex; align-items:center; justify-content:center;
+    box-shadow: 0 8px 16px -6px rgba(239,46,107,.55), 0 0 0 4px rgba(239,46,107,.08);
+    margin-left:auto;
+  }
+  .chev svg{ width:14px; height:14px; }
+
+  /* ============ TAGS ROW ============ */
+  .tags{
+    display:flex; gap:10px; margin: 18px 6px 6px;
+    align-items:center;
+  }
+  .tag{
+    display:inline-flex; align-items:center; gap:6px;
+    background:#fff; border-radius: 999px;
+    padding: 9px 14px; font-size: 13px; font-weight: 600;
+    color: var(--ink);
+    box-shadow: 0 4px 14px -10px rgba(40,20,10,.25), 0 0 0 1px rgba(0,0,0,.02);
+  }
+  .tag .emoji{ font-size: 14px; }
+  .growth{
+    margin-left:auto;
+    display:flex; align-items:center; gap:8px;
+  }
+  .growth .up{
+    display:inline-flex; align-items:center; gap:4px;
+    background: var(--pink); color:#fff;
+    padding: 6px 10px; border-radius: 999px;
+    font-size: 13px; font-weight: 700;
+    box-shadow: 0 8px 18px -8px rgba(239,46,107,.6);
+  }
+  .growth .up svg{ width:10px; height:10px; }
+  .growth .val{
+    background: var(--pink); color:#fff;
+    padding: 6px 12px; border-radius: 999px;
+    font-size: 13px; font-weight: 700;
+    box-shadow: 0 8px 18px -8px rgba(239,46,107,.6);
+  }
+
+  /* ============ PLATFORMS ============ */
+  .section-title{
+    font-size: 18px; font-weight: 700; margin: 22px 6px 12px;
+    letter-spacing: -.01em;
+  }
+
+  .plat-grid{
+    display:grid;
+    grid-template-columns: 1.25fr 1fr 1fr;
+    gap: 12px;
+  }
+  .plat{
+    background:#fff;
+    border-radius: 18px;
+    padding: 16px 16px;
+    box-shadow: 0 6px 18px -12px rgba(40,20,10,.25), 0 1px 0 #fff inset;
+    position:relative;
+    overflow:hidden;
+  }
+  .plat .stripes{
+    position:absolute; right:-30px; top:-30px;
+    width:160px; height:160px;
+    background-image: repeating-linear-gradient(45deg, rgba(0,0,0,.04) 0 2px, transparent 2px 9px);
+    border-radius: 50%;
+    pointer-events:none;
+  }
+  .plat .head{
+    display:flex; align-items:center; gap:10px;
+    font-weight:700; font-size:15px;
+  }
+  .plat .logo{
+    width: 24px; height: 24px; border-radius: 7px;
+    display:inline-flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:800; color:#fff;
+    flex:none;
+  }
+  .logo.dribble{ background: radial-gradient(circle at 35% 30%, #ff6aa3, #ea3a82); position:relative;}
+  .logo.dribble::after{
+    content:""; position:absolute; inset:4px; border-radius:50%;
+    border:1.5px solid #fff;
+    clip-path: polygon(0 0, 100% 0, 100% 60%, 0 80%);
+    opacity:.85;
+  }
+  .logo.gram{
+    background: conic-gradient(from 210deg, #ffb86b, #ff4d6d, #c13584, #5b51d8, #4cb8ff, #ffb86b);
+    border-radius: 8px;
+  }
+  .logo.gram::after{
+    content:""; position:absolute; width:10px; height:10px; border:1.5px solid #fff; border-radius:50%;
+  }
+  .logo.gram{ position:relative; }
+  .logo.search{
+    background:#fff; color:#000; border:1px solid #ececec;
+    position:relative;
+  }
+  .logo.search::before{
+    content:""; position:absolute; inset:5px; border-radius:50%;
+    background:
+      conic-gradient(from -30deg,
+        #ea4335 0 25%, #fbbc05 25% 50%, #34a853 50% 75%, #4285f4 75% 100%);
+    -webkit-mask: radial-gradient(circle, transparent 28%, #000 30%);
+            mask: radial-gradient(circle, transparent 28%, #000 30%);
+  }
+  .logo.other{
+    background:#0e0e10; color:#fff;
+    position:relative;
+  }
+  .logo.other::after{
+    content:""; position:absolute; width:10px; height:7px;
+    border:1.5px solid #fff; border-bottom:none;
+    border-radius: 8px 8px 0 0;
+    top: 5px;
+  }
+
+  .plat .row2{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    margin-top: 14px;
+  }
+  .plat .pct{ font-size: 22px; font-weight: 800; letter-spacing:-.01em;}
+  .plat .amt{ color: var(--muted); font-weight:600; font-size:14px; }
+
+  .plat.featured{
+    grid-column: span 1;
+    background: linear-gradient(180deg, #ffffff 0%, #fbf6f2 100%);
+  }
+  .plat.featured .pct{ font-size: 30px; }
+  .plat.featured .amt{ font-size: 18px; }
+  .plat.featured .head{ font-size: 16px; }
+  .plat.featured .row2{ margin-top: 36px; }
+
+  .plat.split{
+    display:flex; flex-direction:column; justify-content:space-between;
+    gap: 14px;
+  }
+  .plat.split .head{ font-size: 14px; }
+  .plat.split .pct{ font-size: 17px; }
+  .plat.split .amt{ font-size: 14px; }
+  .plat.split .row2{ margin-top: 6px; }
+  .plat.split .divider{
+    height:1px; background:#f1ece8; margin: 2px -16px;
+  }
+
+  /* ============ CHART ============ */
+  .chart-wrap{
+    background: linear-gradient(180deg,#fff, #fbf5f0);
+    border-radius: 20px;
+    padding: 18px 18px 14px;
+    margin-top: 14px;
+    box-shadow: 0 6px 18px -12px rgba(40,20,10,.25), 0 1px 0 #fff inset;
+    position:relative;
+  }
+  .chart-head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 6px;
+  }
+  .chart-head h3{ margin:0; font-size:16px; font-weight:700; letter-spacing:-.01em;}
+  .chart-head .arrow{
+    width:28px; height:28px; border-radius:50%;
+    display:inline-flex; align-items:center; justify-content:center;
+    color: var(--ink);
+  }
+  .chart{ width:100%; height: 200px; display:block; }
+
+  /* ============ BOTTOM PEEK ============ */
+  .peek{
+    margin-top: 14px;
+    background:#fff;
+    border-radius: 16px;
+    padding: 6px 18px;
+    box-shadow: 0 6px 18px -12px rgba(40,20,10,.25);
+    opacity:.95;
+  }
+  .peek .trow{ border:none; padding: 8px 0; }
+
+  /* prevent overflow */
+  .card, .plat-grid, .chart-wrap{ min-width:0; }
+</style>
+</head>
+<body>
+
+<div class="card" role="figure" aria-label="Sales dashboard card">
+
+  <!-- TABLE -->
+  <div class="table">
+    <div class="thead">
+      <div class="col name">Sales</div>
+      <div class="col rev">Revenue</div>
+      <div class="col">Leads</div>
+      <div class="col"></div>
+      <div class="col"></div>
+      <div class="col"></div>
+      <div class="col"></div>
+      <div class="col"></div>
+    </div>
+
+    <div class="trow">
+      <div class="col name"><span class="avatar a1"></span>Armin A.</div>
+      <div class="col rev num">$209,633</div>
+      <div class="col"><span class="pill">41</span></div>
+      <div class="col num">118</div>
+      <div class="col num">0.84</div>
+      <div class="col num">31%</div>
+      <div class="col"><span class="pill">12</span></div>
+      <div class="col num">29</div>
+    </div>
+
+    <div class="trow">
+      <div class="col name"><span class="avatar a2"></span>Mikasa A.</div>
+      <div class="col rev num">$156,841</div>
+      <div class="col"><span class="pill">54</span></div>
+      <div class="col num">103</div>
+      <div class="col num">0.89</div>
+      <div class="col num">39%</div>
+      <div class="col"><span class="pill">21</span></div>
+      <div class="col num" style="display:flex;align-items:center;gap:8px;justify-content:flex-end;">
+        33
+        <span class="chev" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 15 12 9 18 15"></polyline></svg>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAGS -->
+  <div class="tags">
+    <span class="tag">Top sales <span class="emoji">💪</span></span>
+    <span class="tag">Sales streak <span class="emoji">🔥</span></span>
+    <span class="tag">Top review <span class="emoji">👍</span></span>
+    <span class="growth">
+      <span class="up">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 15 12 9 18 15"></polyline></svg>
+        3
+      </span>
+      <span class="val">$156,841</span>
+    </span>
+  </div>
+
+  <!-- PLATFORMS -->
+  <div class="section-title">Work with platforms</div>
+  <div class="plat-grid">
+
+    <!-- Featured: Dribbble-like -->
+    <div class="plat featured">
+      <div class="stripes"></div>
+      <div class="head"><span class="logo dribble"></span>Dribbble</div>
+      <div class="row2">
+        <div class="pct">45.3%</div>
+        <div class="amt num">$71,048</div>
+      </div>
+    </div>
+
+    <!-- Instagram-like -->
+    <div class="plat">
+      <div class="stripes"></div>
+      <div class="head"><span class="logo gram"></span>Instagram</div>
+      <div class="row2">
+        <div class="pct">28.1%</div>
+        <div class="amt num">$44,072</div>
+      </div>
+    </div>
+
+    <!-- Right column: split (Google + Other) -->
+    <div class="plat split">
+      <div>
+        <div class="head" style="justify-content:space-between;display:flex;">
+          <span style="display:flex;align-items:center;gap:8px;"><span class="logo search"></span>Google</span>
+          <span style="display:flex;align-items:center;gap:10px;">
+            <span class="pct" style="font-size:15px;">14.1%</span>
+            <span class="amt num" style="font-size:13px;">$22,114</span>
+          </span>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div>
+        <div class="head" style="justify-content:space-between;display:flex;">
+          <span style="display:flex;align-items:center;gap:8px;"><span class="logo other">🛒</span>Other</span>
+          <span style="display:flex;align-items:center;gap:10px;">
+            <span class="pct" style="font-size:15px;">7.1%</span>
+            <span class="amt num" style="font-size:13px;">$11,135</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHART -->
+  <div class="chart-wrap">
+    <div class="chart-head">
+      <h3>Sales dynamic</h3>
+      <span class="arrow" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+      </span>
+    </div>
+
+    <svg class="chart" viewBox="0 0 940 220" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="line" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%"  stop-color="#ff5a8a"/>
+          <stop offset="35%" stop-color="#ff8a4c"/>
+          <stop offset="65%" stop-color="#ffd34d"/>
+          <stop offset="100%" stop-color="#7ad36a"/>
+        </linearGradient>
+        <linearGradient id="lineGlow" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%"  stop-color="#ff5a8a" stop-opacity=".35"/>
+          <stop offset="35%" stop-color="#ff8a4c" stop-opacity=".35"/>
+          <stop offset="65%" stop-color="#ffd34d" stop-opacity=".35"/>
+          <stop offset="100%" stop-color="#7ad36a" stop-opacity=".35"/>
+        </linearGradient>
+      </defs>
+
+      <!-- vertical week guides -->
+      <g stroke="#efe7e1" stroke-width="1">
+        <line x1="80"  y1="10" x2="80"  y2="180"/>
+        <line x1="220" y1="10" x2="220" y2="180"/>
+        <line x1="360" y1="10" x2="360" y2="180"/>
+        <line x1="500" y1="10" x2="500" y2="180"/>
+        <line x1="640" y1="10" x2="640" y2="180"/>
+        <line x1="780" y1="10" x2="780" y2="180"/>
+        <line x1="900" y1="10" x2="900" y2="180"/>
+      </g>
+
+      <!-- week labels -->
+      <g fill="#c9c5c1" font-family="Inter, sans-serif" font-size="11" font-weight="500">
+        <text x="80"  y="30">w 1</text>
+        <text x="220" y="30">w 3</text>
+        <text x="360" y="30">w 5</text>
+        <text x="500" y="30">w 7</text>
+        <text x="640" y="30">w 9</text>
+        <text x="780" y="30">w 11</text>
+      </g>
+
+      <!-- secondary thin line (background series) -->
+      <path d="M 30 130 C 80 120, 110 140, 150 125 S 220 95, 260 110 S 330 130, 370 115 S 440 90, 490 100 S 560 80, 610 75 S 680 60, 720 50 S 800 45, 880 30"
+            stroke="#e7d8d0" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-dasharray="0"/>
+
+      <!-- primary line -->
+      <path id="primary"
+            d="M 30 150
+               C 70 135, 95 165, 130 155
+               S 195 175, 230 160
+               S 295 130, 330 145
+               S 395 165, 430 150
+               S 495 120, 530 130
+               S 595 145, 630 135
+               S 695 100, 730 95
+               S 795 85, 830 70
+               S 880 55, 900 45"
+            stroke="url(#line)"
+            stroke-width="2.6"
+            fill="none"
+            stroke-linecap="round"/>
+
+      <!-- horizontal gradient timeline at bottom -->
+      <rect x="20" y="195" width="900" height="6" rx="3" fill="url(#line)"/>
+      <rect x="20" y="195" width="900" height="6" rx="3" fill="url(#lineGlow)" opacity=".5"/>
+
+      <!-- markers on timeline -->
+      <!-- marker 1 -->
+      <g transform="translate(180,198)">
+        <circle r="14" fill="#ff7aa3"/>
+        <text x="0" y="4" text-anchor="middle" fill="#fff" font-family="Inter" font-size="11" font-weight="800">b</text>
+      </g>
+      <!-- marker 2 -->
+      <g transform="translate(470,198)">
+        <circle r="14" fill="#0e0e10"/>
+        <circle r="5" cx="0" cy="-1" fill="#fff"/>
+      </g>
+      <!-- marker 3 (instagram-like) -->
+      <g transform="translate(710,198)">
+        <rect x="-13" y="-13" width="26" height="26" rx="7" fill="url(#line)"/>
+        <circle cx="0" cy="0" r="6" fill="none" stroke="#fff" stroke-width="2"/>
+        <circle cx="6" cy="-6" r="1.6" fill="#fff"/>
+      </g>
+      <!-- marker 4 (heart) -->
+      <g transform="translate(890,198)">
+        <circle r="14" fill="#ff5a8a"/>
+        <path d="M -5 -2 a 3.2 3.2 0 0 1 5 -1.6 a 3.2 3.2 0 0 1 5 1.6 c 0 3 -5 6.5 -5 6.5 s -5 -3.5 -5 -6.5 z" fill="#fff"/>
+      </g>
+
+      <!-- arrow up at top right of primary -->
+      <g transform="translate(905,40)" stroke="#0e0e10" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <line x1="-6" y1="6" x2="6" y2="-6"/>
+        <polyline points="0,-6 6,-6 6,0"/>
+      </g>
+    </svg>
+  </div>
+
+  <!-- PEEK BOTTOM USER -->
+  <div class="peek">
+    <div class="trow" style="grid-template-columns: 1.6fr 1.1fr 1fr .9fr .9fr .9fr .8fr .5fr;">
+      <div class="col name"><span class="avatar a3"></span>Eren Y.</div>
+      <div class="col rev num">$117,115</div>
+      <div class="col"><span class="pill">22</span></div>
+      <div class="col num">84</div>
+      <div class="col num">0.79</div>
+      <div class="col num">32%</div>
+      <div class="col"><span class="pill">7</span></div>
+      <div class="col num">15</div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

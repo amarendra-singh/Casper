@@ -1,0 +1,1 @@
+await expect(page.locator("main")).toContainText("Your profile and sign-in security"); return {text:await page.locator("main").innerText(),buttons:await page.locator("button").evaluateAll(es=>es.filter(e=>/Logout|Sign out/.test(e.getAttribute("aria-label")||e.innerText)).map(e=>({label:e.getAttribute("aria-label"),text:e.innerText}))),steps:operatorEvidence.steps};

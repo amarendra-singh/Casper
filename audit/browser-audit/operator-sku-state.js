@@ -1,0 +1,1 @@
+return {inputs:await page.locator("main input").evaluateAll(es=>es.map(e=>({label:e.getAttribute("aria-label"),placeholder:e.placeholder,value:e.value}))),text:(await page.locator("main").innerText()).slice(0,1200),steps:operatorEvidence.steps,responses:operatorEvidence.responses.filter(r=>r.method!=="GET").slice(-10)};

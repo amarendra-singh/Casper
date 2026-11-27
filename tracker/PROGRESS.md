@@ -5,6 +5,13 @@
 
 ---
 
+## Session 2026-11-27 — publish remaining project material
+
+- User approved public release of business files. Remaining audit, design, workbook, and historical materials were prepared for `origin/main`; database backups are represented by credential-disabled public copies.
+- Release inventory and verification: [public-data push log](../audit/runtime/2026-11-27-public-data-push.md).
+
+---
+
 ## Session 2026-11-22 — Casper startup and repository push
 
 - Casper runs locally at `http://127.0.0.1:5174` with its API on port 8766; port 8765 belongs to the Wedding project.

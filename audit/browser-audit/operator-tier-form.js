@@ -1,0 +1,1 @@
+await page.getByRole("button",{name:"+ Add Tier",exact:true}).click(); return {text:await page.locator("main").innerText(),fields:await page.locator("main input").evaluateAll(es=>es.map(e=>({label:e.getAttribute("aria-label"),placeholder:e.placeholder,value:e.value}))),buttons:await page.locator("main button").allTextContents()};

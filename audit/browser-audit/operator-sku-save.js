@@ -1,0 +1,12 @@
+await page.getByRole('button',{name:'Import 1 rows',exact:true}).click();
+await expect(page.getByRole('dialog')).toHaveCount(0);
+await page.getByRole('button',{name:'Save All',exact:true}).click();
+await page.waitForFunction(()=>[...document.querySelectorAll('input')].some(e=>e.value==='AUDIT-NECKLACE'));
+await page.reload({waitUntil:'domcontentloaded'});
+await page.waitForFunction(()=>[...document.querySelectorAll('input')].some(e=>e.value==='AUDIT-NECKLACE'));
+operatorEvidence.steps.push({flow:'SKU import/save',outcome:'synthetic CSV preview imported, Save All, persisted after reload'});
+const row=await page.locator('tr').filter({has:page.locator('input[value="AUDIT-NECKLACE"]')}).innerText();
+await page.getByRole('link',{name:'Inventory',exact:true}).click();
+await expect(page.locator('main')).toContainText('AUDIT-NECKLACE');
+operatorEvidence.steps.push({flow:'inventory',outcome:'imported SKU appears in inventory'});
+return {row,inventory:(await page.locator('main').innerText()).slice(0,1500),responses:operatorEvidence.responses.slice(-8)};

@@ -1,0 +1,616 @@
+
+
+
+
+<div class="app">
+  <!-- ===== Icon rail ===== -->
+  <aside class="rail">
+    <div class="logo">C</div>
+    <div class="rail-btn" title="Explore">
+      <SVG/>
+    </div>
+    <div class="rail-btn active" title="Dashboard">
+      <SVG/>
+    </div>
+    <div class="rail-btn" title="Reports">
+      <SVG/>
+    </div>
+    <div class="rail-btn" title="Command">
+      <SVG/>
+    </div>
+    <div class="rail-btn" title="Edit">
+      <SVG/>
+    </div>
+    <div class="rail-spacer"></div>
+    <div class="rail-bottom">
+      <div class="rail-btn" title="Help">
+        <SVG/>
+        <span class="dot"></span>
+      </div>
+      <div class="rail-btn" title="Settings">
+        <SVG/>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== File tree ===== -->
+  <nav class="tree">
+    <div class="tree-row" style="color:#B8B6B2">
+      <span class="ic">
+        <SVG/>
+      </span>
+      Starred
+    </div>
+    <div class="tree-row" style="color:#B8B6B2">
+      <span class="ic">
+        <SVG/>
+      </span>
+      Recent
+    </div>
+
+    <div class="tree-row">Sales list</div>
+    <div class="tree-row">Goals</div>
+
+    <div class="tree-row has-child open">
+      <span class="ic"><SVG/></span>
+      Dashboard
+      <span class="badge muted" style="background:transparent;color:#B8B6B2;padding:0">+</span>
+    </div>
+    <div class="tree-children">
+      <div class="tree-row">Codename</div>
+      <div class="tree-row has-child open">
+        <span class="ic"><SVG/></span>
+        Shared with me
+      </div>
+      <div class="tree-children">
+        <div class="tree-row">Cargo2go</div>
+        <div class="tree-row">Cloudz3r <span class="badge">2</span></div>
+        <div class="tree-row">Idioma</div>
+        <div class="tree-row">Syllables</div>
+        <div class="tree-row">x-0b</div>
+      </div>
+    </div>
+
+    <div class="tree-row has-child open">
+      <span class="ic"><SVG/></span>
+      Reports
+      <span class="badge muted" style="background:transparent;color:#B8B6B2;padding:0">+</span>
+    </div>
+    <div class="tree-children">
+      <div class="tree-row has-child">
+        <span class="ic"><SVG/></span>
+        Share with me
+      </div>
+      <div class="tree-row">Deals by user</div>
+      <div class="tree-row">Deal duration</div>
+      <div class="tree-row has-child open">
+        <span class="ic"><SVG/></span>
+        My reports
+      </div>
+      <div class="tree-children">
+        <div class="tree-row">Emails received</div>
+        <div class="tree-row">Deal duration</div>
+        <div class="tree-row active">New report</div>
+        <div class="tree-row">Analytics <span class="badge">7</span></div>
+      </div>
+    </div>
+
+    <div class="tree-row" style="margin-top:14px;color:#B8B6B2">
+      <span class="ic"><SVG/></span>
+      Manage folders
+    </div>
+  </nav>
+
+  <!-- ===== Main column ===== -->
+  <main style="display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;">
+
+    <!-- Top app bar -->
+    <div class="topbar">
+      <div class="brand">
+        Codename.com
+        <SVG/>
+      </div>
+
+      <div class="search">
+        <SVG/>
+        <input placeholder="Try searching “insights”">
+      </div>
+
+      <div class="top-actions">
+        <div class="icon-btn" title="Menu">
+          <SVG/>
+        </div>
+        <div class="avatar-orb" title="Profile"></div>
+        <div class="plus-btn" title="New">
+          <SVG/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Canvas card -->
+    <div class="canvas-wrap">
+      <div class="canvas">
+
+        <!-- Report header row -->
+        <div class="report-header">
+          <div class="chip-circle" title="Add collaborator">
+            <SVG/>
+          </div>
+          <div class="collab-chip">
+            <span class="av" style="background:#F59E0B">A</span>
+            Armin A.
+          </div>
+          <div class="collab-chip">
+            <span class="av" style="background:#7A5BFF">E</span>
+            Eren Y.
+          </div>
+          <div class="collab-chip">
+            <span class="av" style="background:#EC2D6E">M</span>
+            Mikasa A.
+          </div>
+          <div class="chip-circle" style="background:var(--ink);color:#fff;border-color:var(--ink);width:30px;height:30px;font-size:12px;font-weight:600">C</div>
+
+          <div class="header-right">
+            <div class="ghost-btn" title="Adjust">
+              <SVG/>
+            </div>
+            <div class="ghost-btn" title="Download">
+              <SVG/>
+            </div>
+            <div class="ghost-btn" title="Share">
+              <SVG/>
+            </div>
+          </div>
+        </div>
+
+        <!-- Timeframe row (right-aligned, below header) -->
+        <div class="header-meta">
+          <div class="toggle-row">
+            <div class="switch" id="timeframeSwitch"></div>
+            <span class="lbl">Timeframe</span>
+          </div>
+          <div class="date-pill">
+            Sep 1 — Nov 30, 2023
+            <SVG/>
+          </div>
+        </div>
+
+        <!-- ===== Phase 3: Hero KPI + stat cards ===== -->
+        <div class="hero-row">
+          <div>
+            <h1 class="report-title">New report</h1>
+            <div class="kpi-label">All Companies Revenue</div>
+            <div class="kpi-amount">
+              <span>$528,976<span class="cents">.82</span></span>
+              <span class="delta up">
+                <SVG/>
+                7.9%
+              </span>
+              <span class="delta dark">+$27,335.00</span>
+            </div>
+            <div class="kpi-sub">
+              vs prev. $501,641.73 <span class="dot"></span> Jun 1 — Aug 31, 2023
+              <SVG/>
+            </div>
+          </div>
+
+          <div class="stat-cards">
+            <div class="stat">
+              <div class="top">Top sales
+                <span class="ic"><SVG/></span>
+              </div>
+              <div class="val">72</div>
+              <div class="foot">
+                <span class="av" style="background:#EC2D6E">M</span>
+                Mikasa
+                <span class="chev"><SVG/></span>
+              </div>
+            </div>
+
+            <div class="stat dark">
+              <div class="top">Best deal
+                <span class="ic"><SVG/></span>
+              </div>
+              <div class="val">$42,300</div>
+              <div class="foot">
+                Rolf Inc.
+                <span class="chev"><SVG/></span>
+              </div>
+            </div>
+
+            <div class="stat">
+              <div class="top">Deals</div>
+              <div class="val" style="color:#C9C6C2">250</div>
+              <div class="foot"><span class="diamond"></span> 5</div>
+            </div>
+
+            <div class="stat active">
+              <div class="top">Value</div>
+              <div class="val" style="color:var(--pink)">528k</div>
+              <div class="foot">
+                <SVG/>
+                <span style="color:var(--pink);font-weight:600">7.9%</span>
+              </div>
+            </div>
+
+            <div class="stat">
+              <div class="top">Win rate</div>
+              <div class="val" style="color:#C9C6C2">44%</div>
+              <div class="foot">
+                <SVG/>
+                <span style="color:#1FA968;font-weight:600">1.2%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== Phase 4: Data strip ===== -->
+        <div class="data-strip" style="background-color: rgb(238, 238, 238)">
+          <div class="ds-cell">
+            <span class="av brand-flipkart"></span>
+            <span class="amt">$209,633</span>
+            <span class="pct">39.63%</span>
+          </div>
+          <div class="ds-cell">
+            <span class="av brand-snapdeal"></span>
+            <span class="amt">$156,841</span>
+            <span class="pct">29.65%</span>
+          </div>
+          <div class="ds-cell">
+            <span class="av brand-meesho"></span>
+            <span class="amt">$117,115</span>
+            <span class="pct">22.14%</span>
+          </div>
+          <div class="ds-cell">
+            <span class="av letter" style="background:var(--ink)">C</span>
+            <span class="amt">$45,386</span>
+            <span class="pct">8.58%</span>
+          </div>
+          <div class="ds-cta">Details</div>
+        </div>
+
+        <!-- ===== Phase 5: Three-up middle grid ===== -->
+        <div class="mid-grid">
+          <!-- Left: Referrer list -->
+          <div class="mid-card" style="border-color: rgba(255, 255, 255, 0); background-color: rgb(239, 238, 238)">
+            <div class="card-head">
+              <div class="sort-btn">
+                <SVG/>
+                <SVG/>
+              </div>
+              <div class="filter-pill">Filters
+                <SVG/>
+              </div>
+            </div>
+            <div class="ref-rows">
+              <div class="ref-row"><div class="ref-pill"><span class="av brand-dribbble"><SVG/></span><span class="ref-name">Dribbble</span><span class="ref-amt">$227,459</span><span class="ref-pct">43%</span></div></div>
+              <div class="ref-row"><div class="ref-pill"><span class="av brand-instagram"><SVG/></span><span class="ref-name">Instagram</span><span class="ref-amt">$142,823</span><span class="ref-pct">27%</span></div></div>
+              <div class="ref-row"><div class="ref-pill"><span class="av brand-behance"><SVG/></span><span class="ref-name">Behance</span><span class="ref-amt">$89,935</span><span class="ref-pct">11%</span></div></div>
+              <div class="ref-row"><div class="ref-pill"><span class="av brand-google"><SVG/></span><span class="ref-name">Google</span><span class="ref-amt">$37,028</span><span class="ref-pct">7%</span></div></div>
+            </div>
+          </div>
+
+          <!-- Middle: Bar chart card -->
+          <div class="mid-card bar-card" style="background-color: rgb(239, 238, 238)">
+            <div class="card-head">
+              <div class="sort-btn">
+                <SVG/>
+                <SVG/>
+              </div>
+              <div class="filter-pill">Filters
+                <SVG/>
+              </div>
+            </div>
+            <div class="brand-bars">
+              <!-- Behance: split hatched/white -->
+              <div class="bar split h-behance">
+                <span class="av"><SVG/></span>
+              </div>
+              <!-- Dribbble: tallest white -->
+              <div class="bar h-dribbble">
+                <span class="av"><SVG/></span>
+              </div>
+              <!-- Google: medium white -->
+              <div class="bar h-google">
+                <span class="av"><SVG/></span>
+              </div>
+              <!-- Instagram: shortest white -->
+              <div class="bar h-instagram">
+                <span class="av"><SVG/></span>
+              </div>
+              <!-- Shopping bag: hatched -->
+              <div class="bar hatched h-bag">
+                <span class="bag"><SVG/></span>
+              </div>
+            </div>
+            <div class="bar-foot">
+              <span class="lab">Deals amount</span>
+              <span class="val">by referrer category <SVG/></span>
+            </div>
+          </div>
+
+          <!-- ===== Appended: Dashboard Card ===== -->
+          <div class="dc-card" role="figure" aria-label="Sales dashboard card">
+
+            <!-- Top user table -->
+            <div class="dc-table">
+              <div class="dc-thead">
+                <div class="c name">Sales</div>
+                <div class="c rev">Revenue</div>
+                <div class="c">Leads</div>
+                <div class="c"></div>
+                <div class="c"></div>
+                <div class="c"></div>
+                <div class="c"></div>
+                <div class="c"></div>
+              </div>
+
+              <div class="dc-trow">
+                <div class="c name"><span class="dc-av a1"></span>Armin A.</div>
+                <div class="c rev">$209,633</div>
+                <div class="c"><span class="dc-pill">41</span></div>
+                <div class="c">118</div>
+                <div class="c">0.84</div>
+                <div class="c">31%</div>
+                <div class="c"><span class="dc-pill">12</span></div>
+                <div class="c">29</div>
+              </div>
+
+              <div class="dc-trow">
+                <div class="c name"><span class="dc-av a2"></span>Mikasa A.</div>
+                <div class="c rev">$156,841</div>
+                <div class="c"><span class="dc-pill">54</span></div>
+                <div class="c">103</div>
+                <div class="c">0.89</div>
+                <div class="c">39%</div>
+                <div class="c"><span class="dc-pill">21</span></div>
+                <div class="c" style="display:flex;align-items:center;gap:8px;justify-content:flex-end;">
+                  33
+                  <span class="dc-chev" aria-hidden="true">
+                    <SVG/>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tags row -->
+            <div class="dc-tags">
+              <span class="dc-tag">Top sales 💪</span>
+              <span class="dc-tag">Sales streak 🔥</span>
+              <span class="dc-tag">Top review 👍</span>
+              <span class="dc-growth">
+                <span class="pillpk">
+                  <SVG/>
+                  3
+                </span>
+                <span class="pillpk">$156,841</span>
+              </span>
+            </div>
+
+            <!-- Platforms -->
+            <h4 class="dc-sec">Work with platforms</h4>
+            <div class="dc-plat-grid">
+
+              <!-- Dribbble featured -->
+              <div class="dc-plat feat">
+                <div class="stripes"></div>
+                <div class="ph">
+                  <span class="mk"><SVG/></span>
+                  Dribbble
+                </div>
+                <div class="pr">
+                  <span class="pct">45.3%</span>
+                  <span class="amt">$71,048</span>
+                </div>
+              </div>
+
+              <!-- Instagram -->
+              <div class="dc-plat">
+                <div class="stripes"></div>
+                <div class="ph">
+                  <span class="mk"><SVG/></span>
+                  Instagram
+                </div>
+                <div class="pr">
+                  <span class="pct">28.1%</span>
+                  <span class="amt">$44,072</span>
+                </div>
+              </div>
+
+              <!-- Google + Other (split) -->
+              <div class="dc-plat split">
+                <div class="row">
+                  <span class="ph">
+                    <span class="mk"><SVG/></span>
+                    Google
+                  </span>
+                  <span class="meta">
+                    <span class="pct">14.1%</span>
+                    <span class="amt">$22,114</span>
+                  </span>
+                </div>
+                <div class="divider"></div>
+                <div class="row">
+                  <span class="ph">
+                    <span class="mk"><SVG/></span>
+                    Other
+                  </span>
+                  <span class="meta">
+                    <span class="pct">7.1%</span>
+                    <span class="amt">$11,135</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sales dynamic -->
+            <div class="dc-chart-wrap">
+              <div class="dc-chart-head">
+                <h4>Sales dynamic</h4>
+                <span aria-hidden="true">
+                  <SVG/>
+                </span>
+              </div>
+
+              <SVG/>
+            </div>
+
+            <!-- Bottom peek user row -->
+            <div class="dc-peek">
+              <div class="dc-trow">
+                <div class="c name"><span class="dc-av a3"></span>Eren Y.</div>
+                <div class="c rev">$117,115</div>
+                <div class="c"><span class="dc-pill">22</span></div>
+                <div class="c">84</div>
+                <div class="c">0.79</div>
+                <div class="c">32%</div>
+                <div class="c"><span class="dc-pill">7</span></div>
+                <div class="c">15</div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ===== Platform value · Dribbble (new card) ===== -->
+          <div class="pdv-card" role="figure" aria-label="Monthly value by platform · Dribbble">
+
+            <!-- Left pink stats panel -->
+            <div class="pdv-left">
+              <div class="pdv-vlabel">Avg. sales monthly</div>
+              <div class="pdv-stat">
+                <span class="l">Revenue</span>
+                <span class="v">$18,552</span>
+              </div>
+              <div class="pdv-stat">
+                <span class="l">Qual. leads</span>
+                <span class="v">13 <span class="sub">/ 122</span></span>
+              </div>
+              <div class="pdv-stat">
+                <span class="l">Winrate</span>
+                <span class="v">53.8% <span class="sub">7 / 13</span></span>
+              </div>
+            </div>
+
+            <!-- Right chart panel -->
+            <div class="pdv-right">
+
+              <!-- Header row (in normal flow, no overlap) -->
+              <div class="pdv-head">
+                <div class="pdv-title">
+                  <span class="mk" aria-hidden="true">
+                    <SVG/>
+                  </span>
+                  <div>
+                    <div class="pdv-eyebrow">Monthly value by platform</div>
+                    <div class="pdv-name">Dribbble
+                      <SVG/>
+                    </div>
+                  </div>
+                </div>
+                <div class="pdv-tabs" role="tablist">
+                  <button class="pdv-tab active" role="tab" aria-selected="true">Revenue</button>
+                  <button class="pdv-tab" role="tab" aria-selected="false">Leads</button>
+                  <button class="pdv-tab" role="tab" aria-selected="false">W/L</button>
+                </div>
+              </div>
+
+              <div class="pdv-plot">
+                <div class="pdv-bars">
+
+                  <!-- Sep group (with the hover/preview tooltip) -->
+                  <div class="pdv-group">
+                    <div class="pdv-bar hatched preview" style="height:62%">
+                      <div class="pdv-tip">$6,901</div>
+                      <div class="pdv-tip rich">
+                        <span class="m">$6,901</span>
+                        <span class="s">11 / 70</span>
+                        <span class="p">45.4%&nbsp;<span style="opacity:.75">5 / 11</span></span>
+                      </div>
+                      <SVG/>
+                    </div>
+                    <div class="pdv-bar" style="height:48%"></div>
+                    <div class="pdv-bar" style="height:30%"></div>
+                  </div>
+
+                  <!-- Oct group -->
+                  <div class="pdv-group">
+                    <div class="pdv-bar" style="height:36%"></div>
+                    <div class="pdv-bar hatched" style="height:80%">
+                      <div class="pdv-tip">$11,035</div>
+                      <div class="pdv-tip rich">
+                        <span class="m">$11,035</span>
+                        <span class="s">18 / 70</span>
+                        <span class="p">62.1%&nbsp;<span style="opacity:.75">8 / 13</span></span>
+                      </div>
+                    </div>
+                    <div class="pdv-bar" style="height:58%"></div>
+                  </div>
+
+                  <!-- Nov group -->
+                  <div class="pdv-group">
+                    <div class="pdv-bar" style="height:42%"></div>
+                    <div class="pdv-bar hatched" style="height:68%">
+                      <div class="pdv-tip">$9,288</div>
+                      <div class="pdv-tip rich">
+                        <span class="m">$9,288</span>
+                        <span class="s">14 / 70</span>
+                        <span class="p">53.8%&nbsp;<span style="opacity:.75">7 / 13</span></span>
+                      </div>
+                    </div>
+                    <div class="pdv-bar" style="height:64%"></div>
+                  </div>
+
+                  <!-- Axis row: avatars + month labels -->
+                  <div class="pdv-axis">
+                    <div class="pdv-axis-cell">
+                      <div class="pdv-avs">
+                        <div class="av-wrap"><span class="pdv-av m1"></span></div>
+                        <div class="av-wrap"><span class="pdv-av m2"></span></div>
+                        <div class="av-wrap"><span class="pdv-av m3"></span></div>
+                      </div>
+                      <span class="pdv-month">Sep</span>
+                    </div>
+                    <div class="pdv-axis-cell">
+                      <div class="pdv-avs">
+                        <div class="av-wrap"><span class="pdv-av m1"></span></div>
+                        <div class="av-wrap"><span class="pdv-av m2"></span></div>
+                        <div class="av-wrap"><span class="pdv-av m3"></span></div>
+                      </div>
+                      <span class="pdv-month">Oct</span>
+                    </div>
+                    <div class="pdv-axis-cell">
+                      <div class="pdv-avs">
+                        <div class="av-wrap"><span class="pdv-av m1"></span></div>
+                        <div class="av-wrap"><span class="pdv-av m2"></span></div>
+                        <div class="av-wrap"><span class="pdv-av m3"></span></div>
+                      </div>
+                      <span class="pdv-month">Nov</span>
+                    </div>
+                  </div>
+
+                </div>
+
+                <!-- Y-axis labels (right side) -->
+                <div class="pdv-yaxis">
+                  <span>$14,500</span>
+                  <span>$11,000</span>
+                  <span>$7,500</span>
+                  <span>$4,000</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  
+</div>
+
+
+
+</body></html>

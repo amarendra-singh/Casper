@@ -1,0 +1,783 @@
+
+> casper-frontend@1.0.0 lint
+> eslint src
+
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\App.jsx
+  10:27  warning  Expected { after 'if' condition                                                  curly
+  26:7   warning  'SKUs' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+  59:14  warning  Expected { after 'if' condition                                                  curly
+  60:16  warning  Expected { after 'if' condition                                                  curly
+  74:45  warning  Expected { after 'if' condition                                                  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\api\client.js
+   16:14  warning  Expected { after 'if' condition  curly
+   21:44  warning  Expected { after 'if' condition  curly
+   40:55  warning  Expected { after 'if' condition  curly
+   50:21  warning  Expected { after 'if' condition  curly
+   66:65  warning  Expected { after 'if' condition  curly
+  195:30  warning  Expected { after 'if' condition  curly
+  196:25  warning  Expected { after 'if' condition  curly
+  197:35  warning  Expected { after 'if' condition  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\components\AddCategoryModal.jsx
+  49:5   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  49:5   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  55:11  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  55:11  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  56:11  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  60:13  warning  The autoFocus prop should not be used, as it can reduce usability and accessibility for users                                                                                                      jsx-a11y/no-autofocus
+  70:13  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  70:13  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  71:13  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  75:13  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  75:13  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  76:13  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  80:13  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  80:13  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  81:13  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\components\AddTierQuickModal.jsx
+  43:5   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  43:5   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  48:11  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  48:11  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  49:11  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  49:49  warning  The autoFocus prop should not be used, as it can reduce usability and accessibility for users                                                                                                      jsx-a11y/no-autofocus
+  57:13  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  57:13  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  64:13  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  65:13  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\components\AddVendorModal.jsx
+  48:5   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  48:5   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  55:11  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  55:11  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  56:11  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  66:11  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  66:11  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  67:11  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  73:13  warning  The autoFocus prop should not be used, as it can reduce usability and accessibility for users                                                                                                      jsx-a11y/no-autofocus
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\components\BidirectionalPctAmount.jsx
+  38:9   warning  A control must be associated with a text label  jsx-a11y/control-has-associated-label
+  41:13  warning  A control must be associated with a text label  jsx-a11y/control-has-associated-label
+  51:41  warning  Expected { after 'if' condition                 curly
+  58:9   warning  A control must be associated with a text label  jsx-a11y/control-has-associated-label
+  61:13  warning  A control must be associated with a text label  jsx-a11y/control-has-associated-label
+  70:41  warning  Expected { after 'if' condition                 curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\components\BillDiscrepancies.jsx
+   30:9    warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+   32:11   warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+   70:23   warning  Expected { after 'if' condition                                                     curly
+   71:23   warning  Expected { after 'if' condition                                                     curly
+   75:37   warning  Expected { after 'if' condition                                                     curly
+  160:101  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  164:51   warning  'i' is defined but never used. Allowed unused args must match /^_/u                 no-unused-vars
+  172:25   warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  177:57   warning  Expected { after 'if' condition                                                     curly
+  192:50   warning  Expected { after 'if' condition                                                     curly
+  197:38   warning  Expected { after 'if' condition                                                     curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\components\ConfirmDialog.jsx
+  28:16  warning  Expected { after 'if' condition                                                                 curly
+  47:39  warning  Expected { after 'if' condition                                                                 curly
+  51:14  warning  Expected { after 'if' condition                                                                 curly
+  55:7   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener  jsx-a11y/click-events-have-key-events
+  55:7   warning  Non-interactive elements should not be assigned mouse or keyboard event listeners               jsx-a11y/no-noninteractive-element-interactions
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\components\Layout.jsx
+   14:7    warning  'IcEdit' is assigned a value but never used. Allowed unused vars must match /^_/u                                                                                                                  no-unused-vars
+   18:7    warning  'IcChevron' is assigned a value but never used. Allowed unused vars must match /^_/u                                                                                                               no-unused-vars
+   21:7    warning  'IcPnl' is assigned a value but never used. Allowed unused vars must match /^_/u                                                                                                                   no-unused-vars
+   97:55   warning  'createCompany' is assigned a value but never used. Allowed unused vars must match /^_/u                                                                                                           no-unused-vars
+  112:63   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  113:64   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  139:19   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  140:19   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  148:9    warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  166:9    warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  166:9    warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  216:71   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  232:88   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  267:35   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  277:19   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  277:19   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  354:15   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  354:15   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  368:15   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  368:15   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  434:15   warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  445:151  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  446:85   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\components\ManageCategoriesModal.jsx
+   20:52  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   37:30  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   50:28  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   56:5   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+   56:5   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+   84:21  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+   87:23  warning  The autoFocus prop should not be used, as it can reduce usability and accessibility for users                                                                                                      jsx-a11y/no-autofocus
+   90:49  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   91:49  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   94:21  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+   97:21  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  100:21  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\components\SmartCell.jsx
+   65:15  warning  Expected { after 'if' condition                                curly
+   72:19  warning  Expected { after 'if' condition                                curly
+  101:19  warning  Expected { after 'if' condition                                curly
+  108:17  warning  Expected { after 'if' condition                                curly
+  110:21  warning  Expected { after 'if' condition                                curly
+  157:13  warning  Elements with the 'option' interactive role must be focusable  jsx-a11y/interactive-supports-focus
+  175:13  warning  Elements with the 'option' interactive role must be focusable  jsx-a11y/interactive-supports-focus
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\components\UploadAdReportModal.jsx
+   29:10  warning  'file' is assigned a value but never used. Allowed unused vars must match /^_/u                                                                                                                    no-unused-vars
+   39:13  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   57:20  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   81:21  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  118:31  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  123:5   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  123:5   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  132:9   warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\components\dashboard\ReportHeader.jsx
+   86:13  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  107:18  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  166:9   warning  'navigate' is assigned a value but never used. Allowed unused vars must match /^_/u                                                                                                                no-unused-vars
+  194:13  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\context\AuthContext.jsx
+  32:30  warning  Expected { after 'if' condition  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\context\CompanyContext.jsx
+  18:20  warning  Expected { after 'if' condition  curly
+  50:30  warning  Expected { after 'if' condition  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Account.jsx
+  20:38  warning  Expected { after 'if' condition                                                     curly
+  21:38  warning  Expected { after 'if' condition                                                     curly
+  22:38  warning  Expected { after 'if' condition                                                     curly
+  61:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  62:13  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  66:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  67:13  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  71:13  warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  72:13  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Billing.jsx
+   55:11   warning  'activeCompany' is assigned a value but never used. Allowed unused vars must match /^_/u                                                                                                           no-unused-vars
+  127:19   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  129:12   warning  Expected { after 'else'                                                                                                                                                                            curly
+  208:13   warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  221:19   warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  226:17   warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  226:36   warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  227:17   warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  227:32   warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  228:17   warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  228:32   warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  229:17   warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  229:38   warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  230:17   warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  230:29   warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  231:17   warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  232:17   warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  232:37   warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  233:17   warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  233:28   warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  234:17   warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  234:55   warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  243:21   warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  270:191  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  303:9    warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  303:9    warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  303:91   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Companies.jsx
+   44:22  warning  Expected { after 'if' condition                                                                curly
+   45:10  warning  Expected { after 'else'                                                                        curly
+   64:22  warning  Expected { after 'if' condition                                                                curly
+   89:11  warning  Form label must have ALL of the following types of associated control: nesting, id             jsx-a11y/label-has-for
+   90:13  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+   90:20  warning  The autoFocus prop should not be used, as it can reduce usability and accessibility for users  jsx-a11y/no-autofocus
+  167:9   warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  167:41  warning  The autoFocus prop should not be used, as it can reduce usability and accessibility for users  jsx-a11y/no-autofocus
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Dashboard.jsx
+    1:31   warning  'useRef' is defined but never used. Allowed unused vars must match /^_/u                                                                                                                           no-unused-vars
+   49:22   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   64:101  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  127:41   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  212:36   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  262:22   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  269:25   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  297:18   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  299:16   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  374:35   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  396:9    warning  'visible' is assigned a value but never used. Allowed unused vars must match /^_/u                                                                                                                 no-unused-vars
+  415:9    warning  'maxRev' is assigned a value but never used. Allowed unused vars must match /^_/u                                                                                                                  no-unused-vars
+  425:26   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  429:28   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  531:15   warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  549:11   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  549:11   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  553:13   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  553:13   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  747:11   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  747:11   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  826:13   warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  826:13   warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  848:31   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  867:29   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  880:25   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  959:17   warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  965:19   warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  997:19   warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Fraud\FraudDashboard.jsx
+  28:16  warning  Expected { after 'if' condition  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Fraud\FraudPlatformPage.jsx
+  32:16  warning  Expected { after 'if' condition  curly
+  33:16  warning  Expected { after 'if' condition  curly
+  34:16  warning  Expected { after 'if' condition  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Fraud\components\ActorIntelligenceTab.jsx
+  38:23  warning  Expected { after 'if' condition                 curly
+  53:16  warning  Expected { after 'if' condition                 curly
+  87:7   warning  A control must be associated with a text label  jsx-a11y/control-has-associated-label
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Fraud\components\CompositeScoreMeter.jsx
+   6:22  warning  Expected { after 'if' condition  curly
+   7:20  warning  Expected { after 'if' condition  curly
+   8:20  warning  Expected { after 'if' condition  curly
+   9:20  warning  Expected { after 'if' condition  curly
+  14:22  warning  Expected { after 'if' condition  curly
+  15:20  warning  Expected { after 'if' condition  curly
+  16:20  warning  Expected { after 'if' condition  curly
+  17:20  warning  Expected { after 'if' condition  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Fraud\components\OverviewTab.jsx
+  12:18  warning  Expected { after 'if' condition  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Fraud\components\PlatformTab.jsx
+  24:14  warning  Expected { after 'if' condition  curly
+  25:19  warning  Expected { after 'if' condition  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Fraud\components\ReturnReasonTab.jsx
+  23:16  warning  Expected { after 'if' condition  curly
+  24:16  warning  Expected { after 'if' condition  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Fraud\components\SettlementTab.jsx
+  11:14  warning  Expected { after 'if' condition  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Fraud\components\SkuVulnerabilityTab.jsx
+  28:16  warning  Expected { after 'if' condition                 curly
+  43:23  warning  Expected { after 'if' condition                 curly
+  55:7   warning  A control must be associated with a text label  jsx-a11y/control-has-associated-label
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Fraud\components\StateRiskTab.jsx
+  22:16  warning  Expected { after 'if' condition  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Ledger.jsx
+   66:23   warning  Expected { after 'if' condition                                                     curly
+   67:21   warning  Expected { after 'if' condition                                                     curly
+   68:27   warning  Expected { after 'if' condition                                                     curly
+   89:18   warning  Expected { after 'if' condition                                                     curly
+   98:38   warning  Expected { after 'if' condition                                                     curly
+  110:28   warning  Expected { after 'if' condition                                                     curly
+  136:19   warning  Expected { after 'if' condition                                                     curly
+  138:12   warning  Expected { after 'else'                                                             curly
+  265:13   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  265:25   warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  266:13   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  266:23   warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  267:13   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  279:19   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  284:17   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  284:28   warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  285:17   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  286:17   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  287:17   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  287:32   warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  288:17   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  289:17   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  289:34   warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  290:17   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  291:17   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  291:33   warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  292:17   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  293:17   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  293:36   warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  294:17   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  294:54   warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+  308:181  warning  A control must be associated with a text label                                      jsx-a11y/control-has-associated-label
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Login.jsx
+  47:13  warning  Form label must have ALL of the following types of associated control: nesting, id             jsx-a11y/label-has-for
+  48:13  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  49:79  warning  The autoFocus prop should not be used, as it can reduce usability and accessibility for users  jsx-a11y/no-autofocus
+  52:13  warning  Form label must have ALL of the following types of associated control: nesting, id             jsx-a11y/label-has-for
+  53:13  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\PnL\ConsolidatedPnL.jsx
+  23:16  warning  Expected { after 'if' condition  curly
+  24:48  warning  Expected { after 'if' condition  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\PnL\Flipkart.jsx
+   10:18  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   20:17  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   83:20  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  107:26  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  162:19  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  165:19  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  327:27  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  374:9   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  374:9   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  375:11  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  375:11  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  383:17  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  383:17  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  384:17  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  384:17  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  387:96  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  403:19  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  421:9   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  421:9   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  422:11  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  422:11  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\PnL\FlipkartReport.jsx
+  33:21  warning  Expected { after 'if' condition  curly
+  45:51  warning  Expected { after 'if' condition  curly
+  55:16  warning  Expected { after 'if' condition  curly
+  58:14  warning  Expected { after 'if' condition  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\PnL\PnLList.jsx
+   10:18  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   20:17  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  111:20  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  142:26  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  154:18  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  202:19  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  205:19  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  367:27  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  414:9   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  414:9   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  415:11  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  415:11  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  423:17  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  423:17  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  424:17  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  424:17  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  427:96  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  443:19  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  485:9   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  485:9   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  486:11  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  486:11  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\PnL\PnLReport.jsx
+  45:21  warning  Expected { after 'if' condition  curly
+  56:51  warning  Expected { after 'if' condition  curly
+  66:16  warning  Expected { after 'if' condition  curly
+  69:14  warning  Expected { after 'if' condition  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\PnL\flipkart\IncomeStatement.jsx
+  21:18  warning  Expected { after 'if' condition  curly
+  43:16  warning  Expected { after 'if' condition  curly
+  44:21  warning  Expected { after 'if' condition  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\PnL\flipkart\InsightsPanel.jsx
+  9:22  warning  Expected { after 'if' condition  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\PnL\flipkart\OperatingPnLView.jsx
+  105:59  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  143:11  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  151:9   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  151:9   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\PnL\flipkart\OperatingPnlPatternCards.jsx
+  121:9  warning  'isEmpty' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\PnL\flipkart\ProfitLossView.jsx
+   14:18   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   18:28   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   29:14   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   30:79   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   34:141  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  121:64   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  132:5    warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  132:5    warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  133:7    warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  133:7    warning  Non-interactive elements should not be assigned mouse or keyboard event listeners                                                                                                                  jsx-a11y/no-noninteractive-element-interactions
+  161:21   warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  167:21   warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  173:21   warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  174:23   warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  174:64   warning  The autoFocus prop should not be used, as it can reduce usability and accessibility for users                                                                                                      jsx-a11y/no-autofocus
+  180:23   warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  181:25   warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  244:16   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  245:21   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  252:35   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  253:35   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  264:26   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  311:9    warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  338:15   warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\PnL\flipkart\useFlipkartData.js
+  61:18  warning  Expected { after 'if' condition  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\PnL\flipkart\useOperatingPnlData.js
+  26:28  warning  Expected { after 'if' condition  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\PnL\flipkart\useReportData.js
+  58:18  warning  Expected { after 'if' condition  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\PnL\flipkart\utils.js
+   4:18  warning  Expected { after 'if' condition  curly
+  17:17  warning  Expected { after 'if' condition  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Pricing.jsx
+    9:90  warning  React Hook useEffect has a missing dependency: 'onClose'. Either include it or remove the dependency array                                                                                         react-hooks/exhaustive-deps
+  103:23  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  106:36  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  107:34  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  108:37  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  196:11  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  196:11  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  265:9   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  265:9   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  280:17  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  280:17  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  295:17  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  295:17  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  300:17  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  300:17  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  305:17  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  305:17  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  310:17  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  310:17  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  316:17  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  316:17  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  321:17  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  321:17  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  328:17  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  328:17  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  333:17  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  333:17  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  340:17  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  340:17  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  346:17  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  346:17  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Product\Categories.jsx
+   33:52  warning  Expected { after 'if' condition                                                                curly
+   51:30  warning  Expected { after 'if' condition                                                                curly
+   68:28  warning  Expected { after 'if' condition                                                                curly
+   81:16  warning  Expected { after 'if' condition                                                                curly
+  124:23  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  127:25  warning  The autoFocus prop should not be used, as it can reduce usability and accessibility for users  jsx-a11y/no-autofocus
+  130:50  warning  Expected { after 'if' condition                                                                curly
+  131:51  warning  Expected { after 'if' condition                                                                curly
+  140:23  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  148:23  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  156:23  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\ProfitCalculator.jsx
+   20:7   warning  'MONEY' is assigned a value but never used. Allowed unused vars must match /^_/u    no-unused-vars
+  267:24  warning  Expected { after 'if' condition                                                     curly
+  272:5   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+  289:5   warning  Form label must have ALL of the following types of associated control: nesting, id  jsx-a11y/label-has-for
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Register.jsx
+  38:13  warning  Form label must have ALL of the following types of associated control: nesting, id             jsx-a11y/label-has-for
+  39:13  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  40:86  warning  The autoFocus prop should not be used, as it can reduce usability and accessibility for users  jsx-a11y/no-autofocus
+  43:13  warning  Form label must have ALL of the following types of associated control: nesting, id             jsx-a11y/label-has-for
+  44:13  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  48:13  warning  Form label must have ALL of the following types of associated control: nesting, id             jsx-a11y/label-has-for
+  49:13  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  53:13  warning  Form label must have ALL of the following types of associated control: nesting, id             jsx-a11y/label-has-for
+  54:13  warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\SKUs.jsx
+    53:30  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+    55:17  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+    63:30  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+    65:17  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   171:34  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   273:19  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   376:9   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   378:9   warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   400:30  warning  'settings' is defined but never used. Allowed unused args must match /^_/u                                                                                                                         no-unused-vars
+   425:25  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   443:38  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   448:40  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   465:20  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   490:37  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   508:27  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   534:29  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   606:21  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   608:39  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   610:34  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   640:29  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   666:37  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   678:14  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   680:14  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   683:16  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   691:14  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   693:14  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   709:66  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   729:19  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   737:15  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   739:77  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   748:17  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   768:17  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   772:16  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   775:16  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   794:29  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   796:20  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   805:16  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   808:7   warning  Expected { after 'for' condition                                                                                                                                                                   curly
+   808:48  warning  Expected { after 'for' condition                                                                                                                                                                   curly
+   814:39  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   819:34  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   822:52  warning  Expected { after 'for' condition                                                                                                                                                                   curly
+   830:16  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   848:15  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   856:34  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   862:9   warning  Expected { after 'for' condition                                                                                                                                                                   curly
+   862:50  warning  Expected { after 'for' condition                                                                                                                                                                   curly
+   874:17  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   882:15  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   886:20  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   888:17  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   894:20  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   896:17  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   903:20  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   905:18  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   924:15  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   947:19  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   948:19  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   978:27  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   984:57  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  1017:23  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  1032:15  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  1061:19  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  1063:19  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  1075:35  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  1083:21  warning  'totalCols' is assigned a value but never used. Allowed unused vars must match /^_/u                                                                                                               no-unused-vars
+  1127:23  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1135:39  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  1157:21  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1160:25  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1166:21  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1169:25  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1192:19  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1195:23  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1206:21  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1209:25  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1215:21  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1218:25  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1224:21  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1227:25  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1233:21  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1236:25  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1321:29  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1332:29  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1342:29  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1397:6   warning  React Hook useMemo has a missing dependency: 'activePlats'. Either include it or remove the dependency array                                                                                       react-hooks/exhaustive-deps
+  1401:16  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  1440:16  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  1453:43  warning  Expected { after 'for-of'                                                                                                                                                                          curly
+  1453:73  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  1510:34  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  1511:34  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  1573:17  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  1593:18  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  1649:17  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1692:11  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  1692:11  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  1697:11  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  1697:11  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  1702:9   warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  1702:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  1724:13  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  1724:13  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  1748:13  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  1758:9   warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  1758:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  1772:9   warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  1772:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  1820:17  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1837:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1838:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1870:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1871:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1875:11  warning  Non-interactive elements should not be assigned mouse or keyboard event listeners                                                                                                                  jsx-a11y/no-noninteractive-element-interactions
+  1881:7   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  1881:7   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  1987:25  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1987:37  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1991:25  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1991:37  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1994:23  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1994:27  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1997:23  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  1997:27  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2000:23  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2000:27  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2003:23  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2003:27  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2006:23  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2006:27  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2009:23  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2009:27  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2055:23  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  2111:48  warning  'catOpts' is defined but never used. Allowed unused args must match /^_/u                                                                                                                          no-unused-vars
+  2111:66  warning  'profDef' is defined but never used. Allowed unused args must match /^_/u                                                                                                                          no-unused-vars
+  2112:16  warning  'platforms' is defined but never used. Allowed unused args must match /^_/u                                                                                                                        no-unused-vars
+  2112:78  warning  'onNewCat' is defined but never used. Allowed unused args must match /^_/u                                                                                                                         no-unused-vars
+  2116:7   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  2116:7   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  2132:38  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  2132:38  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  2138:38  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  2138:38  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  2139:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2142:38  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  2142:38  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  2143:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2146:38  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  2146:38  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  2147:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2155:48  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  2156:17  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2160:38  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  2160:38  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  2161:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2164:38  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  2164:38  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  2165:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2168:38  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  2168:38  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  2169:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2172:38  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  2172:38  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  2173:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2176:38  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  2176:38  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  2177:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2183:38  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  2183:38  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  2184:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2186:38  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  2186:38  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  2187:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2189:38  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  2189:38  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  2190:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2193:38  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  2193:38  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  2194:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2197:38  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  2197:38  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  2198:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2200:38  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  2200:38  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  2213:15  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  2213:15  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  2214:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2235:23  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  2238:23  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Settings.jsx
+   26:19  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+   80:42  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  168:23  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  171:26  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  175:23  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  205:16  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  207:7   warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  213:11  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  215:11  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  295:36  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  298:48  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  319:7   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  319:7   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  341:17  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  341:17  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  342:17  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  346:19  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  346:19  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  347:19  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  350:19  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  350:19  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  351:19  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  354:19  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  354:19  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  355:19  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  358:19  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  358:19  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  359:19  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  415:17  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  424:21  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  426:21  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  463:91  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  483:16  warning  Expected { after 'if' condition                                                                                                                                                                    curly
+  508:15  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  508:15  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  509:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  513:15  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  513:15  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  514:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  518:15  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  518:15  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  519:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  523:15  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  523:15  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  524:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+  528:15  warning  A form label must be associated with a control                                                                                                                                                     jsx-a11y/label-has-associated-control
+  528:15  warning  Form label must have ALL of the following types of associated control: nesting, id                                                                                                                 jsx-a11y/label-has-for
+  529:15  warning  A control must be associated with a text label                                                                                                                                                     jsx-a11y/control-has-associated-label
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Users.jsx
+  76:16  warning  Expected { after 'if' condition  curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\pages\Vendors.jsx
+   24:47   warning  Expected { after 'if' condition                                                                curly
+   34:27   warning  Expected { after 'if' condition                                                                curly
+   70:45   warning  Expected { after 'if' condition                                                                curly
+   81:16   warning  Expected { after 'if' condition                                                                curly
+  100:11   warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  101:13   warning  The autoFocus prop should not be used, as it can reduce usability and accessibility for users  jsx-a11y/no-autofocus
+  102:54   warning  Expected { after 'if' condition                                                                curly
+  102:91   warning  Expected { after 'if' condition                                                                curly
+  103:11   warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  105:54   warning  Expected { after 'if' condition                                                                curly
+  105:91   warning  Expected { after 'if' condition                                                                curly
+  133:25   warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  133:69   warning  The autoFocus prop should not be used, as it can reduce usability and accessibility for users  jsx-a11y/no-autofocus
+  135:68   warning  Expected { after 'if' condition                                                                curly
+  135:105  warning  Expected { after 'if' condition                                                                curly
+  141:25   warning  A control must be associated with a text label                                                 jsx-a11y/control-has-associated-label
+  143:68   warning  Expected { after 'if' condition                                                                curly
+  143:105  warning  Expected { after 'if' condition                                                                curly
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\tests\pnl.display.test.jsx
+  5:36  warning  'beforeEach' is defined but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+C:\WorkStation\Projects\Python\Casper\frontend\src\tests\pnl.formulas.test.js
+  31:18  warning  Expected { after 'if' condition  curly
+
+✖ 665 problems (0 errors, 665 warnings)
+  0 errors and 256 warnings potentially fixable with the `--fix` option.
+

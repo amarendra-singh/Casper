@@ -1,0 +1,1 @@
+{"result":{"elapsedMs":5163,"requestId":"stock-reversal-browser","value":{"status":["Movement reversed."]}},"status":"succeeded","transition":{"closedPages":[],"documentGeneration":13,"openedPages":[],"pageCount":1,"targetEpoch":2,"url":"http://127.0.0.1:5174/product/catalogue/3","urlChanged":false}}

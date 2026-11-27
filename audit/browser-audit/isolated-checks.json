@@ -1,0 +1,157 @@
+{
+  "scope": "Foreign-key-enforced in-memory SQLite only; no live financial writes",
+  "overlap_guard": {
+    "exact_duplicate_detected": true,
+    "overlapping_period_detected": false
+  },
+  "overlap_summary": {
+    "platforms": [
+      {
+        "platform_id": 2,
+        "platform_name": "SourceMarket",
+        "bank_settlement": 2250.0,
+        "gross_sales": 2500.0,
+        "net_sales": 0.0,
+        "net_earnings": 2250.0,
+        "gross_units": 25,
+        "net_units": 25,
+        "report_count": 2,
+        "pct": 100.0
+      }
+    ],
+    "monthly": [
+      {
+        "month": "2026-01",
+        "platform_id": 2,
+        "platform_name": "SourceMarket",
+        "bank_settlement": 2250.0,
+        "gross_sales": 2500.0,
+        "report_count": 2
+      }
+    ],
+    "total_bank_settlement": 2250.0,
+    "total_gross_sales": 2500.0,
+    "total_net_earnings": 2250.0,
+    "report_count": 2,
+    "latest_period_start": "2026-01-01",
+    "latest_period_end": "2026-02-28"
+  },
+  "alias_profitability": {
+    "summary": {
+      "total_skus": 1,
+      "profitable": 0,
+      "thin_margin": 0,
+      "loss_making": 1,
+      "total_payout": 900.0,
+      "total_cost": 1000.0,
+      "net_profit": -100.0,
+      "blended_margin_pct": -10.0
+    },
+    "heroes": [],
+    "kill_list": [
+      {
+        "sku": "AUDIT-ALIAS",
+        "company_id": 1,
+        "sku_id": 1,
+        "platforms": [
+          "CostAnchor"
+        ],
+        "net_units": 10,
+        "payout": 900.0,
+        "cost": 1000.0,
+        "net_profit": -100.0,
+        "margin_pct": -10.0,
+        "target_pct": 20.0,
+        "variance_pp": -30.0,
+        "return_rate": 0.0,
+        "status": "loss"
+      }
+    ],
+    "all_skus": [
+      {
+        "sku": "AUDIT-ALIAS",
+        "company_id": 1,
+        "sku_id": 1,
+        "platforms": [
+          "CostAnchor"
+        ],
+        "net_units": 10,
+        "payout": 900.0,
+        "cost": 1000.0,
+        "net_profit": -100.0,
+        "margin_pct": -10.0,
+        "target_pct": 20.0,
+        "variance_pp": -30.0,
+        "return_rate": 0.0,
+        "status": "loss"
+      }
+    ]
+  },
+  "alias_reconciliation": {
+    "summary": {
+      "bank_settlement": 2250.0,
+      "settled": 0.0,
+      "pending": 0.0,
+      "settled_pct": 0.0,
+      "fee_load_pct": 0.0,
+      "total_fees": 0.0,
+      "recoverable": 300.0,
+      "underpaid_skus": 1
+    },
+    "platforms": [
+      {
+        "platform": "SourceMarket",
+        "bank_settlement": 2250.0,
+        "settled": 0.0,
+        "pending": 0.0,
+        "settled_pct": 0.0,
+        "fee_load_pct": 0.0,
+        "fee_flag": false
+      }
+    ],
+    "underpaid": [
+      {
+        "sku": "AUDIT-ALIAS",
+        "platform": "CostAnchor",
+        "expected_per_unit": 120.0,
+        "actual_per_unit": 90.0,
+        "gap_per_unit": -30.0,
+        "net_units": 10,
+        "gap_total": -300.0
+      }
+    ]
+  },
+  "actor_unique_conflict": true,
+  "actor_unique_error": "UNIQUE constraint failed: actor_risk_profiles.company_id, actor_risk_profiles.actor_key",
+  "roles": {
+    "owner": {
+      "read": 200,
+      "invalid_financial_setting_write": 200,
+      "all_company_write": 400
+    },
+    "admin": {
+      "read": 200,
+      "invalid_financial_setting_write": 200,
+      "all_company_write": 400
+    },
+    "viewer": {
+      "read": 200,
+      "invalid_financial_setting_write": 403,
+      "all_company_write": 400
+    }
+  },
+  "fraud_sku_risk_scope_status": {
+    "1": 500,
+    "all": 500
+  },
+  "platform_update_does_not_recalculate": {
+    "updated_return_rate": 150.0,
+    "pricing_breakeven": 101.0,
+    "pricing_settlement": 121.0
+  },
+  "disabled_billing_create_status": 201,
+  "paid_invoice_edit_delete": {
+    "edit": 200,
+    "delete": 204
+  }
+}

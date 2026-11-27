@@ -1,0 +1,1 @@
+await expect(page.getByRole("button",{name:"Uploading…",exact:true})).toHaveCount(0,{timeout:15000}); return {text:await page.locator("main").innerText(),responses:operatorEvidence.responses.slice(-6),buttons:await page.locator("main button").allTextContents()};

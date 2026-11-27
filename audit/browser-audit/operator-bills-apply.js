@@ -1,0 +1,14 @@
+await page.getByRole('combobox',{name:'search SKU…',exact:true}).press('ArrowDown');
+await page.getByRole('combobox',{name:'search SKU…',exact:true}).press('Enter');
+await expect(page.getByText('suggested',{exact:true})).toHaveCount(0);
+await page.getByLabel('How many SKU units one billed unit contains',{exact:true}).fill('2');
+await page.getByLabel('How many SKU units one billed unit contains',{exact:true}).press('Tab');
+await expect(page.locator('main')).toContainText('₹90');
+await page.getByRole('button',{name:'Apply cost',exact:true}).click();
+await expect(page.getByRole('status')).toContainText('cost ₹100 → ₹90');
+await page.reload({waitUntil:'domcontentloaded'});
+await page.getByRole('button',{name:'Bill Discrepancies',exact:true}).click();
+await expect(page.locator('main')).toContainText('AUDIT-BILL-1');
+await expect(page.getByLabel('How many SKU units one billed unit contains',{exact:true})).toHaveValue('2');
+operatorEvidence.steps.push({flow:'supplier bill',outcome:'PDF and separate orders CSV parsed; suggested apply rejected400; keyboard confirmed SKU; pack2; applied90cost; bill/pack persisted'});
+return {text:await page.locator('main').innerText(),responses:operatorEvidence.responses.filter(r=>r.method!=='GET').slice(-5)};

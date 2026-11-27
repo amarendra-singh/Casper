@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-04",
+  "mode": "Real frontend with synthetic API responses; all non-GET/HEAD requests blocked",
+  "confirmation": {
+    "initialFocus": "Remove member",
+    "focusedControlBeforeEnter": "Cancel",
+    "unexpectedRequest": "DELETE /companies/101/members/102",
+    "requestResult": "403 Audit mode: writes blocked"
+  },
+  "mobile": {
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "railDisplay": "none",
+    "treeDisplay": "none",
+    "visibleCompanySwitchers": 0,
+    "visibleNavigation": []
+  },
+  "excelExport": {"error": "ReferenceError: XLSX is not defined", "downloadCreated": false},
+  "reportOutage": {"responseStatus": 503, "displayed": "Report not found"},
+  "autocomplete": {"input": "NO-MATCH-AUDIT", "focusStillOnInputAfterTab": true},
+  "pricing": {"apiGstRate": 18, "displayedGst": "₹18", "apiHasIsActive": false, "displayedStatus": "Inactive"},
+  "limitations": ["Mobile screenshot capture timed out; mobile finding verified through DOM visibility and browser observation", "No live company records changed", "Not a complete screen-reader or device audit"]
+}

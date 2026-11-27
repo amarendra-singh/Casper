@@ -1,0 +1,17 @@
+await page.getByRole('spinbutton',{name:'Default AD %',exact:true}).fill('2');
+await page.getByRole('textbox',{name:'Name',exact:true}).fill('AuditChannel');
+await page.getByRole('button',{name:'Create Platform',exact:true}).click();
+await expect(page.getByText('AuditChannel',{exact:true})).toBeVisible();
+await page.reload({waitUntil:'domcontentloaded'});
+await expect(page.getByText('AuditChannel',{exact:true})).toBeVisible();
+operatorEvidence.steps.push({flow:'platform creation',outcome:'AuditChannel persisted after reload'});
+await page.getByRole('button',{name:'Toggle Billing & Invoices',exact:true}).click();
+await page.reload({waitUntil:'domcontentloaded'});
+await expect(page.getByRole('button',{name:'Toggle Billing & Invoices',exact:true})).toBeVisible();
+const disabledLinks=await page.locator('a[href="/billing"]').count();
+await page.getByRole('button',{name:'Toggle Billing & Invoices',exact:true}).click();
+await page.reload({waitUntil:'domcontentloaded'});
+await expect(page.locator('a[href="/billing"]')).toBeVisible();
+operatorEvidence.steps.push({flow:'module switch',outcome:'billing toggle persisted off then on; off billing links='+disabledLinks});
+await page.getByText('Flipkart',{exact:true}).first().click();
+return {text:await page.locator('main').innerText(),controls:await page.locator('main input,main button').evaluateAll(es=>es.map(e=>({tag:e.tagName,label:e.getAttribute('aria-label'),text:e.innerText,placeholder:e.getAttribute('placeholder'),value:e.value})))};

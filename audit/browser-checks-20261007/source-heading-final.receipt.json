@@ -1,0 +1,1 @@
+{"result":{"elapsedMs":14,"requestId":"source-heading-final","value":{"generatedRows":2,"url":"http://127.0.0.1:5174/ledger?tab=entries"}},"status":"succeeded","transition":{"closedPages":[],"documentGeneration":7,"openedPages":[],"pageCount":1,"targetEpoch":2,"url":"http://127.0.0.1:5174/ledger?tab=entries","urlChanged":false}}

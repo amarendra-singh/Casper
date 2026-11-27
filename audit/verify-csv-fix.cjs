@@ -1,0 +1,12 @@
+const fs = require('fs');
+const assert = require('node:assert/strict');
+const XLSX = require('../frontend/node_modules/xlsx');
+const input = new TextDecoder('utf-8').decode(fs.readFileSync(__dirname + '/browser-audit/operator/sku-import.csv'));
+const wb = XLSX.read(input, {type:'string'});
+const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''});
+assert.equal(Number(rows[0]['Product Cost ₹']), 100);
+assert.equal(Number(rows[0]['Packaging ₹']), 10);
+assert.equal(Number(rows[0]['Logistics ₹']), 15);
+assert.equal(Number(rows[0]['Misc ₹']), 5);
+fs.writeFileSync(__dirname + '/csv-fix-verification.json', JSON.stringify({utf8_currency_headers:true, product_cost:100, packaging:10, logistics:15, misc:5},null,2));
+console.log('UTF-8 CSV costs verified against the real workbook parser.');

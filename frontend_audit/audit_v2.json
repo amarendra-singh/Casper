@@ -1,0 +1,298 @@
+{
+  "issues": [
+    {
+      "category": "Navigation",
+      "severity": "info",
+      "page": "http://localhost:5173/",
+      "description": "dashboard loaded",
+      "detail": "screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\v2_dashboard.png"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/",
+      "description": "Zero-size elements (10)",
+      "detail": "svg\ndefs\nlinearGradient#csg0\ndefs\nlinearGradient#csg1"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/",
+      "description": "Text truncated: 'KTR-024-XL \u00b7 Apparel' (114px > 106px)",
+      "detail": ""
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/",
+      "description": "Text truncated: 'DNM-SLM-32 \u00b7 Apparel' (114px > 106px)",
+      "detail": ""
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/",
+      "description": "Text truncated: 'SNK-CRT-9 \u00b7 Footwear' (114px > 106px)",
+      "detail": ""
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/",
+      "description": "Text truncated: 'BTY-SRM-30 \u00b7 Beauty' (108px > 99px)",
+      "detail": ""
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/",
+      "description": "Text truncated: 'ACC-SCR-001 \u00b7 Accessories' (142px > 106px)",
+      "detail": ""
+    },
+    {
+      "category": "UX",
+      "severity": "medium",
+      "page": "http://localhost:5173/",
+      "description": "Potentially dead buttons (10)",
+      "detail": "BUTTON\nOverview\nCatalog\n65\nOrders\n525\nReturns & RTO"
+    },
+    {
+      "category": "Navigation",
+      "severity": "info",
+      "page": "http://localhost:5173/",
+      "description": "pnl loaded",
+      "detail": "screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\v2_pnl.png"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/",
+      "description": "Zero-size elements (10)",
+      "detail": "svg\ndefs\nlinearGradient#csg0\ndefs\nlinearGradient#csg1"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/",
+      "description": "Text truncated: 'KTR-024-XL \u00b7 Apparel' (114px > 106px)",
+      "detail": ""
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/",
+      "description": "Text truncated: 'DNM-SLM-32 \u00b7 Apparel' (114px > 106px)",
+      "detail": ""
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/",
+      "description": "Text truncated: 'SNK-CRT-9 \u00b7 Footwear' (114px > 106px)",
+      "detail": ""
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/",
+      "description": "Text truncated: 'BTY-SRM-30 \u00b7 Beauty' (108px > 99px)",
+      "detail": ""
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/",
+      "description": "Text truncated: 'ACC-SCR-001 \u00b7 Accessories' (142px > 106px)",
+      "detail": ""
+    },
+    {
+      "category": "UX",
+      "severity": "medium",
+      "page": "http://localhost:5173/",
+      "description": "Potentially dead buttons (10)",
+      "detail": "BUTTON\nOverview\nCatalog\n65\nOrders\n525\nReturns & RTO"
+    },
+    {
+      "category": "Navigation",
+      "severity": "info",
+      "page": "http://localhost:5173/fraud/actors",
+      "description": "fraud loaded",
+      "detail": "screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\v2_fraud.png"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/fraud/actors",
+      "description": "Zero-size elements (1)",
+      "detail": "svg"
+    },
+    {
+      "category": "UX",
+      "severity": "medium",
+      "page": "http://localhost:5173/fraud/actors",
+      "description": "Potentially dead buttons (1)",
+      "detail": "BUTTON"
+    },
+    {
+      "category": "Navigation",
+      "severity": "info",
+      "page": "http://localhost:5173/skus",
+      "description": "skus loaded",
+      "detail": "screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\v2_skus.png"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/skus",
+      "description": "Zero-size elements (10)",
+      "detail": "svg\nDIV\nDIV\nDIV\nDIV"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/skus",
+      "description": "Text truncated: 'SHJ-JS-VRI-N9-DARK-BLUE' (124px > 120px)",
+      "detail": ""
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/skus",
+      "description": "Text truncated: 'SHJ-JS-VRI-N18-ROSE-GOLD' (130px > 120px)",
+      "detail": ""
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/skus",
+      "description": "Text truncated: 'SHJ-SP-JS-VRI-N65-WHITE' (124px > 120px)",
+      "detail": ""
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/skus",
+      "description": "Text truncated: 'SHJ-SP-JS-VRI-N58-PURPLE' (130px > 120px)",
+      "detail": ""
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/skus",
+      "description": "Text truncated: 'SHJ-SP-JS-VRI-N11-GREEN' (124px > 120px)",
+      "detail": ""
+    },
+    {
+      "category": "UX",
+      "severity": "medium",
+      "page": "http://localhost:5173/skus",
+      "description": "Potentially dead buttons (1)",
+      "detail": "BUTTON"
+    },
+    {
+      "category": "Navigation",
+      "severity": "info",
+      "page": "http://localhost:5173/vendors",
+      "description": "vendors loaded",
+      "detail": "screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\v2_vendors.png"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/vendors",
+      "description": "Zero-size elements (1)",
+      "detail": "svg"
+    },
+    {
+      "category": "UX",
+      "severity": "medium",
+      "page": "http://localhost:5173/vendors",
+      "description": "Potentially dead buttons (1)",
+      "detail": "BUTTON"
+    },
+    {
+      "category": "Navigation",
+      "severity": "info",
+      "page": "http://localhost:5173/pricing",
+      "description": "pricing loaded",
+      "detail": "screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\v2_pricing.png"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/pricing",
+      "description": "Zero-size elements (1)",
+      "detail": "svg"
+    },
+    {
+      "category": "UX",
+      "severity": "medium",
+      "page": "http://localhost:5173/pricing",
+      "description": "Potentially dead buttons (1)",
+      "detail": "BUTTON"
+    },
+    {
+      "category": "Navigation",
+      "severity": "info",
+      "page": "http://localhost:5173/settings",
+      "description": "settings loaded",
+      "detail": "screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\v2_settings.png"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/settings",
+      "description": "Zero-size elements (1)",
+      "detail": "svg"
+    },
+    {
+      "category": "UX",
+      "severity": "medium",
+      "page": "http://localhost:5173/settings",
+      "description": "Potentially dead buttons (1)",
+      "detail": "BUTTON"
+    },
+    {
+      "category": "Navigation",
+      "severity": "info",
+      "page": "http://localhost:5173/settings/intro",
+      "description": "settings_intro loaded",
+      "detail": "screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\v2_settings_intro.png"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/settings/intro",
+      "description": "Zero-size elements (1)",
+      "detail": "svg"
+    },
+    {
+      "category": "UX",
+      "severity": "medium",
+      "page": "http://localhost:5173/settings/intro",
+      "description": "Potentially dead buttons (1)",
+      "detail": "BUTTON"
+    },
+    {
+      "category": "Navigation",
+      "severity": "info",
+      "page": "http://localhost:5173/users",
+      "description": "users loaded",
+      "detail": "screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\v2_users.png"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/users",
+      "description": "Zero-size elements (1)",
+      "detail": "svg"
+    },
+    {
+      "category": "UX",
+      "severity": "medium",
+      "page": "http://localhost:5173/users",
+      "description": "Potentially dead buttons (1)",
+      "detail": "BUTTON"
+    }
+  ]
+}

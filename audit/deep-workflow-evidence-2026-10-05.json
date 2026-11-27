@@ -1,0 +1,114 @@
+{
+  "live_database_writes": false,
+  "migration": "passed",
+  "financial_values_unchanged": true,
+  "auto_matched_existing": 0,
+  "saved_lines": 19,
+  "confirmed_lines": 2,
+  "candidate_lines": 1,
+  "no_reliable_candidate_lines": 16,
+  "legacy_non_purchase_bills": 0,
+  "migrated_alias_scopes": [
+    [
+      "CELLO AMORE TUM 325 ML",
+      "party:JDS ENTERPRISE"
+    ],
+    [
+      "ZZB-C ROTATING GLASS 300 ML COL BOX 60 PC CTN",
+      "party:JDS ENTERPRISE"
+    ]
+  ],
+  "unconfirmed": [
+    {
+      "item": "PKTY-26 3 PCS PLASTIC CANDY ON TRAY IN COL BOX 40 SET CTN",
+      "reason": "No reliable catalogue candidate",
+      "candidates": []
+    },
+    {
+      "item": "CELLO BRILLIANT 325 ML ROCK TUM",
+      "reason": "Choose the SKU variant and confirm the billed-unit conversion",
+      "candidates": [
+        "MBG-WG-BRL-325-P1",
+        "MBG-WG-BRL-325-P2",
+        "MBG-WG-BRL-325-P4",
+        "MBG-WG-BRL-325-P6",
+        "MBG-WG-BRL-325-P8"
+      ]
+    },
+    {
+      "item": "8292-C Crack Glass MS 330 ML WHISKY GLASS COL BOX 6 PC SET 8 SET CTN",
+      "reason": "No reliable catalogue candidate",
+      "candidates": []
+    },
+    {
+      "item": "Y1018-1E-D DELI PRINTED MASON 470 ML WITH LID + STRAW 48 IN CTN",
+      "reason": "No reliable catalogue candidate",
+      "candidates": []
+    },
+    {
+      "item": "J3524 SUPER 420 ML WATER GLASS 6 PC COL BOX 8 SET CTN",
+      "reason": "No reliable catalogue candidate",
+      "candidates": []
+    },
+    {
+      "item": "PKTY-26 3 PCS PLASTIC CANDY ON TRAY IN COL BOX 40 SET CTN",
+      "reason": "No reliable catalogue candidate",
+      "candidates": []
+    },
+    {
+      "item": "PKTY-26 3 PCS PLASTIC CANDY ON TRAY IN COL BOX 40 SET CTN",
+      "reason": "No reliable catalogue candidate",
+      "candidates": []
+    },
+    {
+      "item": "PKTY-26 3 PCS PLASTIC CANDY ON TRAY IN COL BOX 40 SET CTN",
+      "reason": "No reliable catalogue candidate",
+      "candidates": []
+    },
+    {
+      "item": "PKTY-26 3 PCS PLASTIC CANDY ON TRAY IN COL BOX 40 SET CTN",
+      "reason": "No reliable catalogue candidate",
+      "candidates": []
+    },
+    {
+      "item": "LS-001 LUMINIOUS ROTATING GLASS MIX 300 ML COL BOX 60 PC CTN",
+      "reason": "No reliable catalogue candidate",
+      "candidates": []
+    },
+    {
+      "item": "LS-001 LUMINIOUS ROTATING GLASS MIX 300 ML COL BOX 60 PC CTN",
+      "reason": "No reliable catalogue candidate",
+      "candidates": []
+    },
+    {
+      "item": "LS-001 LUMINIOUS ROTATING GLASS MIX 300 ML COL BOX 60 PC CTN",
+      "reason": "No reliable catalogue candidate",
+      "candidates": []
+    },
+    {
+      "item": "LZB-D LUMINIOUS ROTATING GLASS 300 ML COL BOX 60 PC CTN",
+      "reason": "No reliable catalogue candidate",
+      "candidates": []
+    },
+    {
+      "item": "LS-001 LUMINIOUS ROTATING GLASS MIX 300 ML COL BOX 60 PC CTN",
+      "reason": "No reliable catalogue candidate",
+      "candidates": []
+    },
+    {
+      "item": "Y3212 YUJING 160 ML JUICE GLASS 6 PC COL BOX 12 SET CTN",
+      "reason": "No reliable catalogue candidate",
+      "candidates": []
+    },
+    {
+      "item": "MSB-126 (H6-2201) 380 ML GLASS BOTTLE + COVER COL BOX 80 PC CTN",
+      "reason": "No reliable catalogue candidate",
+      "candidates": []
+    },
+    {
+      "item": "LS-001 LUMINIOUS ROTATING GLASS MIX 300 ML COL BOX 60 PC CTN",
+      "reason": "No reliable catalogue candidate",
+      "candidates": []
+    }
+  ]
+}

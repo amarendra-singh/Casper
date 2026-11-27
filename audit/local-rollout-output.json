@@ -1,0 +1,322 @@
+{
+  "backup_directory": "C:\\WorkStation\\Projects\\Python\\Casper\\backend\\backups\\audit-20261004-115148",
+  "applied": true,
+  "rehearsal": {
+    "repair": {
+      "company_id": 8,
+      "source_platform_id": 1,
+      "pricing_ids": [
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+        123,
+        124,
+        125,
+        126,
+        127,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        137,
+        138,
+        139,
+        140,
+        141,
+        142,
+        143,
+        144,
+        145,
+        146,
+        147,
+        148,
+        149,
+        150,
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157,
+        158,
+        159,
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177
+      ],
+      "repaired_count": 95,
+      "target_platform_id": 26,
+      "applied": true
+    },
+    "derived_intelligence": {
+      "refreshed": [
+        {
+          "company_id": 1,
+          "platform_ids": [
+            3,
+            2
+          ]
+        }
+      ]
+    },
+    "checks": {
+      "revision": "e5f0audit0005",
+      "integrity": "ok",
+      "foreign_key_violations": 0,
+      "foreign_pricing_platform_links": 0,
+      "financial_snapshots": {
+        "sku_pricing": {
+          "rows": 272,
+          "sha256": "31c64dd9e60fb98f8e65f246044f56afc00a844773111f94adbd75c80086a743"
+        },
+        "pnl_reports": {
+          "rows": 6,
+          "sha256": "1701755ef75a7cc10c5522ce7016a5093eab79f0ed83ac8d11b5f299bd76d8c5"
+        },
+        "pnl_sku_rows": {
+          "rows": 166,
+          "sha256": "e5743cebc84ce24e14a6f3ad53830ea093727b427f516703cc5d873570d39c8b"
+        },
+        "invoices": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "invoice_lines": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "purchase_bills": {
+          "rows": 14,
+          "sha256": "dea6b20482072a0f181b40fcaf3cb3a2ba3638670b267c0a3230c44a04151701"
+        },
+        "purchase_bill_lines": {
+          "rows": 19,
+          "sha256": "d22f930169c72f9d21d42412633f4e4b552535494267c77a51eb4f4cbb20f1d6"
+        },
+        "ledger_entries": {
+          "rows": 15,
+          "sha256": "4e13c4b316e2036105aa6d34d87932e461cbc36e6deb77a2fb627f81d9a243e5"
+        }
+      },
+      "order_observations": 2658,
+      "prior_order_observations": 851
+    }
+  },
+  "live": {
+    "repair": {
+      "company_id": 8,
+      "source_platform_id": 1,
+      "pricing_ids": [
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+        123,
+        124,
+        125,
+        126,
+        127,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        137,
+        138,
+        139,
+        140,
+        141,
+        142,
+        143,
+        144,
+        145,
+        146,
+        147,
+        148,
+        149,
+        150,
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157,
+        158,
+        159,
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177
+      ],
+      "repaired_count": 95,
+      "target_platform_id": 26,
+      "applied": true
+    },
+    "derived_intelligence": {
+      "refreshed": [
+        {
+          "company_id": 1,
+          "platform_ids": [
+            3,
+            2
+          ]
+        }
+      ]
+    },
+    "checks": {
+      "revision": "e5f0audit0005",
+      "integrity": "ok",
+      "foreign_key_violations": 0,
+      "foreign_pricing_platform_links": 0,
+      "financial_snapshots": {
+        "sku_pricing": {
+          "rows": 272,
+          "sha256": "31c64dd9e60fb98f8e65f246044f56afc00a844773111f94adbd75c80086a743"
+        },
+        "pnl_reports": {
+          "rows": 6,
+          "sha256": "1701755ef75a7cc10c5522ce7016a5093eab79f0ed83ac8d11b5f299bd76d8c5"
+        },
+        "pnl_sku_rows": {
+          "rows": 166,
+          "sha256": "e5743cebc84ce24e14a6f3ad53830ea093727b427f516703cc5d873570d39c8b"
+        },
+        "invoices": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "invoice_lines": {
+          "rows": 0,
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        },
+        "purchase_bills": {
+          "rows": 14,
+          "sha256": "dea6b20482072a0f181b40fcaf3cb3a2ba3638670b267c0a3230c44a04151701"
+        },
+        "purchase_bill_lines": {
+          "rows": 19,
+          "sha256": "d22f930169c72f9d21d42412633f4e4b552535494267c77a51eb4f4cbb20f1d6"
+        },
+        "ledger_entries": {
+          "rows": 15,
+          "sha256": "4e13c4b316e2036105aa6d34d87932e461cbc36e6deb77a2fb627f81d9a243e5"
+        }
+      },
+      "order_observations": 2658,
+      "prior_order_observations": 851
+    }
+  }
+}

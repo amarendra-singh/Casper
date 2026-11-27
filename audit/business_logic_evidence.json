@@ -1,0 +1,33 @@
+{
+  "scope": "synthetic service inputs only; no live data or UI accessed",
+  "platform_validation": {
+    "name": "",
+    "cr_charge": -100.0,
+    "cr_percentage": 150.0,
+    "default_ad_pct": -5.0,
+    "default_profit_pct": 20.0,
+    "target_monthly_units": 0,
+    "tiers": []
+  },
+  "tier_validation": {
+    "tier_name": "",
+    "fee": -10.0,
+    "fee_pct": 150.0
+  },
+  "waterfall": {
+    "displayed_bridge": 850.0,
+    "reported_settlement": 900.0,
+    "imbalance": 50.0
+  },
+  "target_shortfall_labelled_recoverable": 200.0,
+  "cohort_action": "BLOCK",
+  "recovery_without_order_values": 3000.0,
+  "different_signal_groups_receive_same_unique_actor_key": {
+    "keys": [
+      "e997fdf5ef9d18d3",
+      "e997fdf5ef9d18d3"
+    ],
+    "duplicate": true,
+    "note": "Real service with recording adapter; database rejection inferred from unique constraint."
+  }
+}

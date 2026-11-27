@@ -1,0 +1,14 @@
+await page.getByRole('button',{name:'Invoices',exact:true}).click();
+await expect(page.getByText('Synthetic Audit Customer',{exact:true})).toBeVisible();
+await page.getByRole('button',{name:'Edit invoice',exact:true}).click();
+await page.getByLabel('Notes',{exact:true}).fill('Disposable operator walkthrough');
+await page.getByRole('button',{name:'Update invoice',exact:true}).click();
+await expect(page.getByRole('button',{name:'Update invoice',exact:true})).toHaveCount(0);
+await page.getByRole('button',{name:'Mark invoice paid',exact:true}).click();
+await expect(page.locator('tbody tr')).toContainText('Paid');
+await page.reload({waitUntil:'domcontentloaded'});
+await page.getByRole('button',{name:'Invoices',exact:true}).click();
+await expect(page.locator('tbody tr')).toContainText('Paid');
+operatorEvidence.steps.push({flow:'invoice',outcome:'created525; editednotes; markedpaid and persisted; reload resets toReports tab'});
+await page.getByRole('button',{name:'View invoice PDF',exact:true}).click();
+return {preview:await page.getByRole('dialog').innerText(),buttons:await page.getByRole('dialog').locator('button').allTextContents()};

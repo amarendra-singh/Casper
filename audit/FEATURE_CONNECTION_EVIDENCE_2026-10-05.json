@@ -1,0 +1,98 @@
+{
+  "pkty_sku": [
+    {
+      "id": 162,
+      "company_id": 8,
+      "shringar_sku": "MBS-SS-3P-4IN- PKTY-1P",
+      "vendor_sku": "JDS",
+      "vendor_id": 2
+    }
+  ],
+  "pkty_pricing": [],
+  "pkty_bill_costs": [
+    {
+      "id": 134,
+      "ref_no": "7884",
+      "bill_date": "2026-09-02",
+      "sku_id": 162,
+      "price_unit": 270.0,
+      "pack_multiple": 1.0,
+      "match_source": "manual"
+    },
+    {
+      "id": 139,
+      "ref_no": "8096",
+      "bill_date": "2026-09-07",
+      "sku_id": 162,
+      "price_unit": 270.0,
+      "pack_multiple": 1.0,
+      "match_source": "alias"
+    },
+    {
+      "id": 140,
+      "ref_no": "8167",
+      "bill_date": "2026-09-08",
+      "sku_id": 162,
+      "price_unit": 270.0,
+      "pack_multiple": 1.0,
+      "match_source": "alias"
+    },
+    {
+      "id": 141,
+      "ref_no": "8224",
+      "bill_date": "2026-09-09",
+      "sku_id": 162,
+      "price_unit": 270.0,
+      "pack_multiple": 1.0,
+      "match_source": "alias"
+    },
+    {
+      "id": 142,
+      "ref_no": "8666",
+      "bill_date": "2026-09-18",
+      "sku_id": 162,
+      "price_unit": 260.0,
+      "pack_multiple": 1.0,
+      "match_source": "alias"
+    }
+  ],
+  "report_7_coverage": [
+    {
+      "total": 24,
+      "priced": 10,
+      "unpriced": 14,
+      "unpriced_net_units": 63
+    }
+  ],
+  "pkty_report": [
+    {
+      "id": 168,
+      "report_id": 7,
+      "platform_sku_name": "MBS-SS-3P-4IN- PKTY-1P",
+      "sku_pricing_id": null,
+      "net_units": 35,
+      "bank_settlement_projected": 12496.637,
+      "snap_breakeven": null
+    },
+    {
+      "id": 188,
+      "report_id": 7,
+      "platform_sku_name": "MBS-SS-6P-PKTY-9-P1",
+      "sku_pricing_id": null,
+      "net_units": 0,
+      "bank_settlement_projected": -501.5,
+      "snap_breakeven": null
+    }
+  ],
+  "master_without_pricing": [
+    {
+      "id": 162,
+      "shringar_sku": "MBS-SS-3P-4IN- PKTY-1P"
+    }
+  ],
+  "matched_bills_without_pricing": [
+    {
+      "lines": 5
+    }
+  ]
+}

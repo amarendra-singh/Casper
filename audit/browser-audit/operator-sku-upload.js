@@ -1,0 +1,1 @@
+await page.getByLabel("SKU import file",{exact:true}).setInputFiles("C:/WorkStation/Projects/Python/Casper/audit/browser-audit/operator/sku-import.csv"); await expect(page.getByRole("dialog")).toBeVisible(); return {preview:await page.getByRole("dialog").innerText(),buttons:await page.getByRole("dialog").locator("button").allTextContents()};

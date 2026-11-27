@@ -1,0 +1,257 @@
+{
+  "timestamp": "2026-06-09T16:45:19.325295",
+  "issues": [
+    {
+      "category": "Layout",
+      "severity": "info",
+      "page": "http://localhost:5173/login",
+      "description": "Login page loaded",
+      "detail": "Screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\login.png"
+    },
+    {
+      "category": "Layout",
+      "severity": "low",
+      "page": "http://localhost:5173/login",
+      "description": "Page doesn't scroll \u2014 content may be cut off below viewport",
+      "detail": ""
+    },
+    {
+      "category": "Auth",
+      "severity": "info",
+      "page": "http://localhost:5173/",
+      "description": "Post-login URL: http://localhost:5173/",
+      "detail": "Screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\post_login.png"
+    },
+    {
+      "category": "Layout",
+      "severity": "info",
+      "page": "http://localhost:5173/",
+      "description": "Dashboard full page",
+      "detail": "Screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\dashboard_full.png"
+    },
+    {
+      "category": "Interaction",
+      "severity": "info",
+      "page": "http://localhost:5173/",
+      "description": "Clicked KPI #3 \u2014 checking response",
+      "detail": ""
+    },
+    {
+      "category": "Interaction",
+      "severity": "info",
+      "page": "http://localhost:5173/",
+      "description": "Clicked channel filter 'Flipkart'",
+      "detail": ""
+    },
+    {
+      "category": "Interaction",
+      "severity": "info",
+      "page": "http://localhost:5173/",
+      "description": "Clicked perf metric 'Orders'",
+      "detail": ""
+    },
+    {
+      "category": "Interaction",
+      "severity": "info",
+      "page": "http://localhost:5173/",
+      "description": "Clicked 'Per company' view toggle",
+      "detail": ""
+    },
+    {
+      "category": "Layout",
+      "severity": "low",
+      "page": "http://localhost:5173/",
+      "description": "Page doesn't scroll \u2014 content may be cut off below viewport",
+      "detail": ""
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/",
+      "description": "Overflow hidden detected on DIV.app \u2014 may hide overflow content",
+      "detail": ""
+    },
+    {
+      "category": "Navigation",
+      "severity": "info",
+      "page": "http://localhost:5173/",
+      "description": "PnL page loaded",
+      "detail": "Screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\pnl.png"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/",
+      "description": "Potential element overlaps on pnl (~556 pairs)",
+      "detail": ""
+    },
+    {
+      "category": "Navigation",
+      "severity": "info",
+      "page": "http://localhost:5173/fraud/actors",
+      "description": "Fraud - Overview page loaded",
+      "detail": "Screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\fraud___overview.png"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/fraud/actors",
+      "description": "Potential element overlaps on fraud - overview (~149 pairs)",
+      "detail": ""
+    },
+    {
+      "category": "Navigation",
+      "severity": "info",
+      "page": "http://localhost:5173/",
+      "description": "Fraud - Flipkart page loaded",
+      "detail": "Screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\fraud___flipkart.png"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/",
+      "description": "Potential element overlaps on fraud - flipkart (~556 pairs)",
+      "detail": ""
+    },
+    {
+      "category": "Navigation",
+      "severity": "info",
+      "page": "http://localhost:5173/skus",
+      "description": "SKUs page loaded",
+      "detail": "Screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\skus.png"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/skus",
+      "description": "Potential element overlaps on skus (~376 pairs)",
+      "detail": ""
+    },
+    {
+      "category": "Navigation",
+      "severity": "info",
+      "page": "http://localhost:5173/vendors",
+      "description": "Vendors page loaded",
+      "detail": "Screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\vendors.png"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/vendors",
+      "description": "Potential element overlaps on vendors (~36 pairs)",
+      "detail": ""
+    },
+    {
+      "category": "Navigation",
+      "severity": "info",
+      "page": "http://localhost:5173/pricing",
+      "description": "Pricing page loaded",
+      "detail": "Screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\pricing.png"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/pricing",
+      "description": "Potential element overlaps on pricing (~36 pairs)",
+      "detail": ""
+    },
+    {
+      "category": "Navigation",
+      "severity": "info",
+      "page": "http://localhost:5173/settings",
+      "description": "Settings - Platforms page loaded",
+      "detail": "Screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\settings___platforms.png"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/settings",
+      "description": "Potential element overlaps on settings - platforms (~48 pairs)",
+      "detail": ""
+    },
+    {
+      "category": "Navigation",
+      "severity": "info",
+      "page": "http://localhost:5173/settings/intro",
+      "description": "Settings - Intro page loaded",
+      "detail": "Screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\settings___intro.png"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/settings/intro",
+      "description": "Potential element overlaps on settings - intro (~76 pairs)",
+      "detail": ""
+    },
+    {
+      "category": "Navigation",
+      "severity": "info",
+      "page": "http://localhost:5173/users",
+      "description": "Users page loaded",
+      "detail": "Screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\users.png"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/users",
+      "description": "Potential element overlaps on users (~36 pairs)",
+      "detail": ""
+    },
+    {
+      "category": "Console",
+      "severity": "medium",
+      "page": "global",
+      "description": "Console errors/warnings: 22",
+      "detail": "[warning] \u26a0\ufe0f React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.\n[warning] \u26a0\ufe0f React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.\n[warning] \u26a0\ufe0f React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.\n[warning] \u26a0\ufe0f React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.\n[warning] \u26a0\ufe0f React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.\n[warning] \u26a0\ufe0f React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.\n[warning] \u26a0\ufe0f React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.\n[warning] \u26a0\ufe0f React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.\n[warning] \u26a0\ufe0f React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.\n[warning] \u26a0\ufe0f React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath."
+    },
+    {
+      "category": "Layout",
+      "severity": "info",
+      "page": "http://localhost:5173/",
+      "description": "Login page loaded",
+      "detail": "Screenshot: C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit\\login_mobile.png"
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/",
+      "description": "Potential element overlaps on login (~748 pairs)",
+      "detail": ""
+    },
+    {
+      "category": "Layout",
+      "severity": "low",
+      "page": "http://localhost:5173/",
+      "description": "Page doesn't scroll \u2014 content may be cut off below viewport",
+      "detail": ""
+    },
+    {
+      "category": "Layout",
+      "severity": "medium",
+      "page": "http://localhost:5173/",
+      "description": "Overflow hidden detected on DIV.app \u2014 may hide overflow content",
+      "detail": ""
+    },
+    {
+      "category": "Auth",
+      "severity": "high",
+      "page": "http://localhost:5173/",
+      "description": "Login page may not be rendering correctly",
+      "detail": "Page text starts with: Casper.com\nOverview\nCatalog\n65\nOrders\n525\nReturns & RTO\nFinance\nInsights\n4\nCustomize\nMultichannel pulse\n4 platforms \u00b7 65 SKUs tracked \u00b7 21 actor profiles\n\u00b7\nLast sync just now\nConsolidated\nPer company\n"
+    },
+    {
+      "category": "Auth",
+      "severity": "low",
+      "page": "http://localhost:5173/",
+      "description": "Login form fields detected by position (no type=email)",
+      "detail": ""
+    },
+    {
+      "category": "CRASH",
+      "severity": "high",
+      "page": "mobile",
+      "description": "Mobile test crashed: ElementHandle.fill: Timeout 30000ms exceeded.\nCall log:\n    - fill(\"[REDACTED]\")\n  - attempting fill action\n    2 \u00d7 waiting for element to be visible, enabled and editable\n      - element is not visible\n    - retrying fill action\n    - waiting 20ms\n    2 \u00d7 waiting for element to be visible, enabled and editable\n      - element is not visible\n    - retrying fill action\n      - waiting 100ms\n    57 \u00d7 waiting for element to be visible, enabled and editable\n       - element is not visible\n     - retrying fill action\n       - waiting 500ms\n",
+      "detail": "Traceback (most recent call last):\n  File \"C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit.py\", line 60, in run\n    test_login(page_m, \"mobile\", mobile_errors)\n    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\WorkStation\\Projects\\Python\\Casper\\frontend_audit.py\", line 173, in test_login\n    pass_input.fill(CREDS[\"password\"])\n    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^\n  File \"C:\\WorkStation\\Projects\\Python\\Casper\\backend\\env\\Lib\\site-packages\\playwright\\sync_api\\_generated.py\", line 26"
+    }
+  ]
+}

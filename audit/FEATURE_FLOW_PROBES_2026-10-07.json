@@ -1,0 +1,12 @@
+{
+  "existing_pricing_recovered_rows": 1,
+  "automatic_recovery_is_idempotent": true,
+  "already_priced_snapshots_unchanged": true,
+  "report_delete_rebuilds_risk_aggregates": {
+    "removed_source_events": 107,
+    "risk_rows_before": 26,
+    "risk_rows_after": 5
+  },
+  "endpoint_count": 117,
+  "live_database_writes": false
+}

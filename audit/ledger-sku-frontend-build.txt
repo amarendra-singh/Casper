@@ -1,0 +1,70 @@
+
+> casper-frontend@1.0.0 build
+> vite build
+
+vite v8.3.2 building client environment for production...
+transforming...
+✓ 736 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                               0.96 kB │ gzip:   0.49 kB
+dist/assets/Account--FHmRj8v.css              1.96 kB │ gzip:   0.71 kB
+dist/assets/SmartCell-8HBqvUI2.css            2.08 kB │ gzip:   0.76 kB
+dist/assets/Pricing-CAxPi9NG.css              2.27 kB │ gzip:   0.74 kB
+dist/assets/Vendors-Bq0gpNbN.css              2.48 kB │ gzip:   0.78 kB
+dist/assets/Product-DI9fjrWj.css              2.61 kB │ gzip:   0.82 kB
+dist/assets/Companies-CBZr7ten.css            3.05 kB │ gzip:   0.96 kB
+dist/assets/FraudPlatformPage-Bh6KgdXg.css    3.55 kB │ gzip:   1.09 kB
+dist/assets/IntroPage-f-XoLjzv.css            3.92 kB │ gzip:   1.03 kB
+dist/assets/Users-CBCvkuOa.css                4.10 kB │ gzip:   1.27 kB
+dist/assets/Billing-DKzeZ_jC.css              5.97 kB │ gzip:   1.53 kB
+dist/assets/Settings-Bex0I5IW.css             7.25 kB │ gzip:   1.73 kB
+dist/assets/ProfitCalculator-CA0uDzzj.css     7.69 kB │ gzip:   1.79 kB
+dist/assets/Ledger-DZVnk4cL.css              10.06 kB │ gzip:   2.34 kB
+dist/assets/FraudDashboard-DmJV3QFg.css      13.46 kB │ gzip:   3.06 kB
+dist/assets/SKUs-yJ3fN3FY.css                26.38 kB │ gzip:   5.46 kB
+dist/assets/index-DW3MJuJY.css               29.44 kB │ gzip:   7.10 kB
+dist/assets/Dashboard-B9tz-Nab.css           44.48 kB │ gzip:   8.24 kB
+dist/assets/Flipkart-DllkMDPN.css            47.06 kB │ gzip:   8.31 kB
+dist/assets/UnitEconomics-BCRLAaxl.js         0.18 kB │ gzip:   0.17 kB
+dist/assets/Inventory-B-fBgpoF.js             0.18 kB │ gzip:   0.17 kB
+dist/assets/format-BLrbxI_V.js                0.30 kB │ gzip:   0.22 kB
+dist/assets/tooltipContext-Br2fJ_Rl.js        0.51 kB │ gzip:   0.27 kB
+dist/assets/utils-CO12L4fY.js                 0.53 kB │ gzip:   0.30 kB
+dist/assets/ProductLayout-CXnTncP5.js         0.77 kB │ gzip:   0.41 kB
+dist/assets/AlertsPanel-Bv5aVipy.js           1.81 kB │ gzip:   0.92 kB
+dist/assets/AddCategoryModal-YJuZyyvI.js      2.50 kB │ gzip:   1.01 kB
+dist/assets/Account-DbyL8gDW.js               3.22 kB │ gzip:   1.14 kB
+dist/assets/SmartCell-Bbc0QVMN.js             3.25 kB │ gzip:   1.45 kB
+dist/assets/IntroPage-B8ewfvQF.js             3.26 kB │ gzip:   0.88 kB
+dist/assets/VendorsIntro-BmtciQ06.js          3.52 kB │ gzip:   1.42 kB
+dist/assets/Categories-YY2nTvUm.js            4.39 kB │ gzip:   1.44 kB
+dist/assets/Users-8E8lwU1R.js                 4.54 kB │ gzip:   1.67 kB
+dist/assets/PricingIntro-BK5iuRhV.js          4.82 kB │ gzip:   1.93 kB
+dist/assets/Vendors-BTl7UOAP.js               4.87 kB │ gzip:   1.63 kB
+dist/assets/ConsolidatedPnL-BlE42G8T.js       4.93 kB │ gzip:   1.57 kB
+dist/assets/SettingsIntro-BajflOsK.js         4.98 kB │ gzip:   1.73 kB
+dist/assets/Companies-BXk4qvLI.js             5.95 kB │ gzip:   1.94 kB
+dist/assets/FraudPlatformPage-DZpCC4M6.js     7.07 kB │ gzip:   2.39 kB
+dist/assets/jsx-runtime-OQpaS_Dv.js           7.77 kB │ gzip:   2.99 kB
+dist/assets/PnLIntro-CE-GjX1c.js              8.51 kB │ gzip:   3.09 kB
+dist/assets/SKUsIntro-BwvkuDEn.js            10.52 kB │ gzip:   3.47 kB
+dist/assets/ProfitCalculator-DQQRqPkn.js     12.10 kB │ gzip:   3.70 kB
+dist/assets/Pricing-D4UQDn8r.js              12.42 kB │ gzip:   3.47 kB
+dist/assets/Billing-BG8pI4o_.js              19.36 kB │ gzip:   5.33 kB
+dist/assets/BarChart-CQQ-fuWD.js             20.58 kB │ gzip:   6.83 kB
+dist/assets/PnLList-UiQ9GTQf.js              21.51 kB │ gzip:   5.12 kB
+dist/assets/Settings-BAOPVIbG.js             22.40 kB │ gzip:   5.86 kB
+dist/assets/FraudDashboard-Cq2EfHmv.js       24.72 kB │ gzip:   6.01 kB
+dist/assets/Ledger-BCvC2Prv.js               25.50 kB │ gzip:   7.35 kB
+dist/assets/CartesianChart-_B9cRLqJ.js       28.40 kB │ gzip:   8.25 kB
+dist/assets/Ledger-DqUiB94D.js               31.63 kB │ gzip:   9.54 kB
+dist/assets/client-CaptEmGs.js               55.38 kB │ gzip:  20.29 kB
+dist/assets/PnLReport-DHjLf2Uw.js            56.92 kB │ gzip:  14.44 kB
+dist/assets/Dashboard-Bmq1T2lc.js            71.80 kB │ gzip:  19.22 kB
+dist/assets/SKUs-yea-PTH5.js                 72.51 kB │ gzip:  19.39 kB
+dist/assets/index-B3j_RlSN.js               212.73 kB │ gzip:  67.52 kB
+dist/assets/CategoricalChart-nY86W-T1.js    304.96 kB │ gzip:  91.12 kB
+dist/assets/xlsx-CuSbHU4R.js                492.27 kB │ gzip: 160.41 kB
+
+✓ built in 1.13s

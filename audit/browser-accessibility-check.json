@@ -1,0 +1,10 @@
+{
+  "synthetic_api_fixtures": true,
+  "live_api_writes_blocked": true,
+  "settingsKeyboardToggle": true,
+  "settingsLabelFocus": true,
+  "mobileKeyboardToggle": true,
+  "mobileSmartCellLabelFocus": true,
+  "dialogEscapeFocus": true,
+  "page_errors": []
+}

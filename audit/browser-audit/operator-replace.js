@@ -1,0 +1,12 @@
+await page.getByRole('button',{name:'Keep Existing',exact:true}).click();
+await expect(page.getByText('Duplicate Report Detected',{exact:false})).toHaveCount(0);
+await page.getByRole('button',{name:'+ Upload Report',exact:true}).click();
+await page.getByLabel('Excel File (.xlsx / .xls)',{exact:true}).setInputFiles('C:/WorkStation/Projects/Python/Casper/audit/browser-audit/operator/meesho-synthetic.xlsx');
+await page.getByRole('button',{name:'Upload',exact:true}).click();
+await expect(page.getByRole('button',{name:'Replace',exact:true})).toBeVisible({timeout:15000});
+await page.getByRole('button',{name:'Replace',exact:true}).click();
+await expect(page.getByRole('button',{name:'Uploading…',exact:true})).toHaveCount(0,{timeout:15000});
+await expect(page.getByRole('button',{name:'Replace',exact:true})).toHaveCount(0,{timeout:15000});
+const reports=await page.fetch('/api/v1/pnl/reports?platform_id=2',{as:'json'});
+operatorEvidence.steps.push({flow:'duplicate/replacement',outcome:'exact duplicate detected, Keep Existing then Replace; report count='+reports.json.length});
+return {reports:reports.json,text:(await page.locator('main').innerText()).slice(-1200)};

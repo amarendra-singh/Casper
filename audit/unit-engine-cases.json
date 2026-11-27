@@ -1,0 +1,5 @@
+[
+  {"name":"half_rupee", "price":100.5,"package":0,"logistics":0,"addons":0,"misc_total":0,"cr_percentage":0,"cr_cost":0,"damage_percentage":0,"damage_cost":0,"profit_percentage":0,"gst":5,"expected":{"breakeven":100.5,"net_profit_amt":0,"bs_wo_gst":101,"bank_settlement":106.05}},
+  {"name":"decimal_components", "price":100,"package":0.1,"logistics":0.2,"addons":0,"misc_total":0,"cr_percentage":0,"cr_cost":0,"damage_percentage":0,"damage_cost":0,"profit_percentage":20,"gst":18,"expected":{"breakeven":100.3,"net_profit_amt":20.06,"bs_wo_gst":120,"bank_settlement":141.6}},
+  {"name":"absolute_overrides", "price":200,"package":10,"logistics":5,"addons":2,"misc_total":3,"cr_percentage":10,"cr_cost":25,"damage_percentage":10,"damage_cost":40,"profit_percentage":20,"gst":5,"expected":{"breakeven":285,"net_profit_amt":57,"bs_wo_gst":342,"bank_settlement":359.1}}
+]

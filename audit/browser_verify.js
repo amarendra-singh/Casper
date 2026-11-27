@@ -1,0 +1,13 @@
+await page.getByRole('button',{name:'Cancel',exact:true}).click();
+await page.goto('http://127.0.0.1:5173/users');
+await expect(page.getByRole('button',{name:'Remove',exact:true})).toBeVisible();
+await page.getByRole('button',{name:'Remove',exact:true}).click();
+await expect(page.getByRole('alertdialog')).toBeVisible();
+uxEvidence.initialDialogFocus=await page.evaluate(()=>document.activeElement.textContent);
+await page.getByRole('button',{name:'Cancel',exact:true}).focus();
+await page.keyboard.press('Enter');
+await expect(page.getByRole('alertdialog')).not.toBeVisible();
+uxEvidence.cancelEnterIssuedDelete=auditRequests.filter(r=>r.method==='DELETE');
+await page.setViewportSize({width:390,height:844});
+uxEvidence.mobile=await page.evaluate(()=>({viewport:innerWidth,documentWidth:document.documentElement.scrollWidth,railDisplay:getComputedStyle(document.querySelector('.rail')).display,treeDisplay:getComputedStyle(document.querySelector('.tree')).display,visibleCompanySwitchers:[...document.querySelectorAll('[aria-label*="Current company"]')].filter(e=>e.getClientRects().length).length,visibleNavigation: [...document.querySelectorAll('nav,aside')].filter(e=>e.getClientRects().length).map(e=>e.innerText)}));
+return {evidence:uxEvidence,screenshot:await page.screenshot({fullPage:false}),observation:await tabbit.observe({frames:'none',maxChars:2500})};

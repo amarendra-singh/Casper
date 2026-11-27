@@ -1,0 +1,13 @@
+await page.goto('http://localhost:5173/',{waitUntil:'domcontentloaded'});
+await expect(page.getByText('Net revenue',{exact:true})).toBeVisible();
+const before=await page.locator('.kpi-strip').innerText();
+const requests=audit.responses.length;
+await page.getByRole('button',{name:'Last 30 days',exact:true}).click();
+const afterDate=await page.locator('.kpi-strip').innerText();
+await page.getByRole('button',{name:'Per company',exact:true}).click();
+const afterCompany=await page.locator('.kpi-strip').innerText();
+await page.locator('.ch-chip').filter({hasText:'Meesho'}).click();
+const afterChannel=await page.locator('.kpi-strip').innerText();
+const filters={before,afterDate,afterCompany,afterChannel,additionalRequests:audit.responses.slice(requests).filter(r=>r.url.includes('/api/v1/')),pageScope:await page.locator('.hint.mono').innerText()};
+await page.getByRole('heading',{name:/Fraud action pipeline/}).scrollIntoViewIfNeeded();
+return {filters,pipelineText:await page.locator('.pipe').innerText(),screenshot:await page.screenshot({fullPage:false})};

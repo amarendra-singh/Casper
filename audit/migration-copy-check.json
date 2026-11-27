@@ -1,0 +1,15 @@
+{
+  "disposable_copy_only": true,
+  "exit_code": 0,
+  "diagnostic": "Upgrade to head succeeded",
+  "total_observations": 2658,
+  "preserved_prior_observations": 851,
+  "cross_company_reference_counts": {
+    "sku_vendor": 0,
+    "sku_category": 0,
+    "pricing_sku": 0,
+    "pricing_platform": 95,
+    "invoice_line_sku": 0,
+    "purchase_line_sku": 0
+  }
+}

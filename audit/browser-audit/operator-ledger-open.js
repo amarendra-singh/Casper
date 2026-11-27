@@ -1,0 +1,10 @@
+await page.getByRole('button',{name:'Close',exact:true}).click();
+await page.getByRole('button',{name:'Delete invoice',exact:true}).click();
+await expect(page.getByRole('alertdialog')).toBeVisible();
+await page.getByRole('button',{name:'Cancel',exact:true}).press('Enter');
+await expect(page.getByText('Synthetic Audit Customer',{exact:true})).toBeVisible();
+operatorEvidence.steps.push({flow:'destructive Cancel',outcome:'Enter on Cancel kept invoice'});
+await page.locator('a[href="/ledger"]').click();
+await expect(page.getByRole('button',{name:'+ New entry',exact:true})).toBeVisible();
+await page.getByRole('button',{name:'+ New entry',exact:true}).click();
+return {text:await page.locator('main').innerText(),fields:await page.locator('main input,main select').evaluateAll(es=>es.map(e=>({tag:e.tagName,label:e.getAttribute('aria-label'),value:e.value,text:e.innerText}))),buttons:await page.locator('main button').allTextContents()};

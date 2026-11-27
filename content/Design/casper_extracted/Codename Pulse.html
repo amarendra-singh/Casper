@@ -1,0 +1,1846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Codename · Pulse — Multichannel insights</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* surfaces */
+    --bg:#F2EEE5;
+    --surface:#FFFFFF;
+    --surface-2:#FBF7F0;
+    --surface-3:#F5F0E5;
+    --ink:#0B0B0E;
+    --ink-2:#18181E;
+    --ink-3:#3A3A40;
+    --muted:#6F6B62;
+    --muted-2:#A8A39A;
+    --muted-3:#C7C2B7;
+    --rule:#ECE6DA;
+    --rule-2:#F4EEE2;
+    --rule-strong:#DDD6C7;
+
+    /* brand */
+    --pink:#EC2D6E;
+    --pink-2:#F23A77;
+    --pink-soft:#FCE4EC;
+    --pink-wash:#FFF4F8;
+    --clay:#C66A3F;
+    --clay-soft:#F8E4D5;
+
+    /* semantic */
+    --emerald:#1FA968;
+    --emerald-soft:#E5F4EB;
+    --danger:#D8425A;
+    --danger-soft:#FBE6EA;
+    --amber:#C77F2B;
+    --amber-soft:#FAEDD3;
+
+    /* platforms */
+    --p-flipkart:#2874F0;
+    --p-amazon:#FF9900;
+    --p-meesho:#F43397;
+    --p-snapdeal:#E40046;
+    --p-shopdeck:#7A5BFF;
+
+    /* radii + shadow */
+    --r-xs:6px;
+    --r-sm:10px;
+    --r-md:14px;
+    --r-lg:18px;
+    --r-xl:22px;
+    --r-pill:999px;
+
+    --shadow-sm:0 1px 0 rgba(20,15,5,.04), 0 1px 2px rgba(20,15,5,.04);
+    --shadow-md:0 1px 0 rgba(20,15,5,.04), 0 8px 22px -12px rgba(20,15,5,.12);
+    --shadow-lg:0 1px 0 rgba(20,15,5,.04), 0 24px 60px -28px rgba(20,15,5,.22);
+    --shadow-ink:0 8px 22px -8px rgba(11,11,14,.4);
+    --shadow-pink:0 8px 22px -10px rgba(236,45,110,.55);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:'Geist',ui-sans-serif,system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    font-feature-settings:"ss01","cv11","tnum";
+  }
+  body{min-height:100vh}
+  ::selection{background:var(--pink);color:#fff}
+
+  .mono{font-family:'Geist Mono',ui-monospace,monospace;font-feature-settings:"tnum"}
+  .serif-i{font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;letter-spacing:-.005em}
+
+  /* ============ Shell ============ */
+  .app{
+    display:grid;
+    grid-template-columns:64px 1fr;
+    min-height:100vh;
+  }
+
+  /* ----- Sidebar (icon rail) ----- */
+  .rail{
+    border-right:1px solid var(--rule);
+    background:linear-gradient(180deg, #EEE9DD, var(--bg) 60%);
+    display:flex;flex-direction:column;align-items:center;
+    padding:14px 0;gap:4px;
+    position:sticky;top:0;height:100vh;
+  }
+  .rail-logo{
+    width:36px;height:36px;border-radius:11px;
+    background:var(--ink);color:#fff;display:grid;place-items:center;
+    margin-bottom:14px;position:relative;
+    box-shadow:var(--shadow-ink);
+  }
+  .rail-logo::after{
+    content:"";position:absolute;top:-2px;right:-2px;width:9px;height:9px;
+    border-radius:50%;background:var(--pink);border:2px solid var(--bg);
+  }
+  .rail-btn{
+    width:40px;height:40px;border-radius:11px;display:grid;place-items:center;
+    color:var(--muted);cursor:pointer;transition:background .15s, color .15s;
+    position:relative;
+  }
+  .rail-btn:hover{background:rgba(0,0,0,.04);color:var(--ink)}
+  .rail-btn.active{background:var(--ink);color:#fff}
+  .rail-btn .pip{
+    position:absolute;top:6px;right:7px;width:6px;height:6px;border-radius:50%;
+    background:var(--pink);box-shadow:0 0 0 2px var(--bg);
+  }
+  .rail-spacer{flex:1}
+  .rail-stack{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .rail-divider{width:24px;height:1px;background:var(--rule-strong);margin:6px 0}
+
+  /* tiny platform indicators on the rail (vertical chips) */
+  .rail-chip{
+    width:28px;height:28px;border-radius:9px;
+    display:grid;place-items:center;
+    font-size:11px;font-weight:700;color:#fff;
+    line-height:1;letter-spacing:-.02em;
+    cursor:pointer;transition:transform .15s;
+  }
+  .rail-chip:hover{transform:translateY(-1px)}
+  .rail-chip.flipkart{background:var(--p-flipkart);color:#FFE500;font-style:italic}
+  .rail-chip.amazon{background:var(--p-amazon);color:#0B0B0E}
+  .rail-chip.meesho{background:var(--p-meesho)}
+  .rail-chip.snapdeal{background:var(--p-snapdeal)}
+  .rail-chip.shopdeck{background:var(--p-shopdeck)}
+
+  /* ============ Main column ============ */
+  .main{display:flex;flex-direction:column;min-width:0}
+
+  /* ----- Top bar ----- */
+  .topbar{
+    display:flex;align-items:center;gap:14px;
+    padding:14px 24px;border-bottom:1px solid var(--rule);
+    background:rgba(242,238,229,.85);
+    backdrop-filter:blur(8px);
+    position:sticky;top:0;z-index:20;
+  }
+  .brand{
+    display:flex;align-items:baseline;gap:6px;
+    font-size:18px;letter-spacing:-.02em;
+  }
+  .brand b{font-weight:600}
+  .brand .sep{color:var(--muted-3);font-weight:400;margin:0 2px}
+  .brand em{font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;font-size:20px;color:var(--pink);letter-spacing:-.01em}
+  .brand .picker{
+    margin-left:8px;display:inline-flex;align-items:center;gap:5px;
+    background:#fff;border:1px solid var(--rule);border-radius:var(--r-pill);
+    padding:3px 4px 3px 10px;font-size:12.5px;color:var(--ink-3);font-weight:500;cursor:pointer;
+    transition:box-shadow .15s;
+    white-space:nowrap;
+  }
+  .brand .picker:hover{box-shadow:var(--shadow-sm)}
+  .brand .picker .ws-av{
+    width:18px;height:18px;border-radius:5px;
+    background:linear-gradient(135deg,#FFD27A,#EC2D6E 50%,#7A5BFF);
+  }
+
+  .search{
+    flex:1;max-width:480px;height:38px;
+    background:#fff;border:1px solid var(--rule);
+    border-radius:var(--r-pill);
+    display:flex;align-items:center;gap:10px;padding:0 14px;
+    color:var(--muted-2);font-size:13px;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .search:focus-within{border-color:var(--ink);box-shadow:0 0 0 3px rgba(11,11,14,.06)}
+  .search input{border:0;background:transparent;outline:none;flex:1;font:inherit;color:var(--ink)}
+  .search input::placeholder{color:var(--muted-2)}
+  .search kbd{
+    font-family:'Geist Mono',monospace;font-size:10.5px;
+    background:var(--bg);color:var(--muted);
+    padding:2px 6px;border-radius:5px;border:1px solid var(--rule);
+  }
+
+  .top-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .live-dot{
+    display:inline-flex;align-items:center;gap:6px;
+    background:#fff;border:1px solid var(--rule);border-radius:var(--r-pill);
+    padding:6px 12px 6px 8px;font-size:12px;font-weight:500;color:var(--ink-3);
+    white-space:nowrap;
+  }
+  .live-dot::before{
+    content:"";width:7px;height:7px;border-radius:50%;background:var(--emerald);
+    box-shadow:0 0 0 3px rgba(31,169,104,.18);
+    animation:pulseGreen 2s infinite;
+  }
+  @keyframes pulseGreen{
+    0%,100%{box-shadow:0 0 0 3px rgba(31,169,104,.18)}
+    50%{box-shadow:0 0 0 5px rgba(31,169,104,.08)}
+  }
+  .icon-btn{
+    width:38px;height:38px;border-radius:10px;display:grid;place-items:center;
+    color:var(--ink-3);cursor:pointer;transition:background .15s;background:transparent;border:none;
+    position:relative;
+  }
+  .icon-btn:hover{background:rgba(0,0,0,.05)}
+  .icon-btn .pip{
+    position:absolute;top:9px;right:9px;width:6px;height:6px;border-radius:50%;
+    background:var(--pink);box-shadow:0 0 0 2px var(--bg);
+  }
+  .avatar-orb{
+    width:34px;height:34px;border-radius:50%;
+    background:conic-gradient(from 200deg,#FFD27A,#EC2D6E 40%,#7A5BFF 70%,#3DD68C);
+    box-shadow:inset 0 0 0 2px #fff;cursor:pointer;
+  }
+
+  /* ----- Sub-tabs ----- */
+  .subnav{
+    display:flex;align-items:center;gap:2px;
+    padding:6px 24px;border-bottom:1px solid var(--rule);
+    background:rgba(242,238,229,.6);
+    overflow-x:auto;
+  }
+  .subnav::-webkit-scrollbar{display:none}
+  .subnav-tab{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:8px 14px;border-radius:var(--r-sm);
+    font-size:13.5px;font-weight:500;color:var(--muted);
+    cursor:pointer;white-space:nowrap;
+    transition:color .15s, background .15s;
+  }
+  .subnav-tab:hover{background:rgba(0,0,0,.04);color:var(--ink-3)}
+  .subnav-tab.active{color:var(--ink);background:#fff;box-shadow:var(--shadow-sm)}
+  .subnav-tab .ct{
+    font-size:10.5px;font-weight:600;
+    background:var(--rule);color:var(--muted);
+    padding:1px 6px;border-radius:5px;letter-spacing:.02em;
+  }
+  .subnav-tab.active .ct{background:var(--pink-soft);color:var(--pink)}
+  .subnav-spacer{flex:1}
+
+  /* ============ Content ============ */
+  .content{
+    padding:24px 24px 64px;
+    display:flex;flex-direction:column;gap:20px;
+    max-width:1480px;width:100%;margin:0 auto;
+    container-type:inline-size;
+    container-name:content;
+  }
+
+  /* ----- Page header ----- */
+  .page-head{
+    display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;
+  }
+  .page-head .title-block{flex:1;min-width:280px}
+  .page-head h1{
+    margin:0;font-size:36px;line-height:1.05;font-weight:500;letter-spacing:-.025em;
+    display:flex;align-items:baseline;gap:.18em;
+  }
+  .page-head h1 em{
+    font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;
+    color:var(--clay);letter-spacing:-.005em;font-size:1.05em;
+  }
+  .page-head .meta{
+    margin-top:6px;font-size:13px;color:var(--muted);
+    display:flex;align-items:center;gap:10px;
+  }
+  .page-head .meta .sep{color:var(--muted-3)}
+  .page-head .meta .sync{display:inline-flex;align-items:center;gap:5px}
+  .page-head .meta .sync .d{width:5px;height:5px;border-radius:50%;background:var(--emerald);box-shadow:0 0 0 3px rgba(31,169,104,.18)}
+
+  .head-actions{
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  }
+  .pill{
+    display:inline-flex;align-items:center;gap:6px;
+    background:#fff;border:1px solid var(--rule);
+    border-radius:var(--r-pill);
+    padding:8px 14px;font-size:13px;font-weight:500;color:var(--ink-3);cursor:pointer;
+    transition:box-shadow .15s, border-color .15s;
+  }
+  .pill:hover{box-shadow:var(--shadow-sm);border-color:var(--rule-strong)}
+  .pill .caret{color:var(--muted-2)}
+  .pill.dark{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .pill.dark:hover{box-shadow:var(--shadow-ink)}
+  .pill.pink{background:var(--pink);color:#fff;border-color:var(--pink)}
+  .pill.pink:hover{box-shadow:var(--shadow-pink)}
+
+  /* channel chip filter */
+  .channels{
+    display:inline-flex;align-items:center;gap:4px;
+    background:#fff;border:1px solid var(--rule);border-radius:var(--r-pill);
+    padding:4px;
+  }
+  .ch-chip{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:5px 11px;border-radius:var(--r-pill);
+    font-size:12.5px;font-weight:500;color:var(--muted);cursor:pointer;
+    transition:background .15s, color .15s;
+  }
+  .ch-chip:hover{color:var(--ink)}
+  .ch-chip.active{background:var(--ink);color:#fff}
+  .ch-chip .dot{width:8px;height:8px;border-radius:50%;flex:none}
+  .ch-chip.active .dot{box-shadow:0 0 0 2px rgba(255,255,255,.25)}
+  .ch-chip .ct{
+    font-family:'Geist Mono',monospace;font-size:10.5px;color:var(--muted-2);font-weight:500;
+  }
+  .ch-chip.active .ct{color:rgba(255,255,255,.65)}
+
+  /* ----- AI insights ----- */
+  .insights{
+    display:grid;grid-template-columns:1.55fr 1fr 1fr 1fr;gap:12px;
+  }
+  @container content (max-width:1180px){
+    .insights{grid-template-columns:1fr 1fr;}
+    .insight.hero{grid-column:1 / -1}
+  }
+  @container content (max-width:680px){
+    .insights{grid-template-columns:1fr}
+  }
+  .insight{
+    background:var(--surface);
+    border:1px solid var(--rule);
+    border-radius:var(--r-lg);
+    padding:16px 16px 14px;
+    position:relative;overflow:hidden;
+    display:flex;flex-direction:column;gap:10px;
+    transition:transform .15s, box-shadow .15s;
+    cursor:pointer;
+  }
+  .insight:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
+  .insight .ins-head{
+    display:flex;align-items:center;gap:8px;
+    font-size:11px;font-weight:500;color:var(--muted);
+    letter-spacing:.06em;text-transform:uppercase;
+  }
+  .insight .ins-head .tag{
+    display:inline-flex;align-items:center;gap:5px;
+    background:var(--bg);border:1px solid var(--rule);
+    padding:3px 8px 3px 6px;border-radius:var(--r-pill);
+    font-size:10.5px;font-weight:600;color:var(--ink-3);
+    letter-spacing:.02em;text-transform:none;
+  }
+  .insight .ins-head .tag .d{width:6px;height:6px;border-radius:50%;background:var(--pink)}
+  .insight .ins-head .tag.amber .d{background:var(--amber)}
+  .insight .ins-head .tag.emerald .d{background:var(--emerald)}
+  .insight .ins-head .tag.danger .d{background:var(--danger)}
+  .insight .ins-title{
+    font-size:15px;font-weight:600;color:var(--ink);letter-spacing:-.012em;line-height:1.25;
+    margin:0;
+  }
+  .insight .ins-body{
+    font-size:12.5px;color:var(--muted);line-height:1.45;
+  }
+  .insight .ins-body b{color:var(--ink);font-weight:600}
+  .insight .ins-foot{
+    margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:8px;
+    font-size:11.5px;color:var(--muted-2);
+  }
+  .insight .ins-foot .go{
+    display:inline-flex;align-items:center;gap:4px;
+    color:var(--ink);font-weight:500;font-size:12px;
+  }
+
+  /* Featured (hero) insight */
+  .insight.hero{
+    background:
+      radial-gradient(800px 400px at 100% 0%, rgba(236,45,110,.10), transparent 55%),
+      radial-gradient(700px 400px at 0% 100%, rgba(198,106,63,.10), transparent 55%),
+      linear-gradient(165deg, #1A1418 0%, #0B0B0E 60%);
+    color:#fff;border-color:#1A1418;
+    padding:18px 20px 16px;
+    gap:14px;
+  }
+  .insight.hero .ins-head{color:rgba(255,255,255,.65)}
+  .insight.hero .ins-head .tag{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.08);color:#fff}
+  .insight.hero .ins-title{color:#fff;font-size:20px;font-weight:500;letter-spacing:-.02em;line-height:1.2}
+  .insight.hero .ins-title em{font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;color:#FFB3CB;font-size:1.05em}
+  .insight.hero .ins-body{color:rgba(255,255,255,.7);font-size:13px}
+  .insight.hero .ins-body b{color:#fff}
+  .insight.hero .ins-foot{color:rgba(255,255,255,.4)}
+  .insight.hero .ins-foot .go{color:#fff}
+  .insight.hero .reason-chips{display:flex;flex-wrap:wrap;gap:6px}
+  .insight.hero .reason-chips .rc{
+    display:inline-flex;align-items:center;gap:5px;
+    padding:4px 9px;border-radius:var(--r-pill);
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.08);
+    font-size:11.5px;color:rgba(255,255,255,.85);font-weight:500;
+  }
+  .insight.hero .reason-chips .rc .d{width:6px;height:6px;border-radius:50%}
+  .insight.hero .ai-mk{
+    position:absolute;top:14px;right:14px;
+    width:38px;height:38px;border-radius:50%;
+    background:radial-gradient(circle at 30% 30%, #FFB3CB, #EC2D6E 70%);
+    box-shadow:0 0 0 1px rgba(255,255,255,.1), 0 6px 20px -6px rgba(236,45,110,.6);
+    display:grid;place-items:center;
+  }
+  .insight.hero .ai-mk svg{width:18px;height:18px;color:#fff}
+
+  /* small insight variants */
+  .insight .delta-chip{
+    display:inline-flex;align-items:center;gap:3px;
+    padding:3px 8px;border-radius:var(--r-pill);
+    font-size:11px;font-weight:600;line-height:1;letter-spacing:-.005em;
+  }
+  .delta-chip.up{background:var(--emerald-soft);color:var(--emerald)}
+  .delta-chip.down{background:var(--danger-soft);color:var(--danger)}
+  .delta-chip.amber{background:var(--amber-soft);color:var(--amber)}
+
+  /* ----- KPI strip ----- */
+  .kpi-strip{
+    display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;
+    background:var(--surface);
+    border:1px solid var(--rule);
+    border-radius:var(--r-lg);
+    padding:6px;
+  }
+  @container content (max-width:1080px){
+    .kpi-strip{grid-template-columns:repeat(3,minmax(0,1fr))}
+  }
+  @container content (max-width:600px){
+    .kpi-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+  }
+  .kpi{
+    padding:14px 14px 12px;border-radius:var(--r-md);
+    display:flex;flex-direction:column;gap:6px;
+    cursor:pointer;
+    transition:background .15s;
+    position:relative;overflow:hidden;
+    min-width:0;
+  }
+  .kpi:hover{background:var(--surface-2)}
+  .kpi + .kpi{border-left:1px solid var(--rule)}
+  @container content (max-width:1080px){
+    .kpi + .kpi{border-left:none}
+    .kpi:nth-child(n+4){border-top:1px solid var(--rule)}
+  }
+  @container content (max-width:600px){
+    .kpi:nth-child(n+3){border-top:1px solid var(--rule)}
+  }
+  .kpi .k-lab{
+    font-size:11px;color:var(--muted);font-weight:500;
+    letter-spacing:.06em;text-transform:uppercase;
+    display:flex;align-items:center;gap:6px;
+  }
+  .kpi .k-lab .q{
+    width:13px;height:13px;border-radius:50%;
+    border:1px solid var(--rule-strong);color:var(--muted-2);
+    display:grid;place-items:center;font-size:9px;font-weight:600;
+    text-transform:none;
+  }
+  .kpi .k-val{
+    font-size:26px;font-weight:600;letter-spacing:-.025em;line-height:1;
+    color:var(--ink);
+    display:flex;align-items:baseline;gap:6px;
+    font-variant-numeric:tabular-nums;
+  }
+  .kpi .k-val .sub{font-size:14px;color:var(--muted-2);font-weight:500}
+  .kpi .k-row{display:flex;align-items:center;gap:8px;margin-top:2px}
+  .kpi .k-row .vs{font-size:11px;color:var(--muted-2)}
+  .kpi .k-spark{
+    position:absolute;right:6px;bottom:8px;width:64px;height:22px;opacity:.7;pointer-events:none;
+  }
+  .kpi.active{background:linear-gradient(180deg, var(--pink-wash), #fff 80%);outline:1.5px solid var(--pink);outline-offset:-1.5px}
+  .kpi.active .k-val{color:var(--pink)}
+
+  /* ----- Section header ----- */
+  .sec-head{
+    display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    margin-bottom:-6px;
+  }
+  .sec-head h2{
+    margin:0;font-size:18px;font-weight:600;letter-spacing:-.015em;color:var(--ink);
+    display:flex;align-items:baseline;gap:8px;
+  }
+  .sec-head h2 .ct{
+    font-family:'Geist Mono',monospace;font-size:12px;color:var(--muted-2);font-weight:500;
+    letter-spacing:-.005em;
+  }
+  .sec-head .sub{font-size:13px;color:var(--muted);margin-top:2px}
+  .sec-head .right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+  /* small pill toggle (segmented) */
+  .seg{
+    display:inline-flex;align-items:center;
+    background:#fff;border:1px solid var(--rule);border-radius:var(--r-pill);
+    padding:3px;font-size:12px;font-weight:500;
+  }
+  .seg button{
+    border:0;background:transparent;cursor:pointer;
+    padding:5px 10px;border-radius:var(--r-pill);
+    color:var(--muted);font:inherit;
+    white-space:nowrap;
+  }
+  .seg button.active{background:var(--ink);color:#fff}
+  .seg button:hover:not(.active){color:var(--ink)}
+
+  /* ----- Platform performance section ----- */
+  .perf-grid{
+    display:grid;grid-template-columns:1.7fr 1fr;gap:14px;
+    align-items:stretch;
+  }
+  @container content (max-width:1080px){
+    .perf-grid{grid-template-columns:1fr}
+  }
+  .card{
+    background:var(--surface);
+    border:1px solid var(--rule);
+    border-radius:var(--r-lg);
+    padding:18px;
+    display:flex;flex-direction:column;gap:14px;
+    min-width:0;
+  }
+  .perf-chart-card{padding:18px 20px 14px}
+  .perf-chart-card .legend{
+    display:flex;flex-wrap:wrap;gap:14px;align-items:center;
+    margin-top:auto;font-size:12px;color:var(--muted);
+  }
+  .perf-chart-card .legend .lg{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+  .perf-chart-card .legend .lg .sw{width:10px;height:10px;border-radius:3px}
+  .perf-chart-card .legend .lg .nm{color:var(--ink);font-weight:500}
+  .perf-chart-card .legend .lg.muted{opacity:.4}
+  .perf-chart-card .chart-wrap{
+    position:relative;
+    height:230px;
+    margin:6px -6px 0;
+  }
+  .perf-chart-card svg.chart{width:100%;height:100%;display:block}
+
+  .perf-side{
+    display:grid;grid-template-rows:auto 1fr;gap:10px;
+  }
+  .perf-side .breakdown{
+    display:flex;flex-direction:column;gap:8px;
+  }
+  .pf-row{
+    display:grid;grid-template-columns:34px 1fr auto auto;gap:10px;
+    align-items:center;padding:10px 12px;
+    border-radius:var(--r-md);
+    background:var(--surface-2);
+    border:1px solid var(--rule);
+    transition:background .15s, transform .15s;
+    cursor:pointer;
+  }
+  .pf-row:hover{background:#fff;transform:translateX(2px);box-shadow:var(--shadow-sm)}
+  .pf-row .mk{
+    width:34px;height:34px;border-radius:9px;
+    display:grid;place-items:center;color:#fff;font-weight:700;font-size:14px;
+  }
+  .pf-row .meta{min-width:0}
+  .pf-row .nm{font-size:13.5px;font-weight:600;color:var(--ink);letter-spacing:-.005em;line-height:1.2}
+  .pf-row .ndr{font-size:11.5px;color:var(--muted);margin-top:2px;display:flex;gap:6px;align-items:center}
+  .pf-row .ndr .sep{color:var(--muted-3)}
+  .pf-row .rev{font-size:14px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.01em;text-align:right}
+  .pf-row .pct{font-size:11px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums;text-align:right}
+  .pf-row .bar{
+    width:42px;height:6px;border-radius:var(--r-pill);background:var(--rule);position:relative;overflow:hidden;
+  }
+  .pf-row .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:var(--r-pill)}
+
+  /* per-platform mk colors */
+  .mk.flipkart{background:var(--p-flipkart);color:#FFE500;font-style:italic}
+  .mk.amazon{background:var(--p-amazon);color:#0B0B0E}
+  .mk.meesho{background:var(--p-meesho)}
+  .mk.snapdeal{background:var(--p-snapdeal)}
+  .mk.shopdeck{background:var(--p-shopdeck)}
+
+  /* ----- SKU table ----- */
+  .table-card{padding:0;overflow:hidden}
+  .table-toolbar{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:16px 18px;border-bottom:1px solid var(--rule);
+  }
+  .table-toolbar h2{margin:0;font-size:16px;font-weight:600;letter-spacing:-.012em}
+  .table-toolbar .badge{
+    font-family:'Geist Mono',monospace;font-size:11px;color:var(--muted);font-weight:500;
+    background:var(--bg);padding:2px 8px;border-radius:5px;
+  }
+  .table-toolbar .right{margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+
+  .tbl{
+    width:100%;border-collapse:separate;border-spacing:0;
+    font-size:12.5px;
+  }
+  .tbl thead th{
+    text-align:left;padding:10px 14px;
+    font-size:10.5px;font-weight:500;color:var(--muted);
+    letter-spacing:.06em;text-transform:uppercase;
+    background:var(--surface-2);
+    border-bottom:1px solid var(--rule);
+    white-space:nowrap;
+  }
+  .tbl thead th.num{text-align:right}
+  .tbl thead th.ctr{text-align:center}
+  .tbl tbody td{
+    padding:12px 14px;border-bottom:1px solid var(--rule-2);
+    vertical-align:middle;
+    font-variant-numeric:tabular-nums;
+  }
+  .tbl tbody tr:last-child td{border-bottom:none}
+  .tbl tbody tr:hover td{background:var(--surface-2)}
+  .tbl td.num{text-align:right}
+  .tbl td.ctr{text-align:center}
+  .tbl .sku-cell{
+    display:flex;align-items:center;gap:10px;min-width:240px;
+  }
+  .tbl .sku-thumb{
+    width:36px;height:36px;border-radius:8px;
+    background:linear-gradient(135deg, #F0EAD9, #E8DFC8);
+    border:1px solid var(--rule);
+    display:grid;place-items:center;color:var(--clay);
+    flex:none;font-family:'Geist Mono',monospace;font-size:11px;font-weight:600;
+  }
+  .tbl .sku-thumb.t2{background:linear-gradient(135deg, #FCE2EA, #F8C7D6);color:#B72A55}
+  .tbl .sku-thumb.t3{background:linear-gradient(135deg, #E2EAF4, #C7D6E8);color:#3B5775}
+  .tbl .sku-thumb.t4{background:linear-gradient(135deg, #EDF4E0, #D5E5BF);color:#5B7034}
+  .tbl .sku-thumb.t5{background:linear-gradient(135deg, #F4EBE0, #EAD6BF);color:#8B5A2A}
+  .tbl .sku-name{font-size:13px;font-weight:600;color:var(--ink);letter-spacing:-.005em;line-height:1.2}
+  .tbl .sku-meta{font-size:11px;color:var(--muted);margin-top:2px;display:flex;gap:6px;align-items:center}
+  .tbl .sku-meta .sep{color:var(--muted-3)}
+  .tbl .sku-meta .sku-id{font-family:'Geist Mono',monospace;letter-spacing:-.01em}
+
+  /* Platform availability matrix */
+  .plat-matrix{display:flex;align-items:center;gap:3px;justify-content:flex-start}
+  .plat-dot{
+    width:22px;height:22px;border-radius:7px;
+    display:grid;place-items:center;
+    font-size:10px;font-weight:700;color:#fff;line-height:1;
+    cursor:pointer;
+    transition:transform .15s;
+  }
+  .plat-dot:hover{transform:translateY(-1px)}
+  .plat-dot.off{
+    background:var(--bg)!important;color:var(--muted-2)!important;
+    border:1px dashed var(--rule-strong);
+    font-style:normal!important;
+  }
+  .plat-dot.flipkart{background:var(--p-flipkart);color:#FFE500;font-style:italic}
+  .plat-dot.amazon{background:var(--p-amazon);color:#0B0B0E}
+  .plat-dot.meesho{background:var(--p-meesho)}
+  .plat-dot.snapdeal{background:var(--p-snapdeal)}
+  .plat-dot.shopdeck{background:var(--p-shopdeck)}
+
+  /* status pills */
+  .stat-pill{
+    display:inline-flex;align-items:center;gap:5px;
+    padding:3px 8px;border-radius:var(--r-pill);
+    font-size:11px;font-weight:600;line-height:1;letter-spacing:-.005em;
+  }
+  .stat-pill .d{width:5px;height:5px;border-radius:50%}
+  .stat-pill.ok{background:var(--emerald-soft);color:var(--emerald)}.stat-pill.ok .d{background:var(--emerald)}
+  .stat-pill.warn{background:var(--amber-soft);color:var(--amber)}.stat-pill.warn .d{background:var(--amber)}
+  .stat-pill.danger{background:var(--danger-soft);color:var(--danger)}.stat-pill.danger .d{background:var(--danger)}
+  .stat-pill.muted{background:var(--bg);color:var(--muted);}.stat-pill.muted .d{background:var(--muted-2)}
+
+  /* mini-bar inside table cell */
+  .cell-bar{
+    display:inline-block;width:54px;height:4px;border-radius:var(--r-pill);
+    background:var(--rule);position:relative;overflow:hidden;vertical-align:middle;margin-right:8px;
+  }
+  .cell-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:var(--r-pill);background:var(--ink)}
+  .cell-bar.danger i{background:var(--danger)}
+  .cell-bar.amber i{background:var(--amber)}
+  .cell-bar.emerald i{background:var(--emerald)}
+
+  .num-trend{
+    display:inline-flex;align-items:center;gap:4px;justify-content:flex-end;
+    font-size:11px;font-weight:600;
+  }
+  .num-trend.up{color:var(--emerald)}
+  .num-trend.down{color:var(--danger)}
+  .num-trend.flat{color:var(--muted-2)}
+
+  /* ----- Reports section ----- */
+  .reports{
+    display:grid;grid-template-columns:1.2fr 1fr;gap:14px;
+  }
+  @container content (max-width:1080px){
+    .reports{grid-template-columns:1fr}
+  }
+  .reports .left{display:flex;flex-direction:column;gap:14px}
+  .reports .right{display:flex;flex-direction:column;gap:14px}
+
+  .report-tabs{display:flex;align-items:center;gap:2px;margin-bottom:4px;flex-wrap:wrap}
+  .report-tab{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:6px 12px;border-radius:var(--r-pill);
+    font-size:12.5px;font-weight:500;color:var(--muted);cursor:pointer;
+    transition:background .15s, color .15s;
+  }
+  .report-tab:hover{color:var(--ink)}
+  .report-tab.active{background:var(--ink);color:#fff}
+  .report-tab .ct{
+    font-family:'Geist Mono',monospace;font-size:10.5px;
+    color:var(--muted-2);
+  }
+  .report-tab.active .ct{color:rgba(255,255,255,.6)}
+
+  /* Funnel / order breakdown */
+  .funnel{display:flex;flex-direction:column;gap:6px}
+  .funnel-row{
+    display:grid;grid-template-columns:140px 1fr 72px 50px;gap:12px;
+    align-items:center;font-size:12.5px;
+  }
+  .funnel-row .lab{color:var(--ink-3);font-weight:500}
+  .funnel-row .bar-track{height:24px;background:var(--bg);border-radius:var(--r-sm);position:relative;overflow:hidden}
+  .funnel-row .bar-track i{position:absolute;inset:0;border-radius:var(--r-sm);background:var(--ink)}
+  .funnel-row .bar-track i.pink{background:var(--pink)}
+  .funnel-row .bar-track i.emerald{background:var(--emerald)}
+  .funnel-row .bar-track i.amber{background:var(--amber)}
+  .funnel-row .bar-track i.danger{background:var(--danger)}
+  .funnel-row .bar-track i.muted{background:var(--muted-2)}
+  .funnel-row .val{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink);text-align:right}
+  .funnel-row .pct{font-variant-numeric:tabular-nums;color:var(--muted);text-align:right;font-size:11.5px}
+
+  /* RTO reason donut */
+  .donut-card{display:flex;align-items:center;gap:18px}
+  .donut{position:relative;width:160px;height:160px;flex:none}
+  .donut svg{transform:rotate(-90deg);width:100%;height:100%}
+  .donut .ctr{
+    position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  }
+  .donut .ctr .v{font-size:24px;font-weight:600;letter-spacing:-.02em;color:var(--ink)}
+  .donut .ctr .l{font-size:10.5px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-weight:500;margin-top:2px}
+  .donut-legend{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
+  .dl-row{display:grid;grid-template-columns:14px 1fr auto;gap:8px;align-items:center;font-size:12.5px}
+  .dl-row .sw{width:10px;height:10px;border-radius:3px}
+  .dl-row .lab{color:var(--ink-3);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dl-row .val{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink);font-size:12.5px}
+  .dl-row .pct{font-variant-numeric:tabular-nums;color:var(--muted);font-size:11px;margin-left:6px}
+
+  /* Fees breakdown waterfall */
+  .waterfall{display:flex;flex-direction:column;gap:8px}
+  .wf-row{
+    display:grid;grid-template-columns:120px 1fr 90px;gap:10px;align-items:center;font-size:12.5px;
+  }
+  .wf-row .lab{color:var(--ink-3);font-weight:500;display:flex;align-items:center;gap:6px}
+  .wf-row .lab .dot{width:5px;height:5px;border-radius:50%;background:var(--muted-2)}
+  .wf-row .bar{height:18px;background:var(--bg);border-radius:5px;position:relative;overflow:hidden}
+  .wf-row .bar i{position:absolute;top:0;bottom:0;border-radius:5px}
+  .wf-row .bar i.pos{background:var(--emerald)}
+  .wf-row .bar i.neg{background:var(--danger)}
+  .wf-row .bar i.neut{background:var(--ink-3)}
+  .wf-row .val{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink);text-align:right}
+  .wf-row.tot{border-top:1px dashed var(--rule-strong);padding-top:8px;margin-top:2px}
+  .wf-row.tot .lab{color:var(--ink);font-weight:600}
+  .wf-row.tot .val{color:var(--pink);font-size:14px}
+
+  /* Returns by platform list */
+  .ret-list{display:flex;flex-direction:column;gap:8px}
+  .ret-row{
+    display:grid;grid-template-columns:28px 1fr auto auto;gap:10px;align-items:center;
+    padding:8px 4px;border-bottom:1px solid var(--rule-2);
+    font-size:12.5px;
+  }
+  .ret-row:last-child{border-bottom:none}
+  .ret-row .mk{width:24px;height:24px;border-radius:7px;font-size:11px}
+  .ret-row .lab{color:var(--ink-3);font-weight:500}
+  .ret-row .lab .small{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:1px}
+  .ret-row .num{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink);text-align:right}
+  .ret-row .delta{font-size:11px;font-weight:600}
+
+  /* Tiny utility */
+  .row{display:flex;align-items:center;gap:8px}
+  .grow{flex:1}
+  .muted{color:var(--muted)}
+  .ink{color:var(--ink)}
+  .tabular{font-variant-numeric:tabular-nums}
+
+  /* Footer note */
+  .footnote{
+    font-size:11.5px;color:var(--muted-2);text-align:center;
+    padding:8px 0 0;letter-spacing:-.005em;
+  }
+
+  /* tiny help */
+  .hint{
+    display:inline-flex;align-items:center;gap:4px;
+    font-size:11px;color:var(--muted);
+  }
+
+  /* Tabs / search states */
+  .scroll-x{overflow-x:auto}
+  .scroll-x::-webkit-scrollbar{height:6px}
+  .scroll-x::-webkit-scrollbar-thumb{background:var(--rule-strong);border-radius:3px}
+
+  /* MOBILE */
+  @media (max-width:760px){
+    .app{grid-template-columns:60px 1fr}
+    .content{padding:16px 16px 48px}
+    .page-head h1{font-size:28px}
+    .topbar{padding:10px 14px;gap:8px}
+    .search{display:none}
+    .subnav{padding:6px 14px}
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ Sidebar rail ============ -->
+  <aside class="rail">
+    <div class="rail-logo" title="Codename · Pulse">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
+    </div>
+
+    <div class="rail-btn active" title="Overview">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h7v5H4zM13 6h7v3h-7zM13 11h7v7h-7zM4 13h7v5H4z"/></svg>
+    </div>
+    <div class="rail-btn" title="Catalog · SKUs">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8L12 3 3 8m18 0l-9 5-9-5m18 0v8l-9 5-9-5V8"/></svg>
+    </div>
+    <div class="rail-btn" title="Orders">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      <span class="pip"></span>
+    </div>
+    <div class="rail-btn" title="Returns &amp; RTO">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+    </div>
+    <div class="rail-btn" title="Finance · Settlements">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="12" cy="12.5" r="3"/><path d="M6 19v2M18 19v2"/></svg>
+    </div>
+    <div class="rail-btn" title="Reports">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><polyline points="14 3 14 7 18 7"/><path d="M9 13h7M9 17h7M9 9h3"/></svg>
+    </div>
+
+    <div class="rail-divider"></div>
+
+    <div class="rail-stack" title="Connected channels">
+      <div class="rail-chip flipkart" title="Flipkart">F</div>
+      <div class="rail-chip amazon" title="Amazon">a</div>
+      <div class="rail-chip meesho" title="Meesho">m</div>
+      <div class="rail-chip snapdeal" title="Snapdeal">S</div>
+      <div class="rail-chip shopdeck" title="ShopDeck">Sd</div>
+    </div>
+
+    <div class="rail-spacer"></div>
+    <div class="rail-btn" title="Help">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12" y2="17"/></svg>
+    </div>
+    <div class="rail-btn" title="Settings">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </div>
+  </aside>
+
+  <!-- ============ Main column ============ -->
+  <div class="main">
+
+    <!-- ----- Top bar ----- -->
+    <header class="topbar">
+      <div class="brand">
+        <b>Codename</b><span class="sep">/</span><em>pulse</em>
+        <div class="picker">
+          <span class="ws-av"></span>
+          Atlas Brands · IN
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+
+      <div class="search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input placeholder="Search SKUs, orders, returns, settlements…">
+        <kbd>⌘K</kbd>
+      </div>
+
+      <div class="top-actions">
+        <span class="live-dot">Live · synced 2m ago</span>
+        <button class="icon-btn" title="Inbox">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+          <span class="pip"></span>
+        </button>
+        <button class="icon-btn" title="Help">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12" y2="17"/></svg>
+        </button>
+        <div class="avatar-orb" title="Profile"></div>
+      </div>
+    </header>
+
+    <!-- ----- Sub-nav ----- -->
+    <nav class="subnav">
+      <div class="subnav-tab active">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h7v5H4zM13 6h7v3h-7zM13 11h7v7h-7zM4 13h7v5H4z"/></svg>
+        Overview
+      </div>
+      <div class="subnav-tab">
+        Catalog
+        <span class="ct">2,184</span>
+      </div>
+      <div class="subnav-tab">
+        Orders
+        <span class="ct">8,632</span>
+      </div>
+      <div class="subnav-tab">
+        Returns &amp; RTO
+        <span class="ct">412</span>
+      </div>
+      <div class="subnav-tab">
+        Finance
+      </div>
+      <div class="subnav-tab">
+        Insights
+        <span class="ct">12</span>
+      </div>
+      <div class="subnav-spacer"></div>
+      <div class="subnav-tab" style="color:var(--ink-3)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 10v6m11-11h-6M7 12H1m17.07-7.07L14.83 9.17M9.17 14.83l-4.24 4.24M19.07 19.07l-4.24-4.24M9.17 9.17L4.93 4.93"/></svg>
+        Customize
+      </div>
+    </nav>
+
+    <!-- ============ Content ============ -->
+    <main class="content">
+
+      <!-- ----- Page header ----- -->
+      <section class="page-head">
+        <div class="title-block">
+          <h1>Multichannel <em>pulse</em></h1>
+          <div class="meta">
+            <span class="sync"><span class="d"></span>5 channels connected</span>
+            <span class="sep">·</span>
+            <span>2,184 SKUs tracked</span>
+            <span class="sep">·</span>
+            <span>Last sync 2m ago</span>
+          </div>
+        </div>
+
+        <div class="head-actions">
+          <div class="channels">
+            <span class="ch-chip active">All channels <span class="ct">5</span></span>
+            <span class="ch-chip"><span class="dot" style="background:var(--p-flipkart)"></span>Flipkart</span>
+            <span class="ch-chip"><span class="dot" style="background:var(--p-amazon)"></span>Amazon</span>
+            <span class="ch-chip"><span class="dot" style="background:var(--p-meesho)"></span>Meesho</span>
+            <span class="ch-chip"><span class="dot" style="background:var(--p-snapdeal)"></span>Snapdeal</span>
+            <span class="ch-chip"><span class="dot" style="background:var(--p-shopdeck)"></span>ShopDeck</span>
+          </div>
+          <button class="pill">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Last 30 days
+            <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <button class="pill dark">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg>
+            Export
+          </button>
+        </div>
+      </section>
+
+      <!-- ----- AI Insights ----- -->
+      <section class="insights">
+
+        <!-- Hero AI insight -->
+        <article class="insight hero">
+          <span class="ai-mk" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6z"/><path d="M19 17l.6 1.8L21 19l-1.4.6L19 21l-.6-1.4L17 19l1.4-.6z"/></svg>
+          </span>
+          <div class="ins-head">
+            <span class="tag"><span class="d"></span>Priority insight · auto-detected</span>
+          </div>
+          <h3 class="ins-title">Meesho returns spiked <em>34%</em> on Kurta-XL — driven by sizing complaints in Tier-2 cities.</h3>
+          <div class="ins-body">
+            <b>SKU KTR-024-XL</b> shows 41% return rate last 14d (vs 18% baseline). Pattern correlates with new size-chart push on <b>Aug 4</b>. Tagging <b>3 similar SKUs</b> as at-risk.
+          </div>
+          <div class="reason-chips">
+            <span class="rc"><span class="d" style="background:var(--p-meesho)"></span>Meesho</span>
+            <span class="rc"><span class="d" style="background:var(--pink)"></span>Apparel · Kurta</span>
+            <span class="rc"><span class="d" style="background:var(--amber)"></span>Sizing complaints 62%</span>
+            <span class="rc">est. impact <b style="color:#fff">−₹84,200</b></span>
+          </div>
+          <div class="ins-foot">
+            <span>Detected 36 min ago · model v2.4</span>
+            <span class="go">Investigate
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </span>
+          </div>
+        </article>
+
+        <!-- Insight 2 -->
+        <article class="insight">
+          <div class="ins-head">
+            <span class="tag amber"><span class="d"></span>Pricing · Amazon</span>
+          </div>
+          <h3 class="ins-title">FBA referral fee on Beauty up <span class="delta-chip amber">+1.5pp</span></h3>
+          <div class="ins-body">
+            New rate <b>17.5%</b> from Aug 15 affects <b>184 SKUs</b>. Margin erosion est. <b>−₹62K/mo</b> at current volumes.
+          </div>
+          <div class="ins-foot">
+            <span>4h ago</span>
+            <span class="go">Re-price
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </span>
+          </div>
+        </article>
+
+        <!-- Insight 3 -->
+        <article class="insight">
+          <div class="ins-head">
+            <span class="tag emerald"><span class="d"></span>Opportunity</span>
+          </div>
+          <h3 class="ins-title">Flipkart RTO trending down — buffer freed <span class="delta-chip up">−1.8pp</span></h3>
+          <div class="ins-body">
+            COD-block tags cut wasted dispatches. You can <b>raise ad spend ceiling</b> by ~₹40K/wk without breaking unit econ.
+          </div>
+          <div class="ins-foot">
+            <span>9h ago</span>
+            <span class="go">Open scenario
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </span>
+          </div>
+        </article>
+
+        <!-- Insight 4 -->
+        <article class="insight">
+          <div class="ins-head">
+            <span class="tag danger"><span class="d"></span>Stock risk</span>
+          </div>
+          <h3 class="ins-title">12 SKUs will stock-out within 7 days at current velocity</h3>
+          <div class="ins-body">
+            Top risk: <b>DNM-Slim-32</b> across all channels. Reorder lead-time exceeds runway by <b>3.4 days</b>.
+          </div>
+          <div class="ins-foot">
+            <span>1d ago</span>
+            <span class="go">Reorder
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </span>
+          </div>
+        </article>
+      </section>
+
+      <!-- ----- KPI strip ----- -->
+      <section class="kpi-strip">
+
+        <div class="kpi">
+          <span class="k-lab">Net revenue <span class="q">?</span></span>
+          <span class="k-val">₹38.4<span class="sub">L</span></span>
+          <div class="k-row">
+            <span class="delta-chip up">▲ 12.4%</span>
+            <span class="vs">vs prev. 30d</span>
+          </div>
+          <svg class="k-spark" viewBox="0 0 64 22" preserveAspectRatio="none">
+            <path d="M2 18 L10 14 L18 16 L26 11 L34 13 L42 8 L50 10 L62 4" fill="none" stroke="var(--emerald)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <div class="kpi">
+          <span class="k-lab">GMV <span class="q">?</span></span>
+          <span class="k-val">₹52.1<span class="sub">L</span></span>
+          <div class="k-row">
+            <span class="delta-chip up">▲ 8.7%</span>
+            <span class="vs">8,632 ords</span>
+          </div>
+          <svg class="k-spark" viewBox="0 0 64 22" preserveAspectRatio="none">
+            <path d="M2 14 L10 16 L18 12 L26 14 L34 10 L42 12 L50 8 L62 6" fill="none" stroke="var(--ink-3)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <div class="kpi active">
+          <span class="k-lab">Contribution margin <span class="q">?</span></span>
+          <span class="k-val">21.4<span class="sub">%</span></span>
+          <div class="k-row">
+            <span class="delta-chip up">▲ 0.9pp</span>
+            <span class="vs">₹8.2L net</span>
+          </div>
+          <svg class="k-spark" viewBox="0 0 64 22" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="kpiFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#EC2D6E" stop-opacity=".4"/><stop offset="1" stop-color="#EC2D6E" stop-opacity="0"/></linearGradient>
+            </defs>
+            <path d="M2 16 L10 13 L18 15 L26 10 L34 12 L42 7 L50 9 L62 3 L62 22 L2 22 Z" fill="url(#kpiFill)"/>
+            <path d="M2 16 L10 13 L18 15 L26 10 L34 12 L42 7 L50 9 L62 3" fill="none" stroke="var(--pink)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <div class="kpi">
+          <span class="k-lab">Orders <span class="q">?</span></span>
+          <span class="k-val">8,632</span>
+          <div class="k-row">
+            <span class="delta-chip up">▲ 4.1%</span>
+            <span class="vs">AOV ₹604</span>
+          </div>
+          <svg class="k-spark" viewBox="0 0 64 22" preserveAspectRatio="none">
+            <g fill="var(--muted-3)">
+              <rect x="2"  y="14" width="4" height="8"  rx="1"/>
+              <rect x="10" y="10" width="4" height="12" rx="1"/>
+              <rect x="18" y="12" width="4" height="10" rx="1"/>
+              <rect x="26" y="8"  width="4" height="14" rx="1"/>
+              <rect x="34" y="10" width="4" height="12" rx="1"/>
+              <rect x="42" y="6"  width="4" height="16" rx="1"/>
+              <rect x="50" y="4"  width="4" height="18" rx="1" fill="var(--ink)"/>
+              <rect x="58" y="3"  width="4" height="19" rx="1" fill="var(--ink)"/>
+            </g>
+          </svg>
+        </div>
+
+        <div class="kpi">
+          <span class="k-lab">RTO rate <span class="q">?</span></span>
+          <span class="k-val">11.8<span class="sub">%</span></span>
+          <div class="k-row">
+            <span class="delta-chip up">▼ 1.8pp</span>
+            <span class="vs">1,018 RTO</span>
+          </div>
+          <svg class="k-spark" viewBox="0 0 64 22" preserveAspectRatio="none">
+            <path d="M2 6 L10 10 L18 8 L26 12 L34 11 L42 14 L50 16 L62 18" fill="none" stroke="var(--emerald)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <div class="kpi">
+          <span class="k-lab">Return rate <span class="q">?</span></span>
+          <span class="k-val">4.8<span class="sub">%</span></span>
+          <div class="k-row">
+            <span class="delta-chip down">▲ 0.6pp</span>
+            <span class="vs">412 returns</span>
+          </div>
+          <svg class="k-spark" viewBox="0 0 64 22" preserveAspectRatio="none">
+            <path d="M2 14 L10 12 L18 13 L26 10 L34 11 L42 8 L50 7 L62 5" fill="none" stroke="var(--danger)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </section>
+
+      <!-- ----- Platform performance ----- -->
+      <section>
+        <div class="sec-head">
+          <div>
+            <h2>Channel performance <span class="ct">last 12 weeks</span></h2>
+            <div class="sub">Net revenue by channel · stacked. Tap a channel to drill in.</div>
+          </div>
+          <div class="right">
+            <div class="seg">
+              <button class="active">Revenue</button>
+              <button>Orders</button>
+              <button>Margin</button>
+              <button>RTO%</button>
+            </div>
+            <button class="pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>Weekly</button>
+          </div>
+        </div>
+
+        <div class="perf-grid" style="margin-top:14px">
+
+          <!-- Stacked area chart -->
+          <div class="card perf-chart-card">
+            <div class="chart-wrap">
+              <svg class="chart" viewBox="0 0 720 230" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="gFK" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2874F0" stop-opacity=".8"/><stop offset="1" stop-color="#2874F0" stop-opacity=".55"/></linearGradient>
+                  <linearGradient id="gAM" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF9900" stop-opacity=".75"/><stop offset="1" stop-color="#FF9900" stop-opacity=".5"/></linearGradient>
+                  <linearGradient id="gME" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F43397" stop-opacity=".75"/><stop offset="1" stop-color="#F43397" stop-opacity=".5"/></linearGradient>
+                  <linearGradient id="gSD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E40046" stop-opacity=".75"/><stop offset="1" stop-color="#E40046" stop-opacity=".5"/></linearGradient>
+                  <linearGradient id="gSh" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7A5BFF" stop-opacity=".75"/><stop offset="1" stop-color="#7A5BFF" stop-opacity=".5"/></linearGradient>
+                </defs>
+
+                <!-- horizontal grid lines -->
+                <g stroke="#ECE6DA" stroke-width="1">
+                  <line x1="36" y1="30"  x2="700" y2="30"/>
+                  <line x1="36" y1="80"  x2="700" y2="80"/>
+                  <line x1="36" y1="130" x2="700" y2="130"/>
+                  <line x1="36" y1="180" x2="700" y2="180"/>
+                </g>
+                <g fill="#A8A39A" font-family="Geist Mono, monospace" font-size="10">
+                  <text x="2" y="34">₹6L</text>
+                  <text x="2" y="84">₹4L</text>
+                  <text x="2" y="134">₹2L</text>
+                  <text x="2" y="184">₹0</text>
+                </g>
+
+                <!-- Stacked areas (Flipkart on bottom, then Amazon, Meesho, Snapdeal, ShopDeck on top) -->
+                <!-- Flipkart base -->
+                <path d="M36 180 L36 140 L96 134 L156 138 L216 128 L276 130 L336 118 L396 122 L456 110 L516 114 L576 104 L636 100 L696 92 L696 180 Z" fill="url(#gFK)"/>
+                <!-- Amazon -->
+                <path d="M36 140 L36 110 L96 104 L156 108 L216 96 L276 100 L336 86 L396 90 L456 76 L516 80 L576 70 L636 64 L696 56 L696 92 L636 100 L576 104 L516 114 L456 110 L396 122 L336 118 L276 130 L216 128 L156 138 L96 134 L36 140 Z" fill="url(#gAM)"/>
+                <!-- Meesho -->
+                <path d="M36 110 L36 88 L96 80 L156 82 L216 72 L276 76 L336 64 L396 68 L456 56 L516 60 L576 50 L636 44 L696 38 L696 56 L636 64 L576 70 L516 80 L456 76 L396 90 L336 86 L276 100 L216 96 L156 108 L96 104 L36 110 Z" fill="url(#gME)"/>
+                <!-- Snapdeal -->
+                <path d="M36 88 L36 72 L96 64 L156 66 L216 58 L276 62 L336 50 L396 54 L456 44 L516 48 L576 38 L636 32 L696 26 L696 38 L636 44 L576 50 L516 60 L456 56 L396 68 L336 64 L276 76 L216 72 L156 82 L96 80 L36 88 Z" fill="url(#gSD)"/>
+                <!-- ShopDeck -->
+                <path d="M36 72 L36 60 L96 52 L156 54 L216 48 L276 50 L336 40 L396 42 L456 34 L516 36 L576 28 L636 22 L696 16 L696 26 L636 32 L576 38 L516 48 L456 44 L396 54 L336 50 L276 62 L216 58 L156 66 L96 64 L36 72 Z" fill="url(#gSh)"/>
+
+                <!-- Trend line (total) -->
+                <path d="M36 60 L96 52 L156 54 L216 48 L276 50 L336 40 L396 42 L456 34 L516 36 L576 28 L636 22 L696 16"
+                      fill="none" stroke="#0B0B0E" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity=".5"/>
+
+                <!-- Active marker (week 12) -->
+                <line x1="696" y1="16" x2="696" y2="200" stroke="#0B0B0E" stroke-width="1" stroke-dasharray="3 3" opacity=".4"/>
+                <circle cx="696" cy="16" r="4" fill="#fff" stroke="#0B0B0E" stroke-width="2"/>
+
+                <!-- X labels -->
+                <g fill="#A8A39A" font-family="Geist Mono, monospace" font-size="10">
+                  <text x="33"  y="218">W1</text>
+                  <text x="93"  y="218">W2</text>
+                  <text x="153" y="218">W3</text>
+                  <text x="213" y="218">W4</text>
+                  <text x="273" y="218">W5</text>
+                  <text x="333" y="218">W6</text>
+                  <text x="393" y="218">W7</text>
+                  <text x="453" y="218">W8</text>
+                  <text x="513" y="218">W9</text>
+                  <text x="569" y="218">W10</text>
+                  <text x="629" y="218">W11</text>
+                  <text x="689" y="218">W12</text>
+                </g>
+
+                <!-- Tooltip at active week -->
+                <g transform="translate(596, 6)">
+                  <rect x="0" y="0" width="92" height="46" rx="8" fill="#0B0B0E"/>
+                  <text x="10" y="17" fill="rgba(255,255,255,.6)" font-family="Geist Mono, monospace" font-size="10">Week 12 · Aug 26</text>
+                  <text x="10" y="36" fill="#fff" font-family="Geist, sans-serif" font-weight="600" font-size="14">₹6.1L total</text>
+                </g>
+              </svg>
+            </div>
+
+            <div class="legend">
+              <span class="lg"><span class="sw" style="background:var(--p-flipkart)"></span><span class="nm">Flipkart</span> · ₹14.8L</span>
+              <span class="lg"><span class="sw" style="background:var(--p-amazon)"></span><span class="nm">Amazon</span> · ₹9.6L</span>
+              <span class="lg"><span class="sw" style="background:var(--p-meesho)"></span><span class="nm">Meesho</span> · ₹7.2L</span>
+              <span class="lg"><span class="sw" style="background:var(--p-snapdeal)"></span><span class="nm">Snapdeal</span> · ₹4.1L</span>
+              <span class="lg"><span class="sw" style="background:var(--p-shopdeck)"></span><span class="nm">ShopDeck</span> · ₹2.7L</span>
+            </div>
+          </div>
+
+          <!-- Right column: per-platform breakdown -->
+          <div class="card">
+            <div class="sec-head" style="margin:0">
+              <div>
+                <h2 style="font-size:15px">By channel</h2>
+                <div class="sub" style="font-size:12px">Net of returns &amp; fees</div>
+              </div>
+              <div class="right">
+                <span class="hint mono">30d</span>
+              </div>
+            </div>
+            <div class="breakdown">
+
+              <div class="pf-row">
+                <div class="mk flipkart">F</div>
+                <div class="meta">
+                  <div class="nm">Flipkart</div>
+                  <div class="ndr">3,201 ords <span class="sep">·</span> RTO 13.2%</div>
+                </div>
+                <div>
+                  <div class="rev">₹14.8L</div>
+                  <div class="pct">38.5% <span style="color:var(--emerald)">▲ 9.1%</span></div>
+                </div>
+                <div class="bar"><i style="width:92%;background:var(--p-flipkart)"></i></div>
+              </div>
+
+              <div class="pf-row">
+                <div class="mk amazon">a</div>
+                <div class="meta">
+                  <div class="nm">Amazon</div>
+                  <div class="ndr">2,148 ords <span class="sep">·</span> RTO 6.8%</div>
+                </div>
+                <div>
+                  <div class="rev">₹9.6L</div>
+                  <div class="pct">25.0% <span style="color:var(--emerald)">▲ 4.2%</span></div>
+                </div>
+                <div class="bar"><i style="width:62%;background:var(--p-amazon)"></i></div>
+              </div>
+
+              <div class="pf-row">
+                <div class="mk meesho">m</div>
+                <div class="meta">
+                  <div class="nm">Meesho</div>
+                  <div class="ndr">1,840 ords <span class="sep">·</span> RTO 18.4%</div>
+                </div>
+                <div>
+                  <div class="rev">₹7.2L</div>
+                  <div class="pct">18.8% <span style="color:var(--danger)">▼ 2.8%</span></div>
+                </div>
+                <div class="bar"><i style="width:48%;background:var(--p-meesho)"></i></div>
+              </div>
+
+              <div class="pf-row">
+                <div class="mk snapdeal">S</div>
+                <div class="meta">
+                  <div class="nm">Snapdeal</div>
+                  <div class="ndr">932 ords <span class="sep">·</span> RTO 15.1%</div>
+                </div>
+                <div>
+                  <div class="rev">₹4.1L</div>
+                  <div class="pct">10.7% <span style="color:var(--emerald)">▲ 1.3%</span></div>
+                </div>
+                <div class="bar"><i style="width:27%;background:var(--p-snapdeal)"></i></div>
+              </div>
+
+              <div class="pf-row">
+                <div class="mk shopdeck">Sd</div>
+                <div class="meta">
+                  <div class="nm">ShopDeck (D2C)</div>
+                  <div class="ndr">511 ords <span class="sep">·</span> RTO 4.2%</div>
+                </div>
+                <div>
+                  <div class="rev">₹2.7L</div>
+                  <div class="pct">7.0% <span style="color:var(--emerald)">▲ 22.6%</span></div>
+                </div>
+                <div class="bar"><i style="width:18%;background:var(--p-shopdeck)"></i></div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ----- SKU intelligence table ----- -->
+      <section class="card table-card">
+        <div class="table-toolbar">
+          <h2>SKU intelligence</h2>
+          <span class="badge">2,184 tracked</span>
+          <div class="right">
+            <button class="pill">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+              Filters · 2
+            </button>
+            <div class="seg">
+              <button class="active">All</button>
+              <button>Top sellers</button>
+              <button>High RTO</button>
+              <button>Stock-out risk</button>
+              <button>Price drift</button>
+            </div>
+            <button class="pill dark">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              Add SKU
+            </button>
+          </div>
+        </div>
+
+        <div class="scroll-x">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>SKU</th>
+              <th>Listed on</th>
+              <th class="num">Best price</th>
+              <th class="num">Units (30d)</th>
+              <th class="num">Net revenue</th>
+              <th class="num">RTO%</th>
+              <th class="num">Return%</th>
+              <th class="num">Margin</th>
+              <th>Status</th>
+              <th class="ctr"></th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <tr>
+              <td>
+                <div class="sku-cell">
+                  <div class="sku-thumb">KTR</div>
+                  <div>
+                    <div class="sku-name">Kurta · Block Print, XL</div>
+                    <div class="sku-meta"><span class="sku-id">KTR-024-XL</span><span class="sep">·</span>Apparel</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="plat-matrix">
+                  <span class="plat-dot flipkart" title="Flipkart">F</span>
+                  <span class="plat-dot amazon" title="Amazon">a</span>
+                  <span class="plat-dot meesho" title="Meesho">m</span>
+                  <span class="plat-dot off" title="Not listed">S</span>
+                  <span class="plat-dot shopdeck" title="ShopDeck">Sd</span>
+                </div>
+              </td>
+              <td class="num"><b>₹649</b> <span class="muted" style="font-size:11px">on m</span></td>
+              <td class="num">482</td>
+              <td class="num">₹2.84L</td>
+              <td class="num"><span class="cell-bar danger"><i style="width:82%"></i></span><b style="color:var(--danger)">41%</b></td>
+              <td class="num">9.1%</td>
+              <td class="num">14.2%</td>
+              <td><span class="stat-pill danger"><span class="d"></span>Returns spike</span></td>
+              <td class="ctr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="sku-cell">
+                  <div class="sku-thumb t2">DNM</div>
+                  <div>
+                    <div class="sku-name">Denim · Slim Fit, 32W</div>
+                    <div class="sku-meta"><span class="sku-id">DNM-SLM-32</span><span class="sep">·</span>Apparel</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="plat-matrix">
+                  <span class="plat-dot flipkart">F</span>
+                  <span class="plat-dot amazon">a</span>
+                  <span class="plat-dot meesho">m</span>
+                  <span class="plat-dot snapdeal">S</span>
+                  <span class="plat-dot shopdeck">Sd</span>
+                </div>
+              </td>
+              <td class="num"><b>₹1,199</b> <span class="muted" style="font-size:11px">on F</span></td>
+              <td class="num">1,204</td>
+              <td class="num">₹12.1L</td>
+              <td class="num"><span class="cell-bar amber"><i style="width:24%"></i></span>12%</td>
+              <td class="num">3.4%</td>
+              <td class="num"><b style="color:var(--emerald)">26.8%</b></td>
+              <td><span class="stat-pill warn"><span class="d"></span>Stock 3.4d</span></td>
+              <td class="ctr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="sku-cell">
+                  <div class="sku-thumb t3">SNK</div>
+                  <div>
+                    <div class="sku-name">Sneaker · Court Mid, UK 9</div>
+                    <div class="sku-meta"><span class="sku-id">SNK-CRT-9</span><span class="sep">·</span>Footwear</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="plat-matrix">
+                  <span class="plat-dot flipkart">F</span>
+                  <span class="plat-dot amazon">a</span>
+                  <span class="plat-dot off">m</span>
+                  <span class="plat-dot snapdeal">S</span>
+                  <span class="plat-dot shopdeck">Sd</span>
+                </div>
+              </td>
+              <td class="num"><b>₹2,499</b> <span class="muted" style="font-size:11px">on a</span></td>
+              <td class="num">638</td>
+              <td class="num">₹11.9L</td>
+              <td class="num"><span class="cell-bar emerald"><i style="width:14%"></i></span>7%</td>
+              <td class="num">4.8%</td>
+              <td class="num"><b style="color:var(--emerald)">31.4%</b></td>
+              <td><span class="stat-pill ok"><span class="d"></span>Performing</span></td>
+              <td class="ctr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="sku-cell">
+                  <div class="sku-thumb t4">SRM</div>
+                  <div>
+                    <div class="sku-name">Serum · Vit-C 30ml</div>
+                    <div class="sku-meta"><span class="sku-id">BTY-SRM-30</span><span class="sep">·</span>Beauty</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="plat-matrix">
+                  <span class="plat-dot off">F</span>
+                  <span class="plat-dot amazon">a</span>
+                  <span class="plat-dot meesho">m</span>
+                  <span class="plat-dot off">S</span>
+                  <span class="plat-dot shopdeck">Sd</span>
+                </div>
+              </td>
+              <td class="num"><b>₹789</b> <span class="muted" style="font-size:11px">on Sd</span></td>
+              <td class="num">2,118</td>
+              <td class="num">₹14.8L</td>
+              <td class="num"><span class="cell-bar emerald"><i style="width:11%"></i></span>5.5%</td>
+              <td class="num">2.1%</td>
+              <td class="num"><b style="color:var(--amber)">18.2%</b></td>
+              <td><span class="stat-pill warn"><span class="d"></span>Fee hike risk</span></td>
+              <td class="ctr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="sku-cell">
+                  <div class="sku-thumb t5">CKW</div>
+                  <div>
+                    <div class="sku-name">Cookware · Pan 26cm</div>
+                    <div class="sku-meta"><span class="sku-id">HOM-PAN-26</span><span class="sep">·</span>Home</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="plat-matrix">
+                  <span class="plat-dot flipkart">F</span>
+                  <span class="plat-dot amazon">a</span>
+                  <span class="plat-dot meesho">m</span>
+                  <span class="plat-dot snapdeal">S</span>
+                  <span class="plat-dot off">Sd</span>
+                </div>
+              </td>
+              <td class="num"><b>₹1,499</b> <span class="muted" style="font-size:11px">on F</span></td>
+              <td class="num">874</td>
+              <td class="num">₹8.9L</td>
+              <td class="num"><span class="cell-bar"><i style="width:18%"></i></span>9%</td>
+              <td class="num">3.0%</td>
+              <td class="num"><b style="color:var(--emerald)">22.4%</b></td>
+              <td><span class="stat-pill muted"><span class="d"></span>Steady</span></td>
+              <td class="ctr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="sku-cell">
+                  <div class="sku-thumb t2">SCR</div>
+                  <div>
+                    <div class="sku-name">Scarf · Cotton Linen</div>
+                    <div class="sku-meta"><span class="sku-id">ACC-SCR-001</span><span class="sep">·</span>Accessories</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="plat-matrix">
+                  <span class="plat-dot flipkart">F</span>
+                  <span class="plat-dot off">a</span>
+                  <span class="plat-dot meesho">m</span>
+                  <span class="plat-dot snapdeal">S</span>
+                  <span class="plat-dot off">Sd</span>
+                </div>
+              </td>
+              <td class="num"><b>₹349</b> <span class="muted" style="font-size:11px">on m</span></td>
+              <td class="num">1,612</td>
+              <td class="num">₹4.2L</td>
+              <td class="num"><span class="cell-bar danger"><i style="width:64%"></i></span><b style="color:var(--danger)">32%</b></td>
+              <td class="num">6.8%</td>
+              <td class="num">9.4%</td>
+              <td><span class="stat-pill danger"><span class="d"></span>High RTO</span></td>
+              <td class="ctr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="sku-cell">
+                  <div class="sku-thumb">WTC</div>
+                  <div>
+                    <div class="sku-name">Watch · Minimal Black</div>
+                    <div class="sku-meta"><span class="sku-id">ACC-WTC-BLK</span><span class="sep">·</span>Accessories</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="plat-matrix">
+                  <span class="plat-dot flipkart">F</span>
+                  <span class="plat-dot amazon">a</span>
+                  <span class="plat-dot meesho">m</span>
+                  <span class="plat-dot off">S</span>
+                  <span class="plat-dot shopdeck">Sd</span>
+                </div>
+              </td>
+              <td class="num"><b>₹1,899</b> <span class="muted" style="font-size:11px">on Sd</span></td>
+              <td class="num">421</td>
+              <td class="num">₹7.6L</td>
+              <td class="num"><span class="cell-bar emerald"><i style="width:14%"></i></span>7%</td>
+              <td class="num">3.2%</td>
+              <td class="num"><b style="color:var(--emerald)">34.1%</b></td>
+              <td><span class="stat-pill ok"><span class="d"></span>Performing</span></td>
+              <td class="ctr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></td>
+            </tr>
+
+          </tbody>
+        </table>
+        </div>
+
+        <div style="padding:12px 18px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--rule);font-size:12.5px;color:var(--muted)">
+          Showing 7 of 2,184 SKUs
+          <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+            <button class="icon-btn" style="width:30px;height:30px;border-radius:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+            <span class="mono" style="font-size:11.5px;color:var(--ink-3)">1 / 312</span>
+            <button class="icon-btn" style="width:30px;height:30px;border-radius:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ----- Reports ----- -->
+      <section>
+        <div class="sec-head" style="margin-bottom:12px">
+          <div>
+            <h2>Reports <span class="ct">drill-down</span></h2>
+            <div class="sub">Breakdowns for orders, RTO, fees and returns across all channels.</div>
+          </div>
+          <div class="right">
+            <button class="pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg>CSV</button>
+            <button class="pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Schedule</button>
+          </div>
+        </div>
+
+        <div class="reports">
+
+          <!-- LEFT column -->
+          <div class="left">
+
+            <!-- Orders funnel -->
+            <div class="card">
+              <div class="report-tabs">
+                <div class="report-tab active">Orders <span class="ct">8,632</span></div>
+                <div class="report-tab">RTO <span class="ct">1,018</span></div>
+                <div class="report-tab">Returns <span class="ct">412</span></div>
+                <div class="report-tab">Cancellations <span class="ct">198</span></div>
+              </div>
+
+              <div class="funnel">
+                <div class="funnel-row">
+                  <span class="lab">Orders placed</span>
+                  <span class="bar-track"><i style="width:100%" class="muted"></i></span>
+                  <span class="val">8,632</span>
+                  <span class="pct">100%</span>
+                </div>
+                <div class="funnel-row">
+                  <span class="lab">Confirmed</span>
+                  <span class="bar-track"><i style="width:96.4%"></i></span>
+                  <span class="val">8,322</span>
+                  <span class="pct">96.4%</span>
+                </div>
+                <div class="funnel-row">
+                  <span class="lab">Shipped</span>
+                  <span class="bar-track"><i style="width:92.7%" class="emerald"></i></span>
+                  <span class="val">8,004</span>
+                  <span class="pct">92.7%</span>
+                </div>
+                <div class="funnel-row">
+                  <span class="lab">Delivered</span>
+                  <span class="bar-track"><i style="width:78.6%" class="emerald"></i></span>
+                  <span class="val">6,786</span>
+                  <span class="pct">78.6%</span>
+                </div>
+                <div class="funnel-row">
+                  <span class="lab">RTO</span>
+                  <span class="bar-track"><i style="width:11.8%" class="danger"></i></span>
+                  <span class="val">1,018</span>
+                  <span class="pct">11.8%</span>
+                </div>
+                <div class="funnel-row">
+                  <span class="lab">Customer returns</span>
+                  <span class="bar-track"><i style="width:4.8%" class="amber"></i></span>
+                  <span class="val">412</span>
+                  <span class="pct">4.8%</span>
+                </div>
+                <div class="funnel-row">
+                  <span class="lab">Net delivered</span>
+                  <span class="bar-track"><i style="width:73.8%" class="pink"></i></span>
+                  <span class="val">6,374</span>
+                  <span class="pct">73.8%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fees waterfall -->
+            <div class="card">
+              <div class="sec-head" style="margin:0">
+                <div>
+                  <h2 style="font-size:15px">Fees &amp; charges breakdown</h2>
+                  <div class="sub" style="font-size:12px">From GMV to bank settlement · last 30d</div>
+                </div>
+                <div class="right">
+                  <div class="seg">
+                    <button class="active">All</button>
+                    <button>Flipkart</button>
+                    <button>Amazon</button>
+                    <button>Meesho</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="waterfall">
+                <div class="wf-row">
+                  <span class="lab">Gross sales (GMV)</span>
+                  <span class="bar"><i class="neut" style="left:0;width:100%"></i></span>
+                  <span class="val">₹52,14,820</span>
+                </div>
+                <div class="wf-row">
+                  <span class="lab"><span class="dot" style="background:var(--danger)"></span>Commission</span>
+                  <span class="bar"><i class="neg" style="right:0;width:24%"></i></span>
+                  <span class="val">−₹12,51,560</span>
+                </div>
+                <div class="wf-row">
+                  <span class="lab"><span class="dot" style="background:var(--danger)"></span>Closing / fixed fee</span>
+                  <span class="bar"><i class="neg" style="right:0;width:6%"></i></span>
+                  <span class="val">−₹3,12,890</span>
+                </div>
+                <div class="wf-row">
+                  <span class="lab"><span class="dot" style="background:var(--danger)"></span>Shipping &amp; logistics</span>
+                  <span class="bar"><i class="neg" style="right:0;width:12%"></i></span>
+                  <span class="val">−₹6,25,780</span>
+                </div>
+                <div class="wf-row">
+                  <span class="lab"><span class="dot" style="background:var(--danger)"></span>Storage (FBA / FBF)</span>
+                  <span class="bar"><i class="neg" style="right:0;width:4%"></i></span>
+                  <span class="val">−₹2,08,590</span>
+                </div>
+                <div class="wf-row">
+                  <span class="lab"><span class="dot" style="background:var(--danger)"></span>RTO charges</span>
+                  <span class="bar"><i class="neg" style="right:0;width:5%"></i></span>
+                  <span class="val">−₹2,60,740</span>
+                </div>
+                <div class="wf-row">
+                  <span class="lab"><span class="dot" style="background:var(--danger)"></span>Ads &amp; promotion</span>
+                  <span class="bar"><i class="neg" style="right:0;width:8%"></i></span>
+                  <span class="val">−₹4,17,180</span>
+                </div>
+                <div class="wf-row">
+                  <span class="lab"><span class="dot" style="background:var(--danger)"></span>GST &amp; TCS</span>
+                  <span class="bar"><i class="neg" style="right:0;width:3%"></i></span>
+                  <span class="val">−₹1,56,440</span>
+                </div>
+                <div class="wf-row tot">
+                  <span class="lab">Net settlement</span>
+                  <span class="bar"><i class="pos" style="left:0;width:38%"></i></span>
+                  <span class="val">₹19,81,640</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- RIGHT column -->
+          <div class="right">
+
+            <!-- RTO reason donut -->
+            <div class="card">
+              <div class="sec-head" style="margin:0">
+                <div>
+                  <h2 style="font-size:15px">RTO reasons</h2>
+                  <div class="sub" style="font-size:12px">1,018 RTO events · 30d</div>
+                </div>
+                <div class="right"><span class="hint mono">11.8%</span></div>
+              </div>
+
+              <div class="donut-card">
+                <div class="donut">
+                  <svg viewBox="0 0 100 100" aria-hidden="true">
+                    <!-- ring background -->
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="var(--rule)" stroke-width="14"/>
+                    <!-- Customer not available 38% : 0 -> 95.5 -->
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="var(--p-flipkart)" stroke-width="14" stroke-dasharray="90.7 238.8" stroke-dashoffset="0"/>
+                    <!-- COD reject 24% : 95.5 -> 152 ; offset 90.7 -->
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="var(--pink)" stroke-width="14" stroke-dasharray="57.3 238.8" stroke-dashoffset="-90.7"/>
+                    <!-- Address issue 16% : offset 148 -->
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="var(--amber)" stroke-width="14" stroke-dasharray="38.2 238.8" stroke-dashoffset="-148"/>
+                    <!-- Refused 12% -->
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="var(--p-meesho)" stroke-width="14" stroke-dasharray="28.7 238.8" stroke-dashoffset="-186.2"/>
+                    <!-- Other 10% -->
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="var(--muted-2)" stroke-width="14" stroke-dasharray="23.9 238.8" stroke-dashoffset="-214.9"/>
+                  </svg>
+                  <div class="ctr">
+                    <span class="v">11.8%</span>
+                    <span class="l">RTO rate</span>
+                  </div>
+                </div>
+                <div class="donut-legend">
+                  <div class="dl-row"><span class="sw" style="background:var(--p-flipkart)"></span><span class="lab">Customer not available</span><span class="val">387 <span class="pct">38%</span></span></div>
+                  <div class="dl-row"><span class="sw" style="background:var(--pink)"></span><span class="lab">COD reject at door</span><span class="val">244 <span class="pct">24%</span></span></div>
+                  <div class="dl-row"><span class="sw" style="background:var(--amber)"></span><span class="lab">Address incomplete</span><span class="val">163 <span class="pct">16%</span></span></div>
+                  <div class="dl-row"><span class="sw" style="background:var(--p-meesho)"></span><span class="lab">Refused on delivery</span><span class="val">122 <span class="pct">12%</span></span></div>
+                  <div class="dl-row"><span class="sw" style="background:var(--muted-2)"></span><span class="lab">Other / unknown</span><span class="val">102 <span class="pct">10%</span></span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Returns by platform -->
+            <div class="card">
+              <div class="sec-head" style="margin:0">
+                <div>
+                  <h2 style="font-size:15px">Customer returns by channel</h2>
+                  <div class="sub" style="font-size:12px">412 returns · 30d</div>
+                </div>
+                <div class="right"><span class="hint mono">4.8%</span></div>
+              </div>
+
+              <div class="ret-list">
+                <div class="ret-row">
+                  <div class="mk flipkart">F</div>
+                  <div class="lab">Flipkart<span class="small">Size · 41% · Quality · 22% · Wrong item · 14%</span></div>
+                  <div class="num">142</div>
+                  <div class="delta" style="color:var(--emerald)">▼ 6%</div>
+                </div>
+                <div class="ret-row">
+                  <div class="mk amazon">a</div>
+                  <div class="lab">Amazon<span class="small">Quality · 38% · Damaged · 21% · Size · 18%</span></div>
+                  <div class="num">98</div>
+                  <div class="delta" style="color:var(--emerald)">▼ 2%</div>
+                </div>
+                <div class="ret-row">
+                  <div class="mk meesho">m</div>
+                  <div class="lab">Meesho<span class="small">Size · 62% · Quality · 18% · Color · 9%</span></div>
+                  <div class="num">114</div>
+                  <div class="delta" style="color:var(--danger)">▲ 34%</div>
+                </div>
+                <div class="ret-row">
+                  <div class="mk snapdeal">S</div>
+                  <div class="lab">Snapdeal<span class="small">Quality · 34% · Damaged · 28%</span></div>
+                  <div class="num">42</div>
+                  <div class="delta" style="color:var(--muted-2)">— flat</div>
+                </div>
+                <div class="ret-row">
+                  <div class="mk shopdeck">Sd</div>
+                  <div class="lab">ShopDeck<span class="small">Color · 29% · Fit · 24%</span></div>
+                  <div class="num">16</div>
+                  <div class="delta" style="color:var(--emerald)">▼ 12%</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="footnote">
+          Data refreshed 2m ago · Pulled from Flipkart Seller API · Amazon SP-API · Meesho Supplier · Snapdeal Sellerzone · ShopDeck connector.
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<script>
+  // Channel chip toggling
+  document.querySelectorAll('.channels .ch-chip').forEach(c=>{
+    c.addEventListener('click',()=>{
+      const all = c.parentElement.querySelectorAll('.ch-chip');
+      all.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+    });
+  });
+
+  // Sub-nav active toggle
+  document.querySelectorAll('.subnav .subnav-tab').forEach(t=>{
+    t.addEventListener('click', ()=>{
+      if(t.querySelector('svg') && t.textContent.trim().startsWith('Customize')) return;
+      document.querySelectorAll('.subnav .subnav-tab').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+    });
+  });
+
+  // Seg buttons
+  document.querySelectorAll('.seg').forEach(seg=>{
+    seg.querySelectorAll('button').forEach(b=>{
+      b.addEventListener('click',()=>{
+        seg.querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+      });
+    });
+  });
+
+  // Report tabs
+  document.querySelectorAll('.report-tabs').forEach(grp=>{
+    grp.querySelectorAll('.report-tab').forEach(t=>{
+      t.addEventListener('click',()=>{
+        grp.querySelectorAll('.report-tab').forEach(x=>x.classList.remove('active'));
+        t.classList.add('active');
+      });
+    });
+  });
+
+  // Rail buttons
+  document.querySelectorAll('.rail .rail-btn').forEach(b=>{
+    b.addEventListener('click',()=>{
+      document.querySelectorAll('.rail .rail-btn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+    });
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,2 @@
+operatorEvidence.steps.push({flow:'remaining limits',outcome:'No credential changes or membership grants; native print output and other marketplace upload lifecycles not fully exercised'});
+return {scope:'All mutations on disposable localhost5174/8766 database only',steps:operatorEvidence.steps,errors:operatorEvidence.errors,mutations:operatorEvidence.responses.filter(r=>r.method!=='GET'),unexpectedReadFailures:operatorEvidence.responses.filter(r=>r.method==='GET'&&r.status>=400),url:page.url(),ownedPages:pages().length};

@@ -1,0 +1,17 @@
+{
+  "disposable_environment_only": true,
+  "checks": {
+    "production_install": {
+      "exit_code": 0
+    },
+    "bootstrap": {
+      "exit_code": 0
+    },
+    "idempotent_bootstrap": {
+      "exit_code": 0
+    },
+    "application_import": {
+      "exit_code": 0
+    }
+  }
+}

@@ -1,0 +1,1 @@
+return {text:await page.locator("main").innerText(),controls:await page.locator("main input,main button,main select").evaluateAll(els=>els.map(e=>({tag:e.tagName,text:e.innerText,label:e.getAttribute("aria-label"),placeholder:e.getAttribute("placeholder"),value:e.value,type:e.type}))) };

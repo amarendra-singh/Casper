@@ -1,0 +1,1 @@
+await page.getByRole("button",{name:"+ Add Platform",exact:true}).click(); return {text:await page.locator("main").innerText(),fields:await page.locator("input,select").evaluateAll(es=>es.map(e=>({label:e.getAttribute("aria-label"),placeholder:e.getAttribute("placeholder"),value:e.value}))),buttons:await page.locator("main button").allTextContents()};

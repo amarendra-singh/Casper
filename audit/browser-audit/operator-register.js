@@ -1,0 +1,12 @@
+await page.getByRole('textbox',{name:'Your name',exact:true}).fill('Audit Operator');
+await page.getByRole('textbox',{name:'Email',exact:true}).fill('operator-audit@example.test');
+await page.getByRole('textbox',{name:'Password',exact:true}).fill('AuditOnly@2026');
+await page.getByRole('textbox',{name:'Company name',exact:true}).fill('Disposable UX Audit');
+await page.getByRole('button',{name:'Create account',exact:true}).click();
+await expect(page.getByRole('button',{name:'Dashboard',exact:true})).toBeVisible();
+await page.reload({waitUntil:'domcontentloaded'});
+await expect(page.getByRole('button',{name:'Dashboard',exact:true})).toBeVisible();
+operatorEvidence.steps.push({flow:'registration',outcome:'created new disposable company/account; session survives reload'});
+await page.goto('http://localhost:5174/settings',{waitUntil:'domcontentloaded'});
+await expect(page.getByText('Modules',{exact:true})).toBeVisible();
+return {observation:await tabbit.observe({frames:'none',maxChars:6000}),responses:operatorEvidence.responses.slice(-10)};

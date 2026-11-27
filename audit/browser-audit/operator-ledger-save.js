@@ -1,0 +1,17 @@
+await page.getByLabel('Amount ₹',{exact:true}).fill('700');
+await page.getByLabel('Reference no',{exact:true}).fill('AUDIT-EXPENSE-1');
+await page.getByLabel('Note',{exact:true}).fill('Disposable packaging expense');
+await page.getByRole('button',{name:'Add entry',exact:true}).click();
+await expect(page.getByText('AUDIT-EXPENSE-1',{exact:true})).toBeVisible();
+await page.reload({waitUntil:'domcontentloaded'});
+await page.getByRole('button',{name:'Entries',exact:true}).click();
+await expect(page.getByText('AUDIT-EXPENSE-1',{exact:true})).toBeVisible();
+await page.getByRole('button',{name:'Edit entry',exact:true}).click();
+await page.getByLabel('Amount ₹',{exact:true}).fill('750');
+await page.getByRole('button',{name:'Update entry',exact:true}).click();
+await expect(page.locator('tbody tr')).toContainText('750');
+operatorEvidence.steps.push({flow:'ledger',outcome:'created700; reloaded; edited750'});
+await page.getByRole('button',{name:'Bill Discrepancies',exact:true}).click();
+await expect(page.getByRole('button',{name:'Upload & match',exact:true})).toBeVisible();
+const inputs=await page.locator('input[type=file]').evaluateAll(es=>es.map(e=>({label:e.getAttribute('aria-label'),accept:e.accept})));
+return {text:await page.locator('main').innerText(),inputs};

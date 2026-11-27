@@ -1,0 +1,1 @@
+await page.getByRole("button",{name:/No Pricing Data/}).click(); return {text:(await page.locator("main").innerText()).slice(0,2000),fields:await page.locator("main input,main select").evaluateAll(es=>es.map(e=>({label:e.getAttribute("aria-label"),placeholder:e.placeholder,value:e.value,text:e.innerText}))),buttons:await page.locator("main button").allTextContents()};

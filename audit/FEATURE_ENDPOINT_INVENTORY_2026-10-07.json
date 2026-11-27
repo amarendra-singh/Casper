@@ -1,0 +1,2373 @@
+[
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "handler": "login",
+    "source": "backend/app/routes/auth.py",
+    "line": 49,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "TokenResponse",
+      "_check_rate_limit",
+      "_companies_payload",
+      "create_access_token",
+      "create_refresh_token",
+      "db.execute",
+      "list_user_companies",
+      "result.scalar_one_or_none",
+      "router.post",
+      "select",
+      "select(User).where",
+      "str",
+      "verify_password"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/register",
+    "handler": "register",
+    "source": "backend/app/routes/auth.py",
+    "line": 79,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "TokenResponse",
+      "User",
+      "_companies_payload",
+      "create_access_token",
+      "create_company",
+      "create_refresh_token",
+      "db.add",
+      "db.commit",
+      "db.execute",
+      "db.flush",
+      "existing.scalar_one_or_none",
+      "hash_password",
+      "list_user_companies",
+      "payload.name.strip",
+      "router.post",
+      "select",
+      "select(User).where",
+      "str"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/refresh",
+    "handler": "refresh",
+    "source": "backend/app/routes/auth.py",
+    "line": 109,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "TokenBlacklist",
+      "TokenResponse",
+      "create_access_token",
+      "create_refresh_token",
+      "datetime.fromtimestamp",
+      "datetime.fromtimestamp(decoded['exp'], timezone.utc).replace",
+      "db.add",
+      "db.commit",
+      "db.execute",
+      "db.rollback",
+      "decode_token",
+      "decoded.get",
+      "hashlib.sha256",
+      "hashlib.sha256(payload.refresh_token.encode()).hexdigest",
+      "int",
+      "payload.refresh_token.encode",
+      "result.scalar_one_or_none",
+      "router.post",
+      "select",
+      "select(User).where",
+      "str"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "handler": "me",
+    "source": "backend/app/routes/auth.py",
+    "line": 150,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "router.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/change-password",
+    "handler": "change_password",
+    "source": "backend/app/routes/auth.py",
+    "line": 155,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "db.add",
+      "db.commit",
+      "hash_password",
+      "router.post",
+      "verify_password"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/logout",
+    "handler": "logout",
+    "source": "backend/app/routes/auth.py",
+    "line": 172,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "db.commit",
+      "router.post"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/billing/discrepancies",
+    "handler": "bill_discrepancies",
+    "source": "backend/app/routes/billing.py",
+    "line": 73,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "'\\n'.join",
+      "Depends",
+      "File",
+      "HTTPException",
+      "PdfReader",
+      "Query",
+      "bills_pdf.read",
+      "bills_view",
+      "build_report",
+      "db.execute",
+      "detect_supplier",
+      "io.BytesIO",
+      "orders_csv.read",
+      "p.extract_text",
+      "parse_flipkart_csv",
+      "parse_vyapar_pdf_text",
+      "raw.decode",
+      "require_company_role",
+      "resolve_vendor",
+      "result.all",
+      "router.post",
+      "save_bills",
+      "select",
+      "select(Sku.shringar_sku).where"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/billing/purchase-bills",
+    "handler": "list_purchase_bills",
+    "source": "backend/app/routes/billing.py",
+    "line": 143,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "bills_view",
+      "router.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/billing/purchase-bills/lines/{line_id}/link",
+    "handler": "link_bill_line",
+    "source": "backend/app/routes/billing.py",
+    "line": 153,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "link_line",
+      "require_company_role",
+      "res.get",
+      "router.post"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/billing/purchase-bills/auto-match",
+    "handler": "auto_match_purchase_bills",
+    "source": "backend/app/routes/billing.py",
+    "line": 170,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "db.commit",
+      "rematch_bills",
+      "require_company_role",
+      "router.post"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/billing/purchase-bills/lines/{line_id}/apply-cost",
+    "handler": "apply_bill_cost",
+    "source": "backend/app/routes/billing.py",
+    "line": 180,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "apply_cost",
+      "require_company_role",
+      "res.get",
+      "router.post"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/billing/",
+    "handler": "list_invoices",
+    "source": "backend/app/routes/billing.py",
+    "line": 195,
+    "dependencies": [],
+    "calls": [
+      "(await db.execute(q)).scalars",
+      "(await db.execute(q)).scalars().all",
+      "Depends",
+      "Invoice.company_id.in_",
+      "Invoice.id.desc",
+      "Invoice.invoice_date.desc",
+      "Query",
+      "_company_meta",
+      "_to_response",
+      "db.execute",
+      "router.get",
+      "select",
+      "select(Invoice).options",
+      "select(Invoice).options(selectinload(Invoice.lines)).where",
+      "select(Invoice).options(selectinload(Invoice.lines)).where(Invoice.company_id.in_(scope.ids)).order_by",
+      "selectinload"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/billing/summary",
+    "handler": "billing_summary",
+    "source": "backend/app/routes/billing.py",
+    "line": 213,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "compute_billing_summary",
+      "router.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/billing/{invoice_id}",
+    "handler": "get_invoice",
+    "source": "backend/app/routes/billing.py",
+    "line": 222,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "_get_owned",
+      "_to_response",
+      "router.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/billing/",
+    "handler": "create_invoice",
+    "source": "backend/app/routes/billing.py",
+    "line": 232,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "Invoice",
+      "InvoiceLine",
+      "_get_owned",
+      "_to_response",
+      "db.add",
+      "db.commit",
+      "db.rollback",
+      "next_invoice_number",
+      "recalc_totals",
+      "require_company_role",
+      "router.post",
+      "str",
+      "validate_references"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/billing/{invoice_id}",
+    "handler": "update_invoice",
+    "source": "backend/app/routes/billing.py",
+    "line": 269,
+    "dependencies": [
+      "require_role_in_company"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "InvoiceLine",
+      "_get_owned",
+      "_to_response",
+      "data.get",
+      "data.items",
+      "data.pop",
+      "db.commit",
+      "db.rollback",
+      "inv.lines.append",
+      "inv.lines.clear",
+      "l.get",
+      "line.get",
+      "payload.model_dump",
+      "recalc_totals",
+      "require_role_in_company",
+      "router.patch",
+      "set",
+      "setattr",
+      "str",
+      "validate_references"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/billing/{invoice_id}",
+    "handler": "delete_invoice",
+    "source": "backend/app/routes/billing.py",
+    "line": 316,
+    "dependencies": [
+      "require_role_in_company"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "_get_owned",
+      "db.commit",
+      "db.delete",
+      "require_role_in_company",
+      "router.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/categories/",
+    "handler": "list_categories",
+    "source": "backend/app/routes/categories.py",
+    "line": 16,
+    "dependencies": [],
+    "calls": [
+      "Category.company_id.in_",
+      "Depends",
+      "db.execute",
+      "result.scalars",
+      "result.scalars().all",
+      "router.get",
+      "select",
+      "select(Category).where",
+      "select(Category).where(Category.company_id.in_(scope.ids)).order_by"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/categories/",
+    "handler": "create_category",
+    "source": "backend/app/routes/categories.py",
+    "line": 26,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Category",
+      "Depends",
+      "HTTPException",
+      "db.add",
+      "db.commit",
+      "db.execute",
+      "db.refresh",
+      "existing.scalar_one_or_none",
+      "require_company_role",
+      "router.post",
+      "select",
+      "select(Category).where"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/categories/{category_id}",
+    "handler": "update_category",
+    "source": "backend/app/routes/categories.py",
+    "line": 50,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "db.commit",
+      "db.execute",
+      "db.refresh",
+      "payload.model_dump",
+      "payload.model_dump(exclude_none=True).items",
+      "require_company_role",
+      "result.scalar_one_or_none",
+      "router.patch",
+      "select",
+      "select(Category).where",
+      "setattr"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/categories/{category_id}",
+    "handler": "delete_category",
+    "source": "backend/app/routes/categories.py",
+    "line": 71,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "db.commit",
+      "db.delete",
+      "db.execute",
+      "require_company_role",
+      "result.scalar_one_or_none",
+      "router.delete",
+      "select",
+      "select(Category).where"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/change-history/",
+    "handler": "list_changes",
+    "source": "backend/app/routes/change_history.py",
+    "line": 16,
+    "dependencies": [
+      "require_role_in_company"
+    ],
+    "calls": [
+      "(await db.scalars(query.order_by(FinancialChange.id.desc()).limit(limit))).all",
+      "Depends",
+      "FinancialChange.company_id.in_",
+      "FinancialChange.id.desc",
+      "Query",
+      "db.scalars",
+      "getattr",
+      "query.order_by",
+      "query.order_by(FinancialChange.id.desc()).limit",
+      "query.where",
+      "require_role_in_company",
+      "router.get",
+      "select",
+      "select(FinancialChange).where",
+      "undo_candidate"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/change-history/{change_id}/undo",
+    "handler": "undo_financial_change",
+    "source": "backend/app/routes/change_history.py",
+    "line": 36,
+    "dependencies": [
+      "require_role_in_company"
+    ],
+    "calls": [
+      "Depends",
+      "FinancialChange.company_id.in_",
+      "HTTPException",
+      "db.scalar",
+      "require_role_in_company",
+      "router.post",
+      "select",
+      "select(FinancialChange).where",
+      "undo_change"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/companies/",
+    "handler": "my_companies",
+    "source": "backend/app/routes/companies.py",
+    "line": 38,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "_resp",
+      "list_user_companies",
+      "router.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/companies/",
+    "handler": "new_company",
+    "source": "backend/app/routes/companies.py",
+    "line": 46,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "_resp",
+      "create_company",
+      "db.commit",
+      "db.refresh",
+      "router.post"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/companies/{company_id}",
+    "handler": "rename_company_route",
+    "source": "backend/app/routes/companies.py",
+    "line": 55,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "_require_owner",
+      "_resp",
+      "db.commit",
+      "db.refresh",
+      "getattr",
+      "rename_company",
+      "router.patch"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/companies/{company_id}",
+    "handler": "archive_company_route",
+    "source": "backend/app/routes/companies.py",
+    "line": 65,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "_require_owner",
+      "archive_company",
+      "db.commit",
+      "router.delete"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/companies/{company_id}/restore",
+    "handler": "restore_company_route",
+    "source": "backend/app/routes/companies.py",
+    "line": 74,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "_require_owner",
+      "_resp",
+      "db.commit",
+      "db.refresh",
+      "restore_company",
+      "router.post"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/companies/{company_id}/leave",
+    "handler": "leave_company_route",
+    "source": "backend/app/routes/companies.py",
+    "line": 85,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "db.commit",
+      "get_membership",
+      "remove_member",
+      "router.post"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/companies/{company_id}/context",
+    "handler": "company_context",
+    "source": "backend/app/routes/companies.py",
+    "line": 100,
+    "dependencies": [],
+    "calls": [
+      "CompanyContext",
+      "Depends",
+      "HTTPException",
+      "_resp",
+      "get_membership",
+      "get_modules",
+      "router.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/companies/{company_id}/modules",
+    "handler": "update_modules",
+    "source": "backend/app/routes/companies.py",
+    "line": 110,
+    "dependencies": [],
+    "calls": [
+      "CompanyContext",
+      "Depends",
+      "HTTPException",
+      "_resp",
+      "db.commit",
+      "get_membership",
+      "get_modules",
+      "router.patch",
+      "set_company_modules"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/companies/{company_id}/members",
+    "handler": "company_members",
+    "source": "backend/app/routes/companies.py",
+    "line": 126,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "MemberResponse",
+      "get_membership",
+      "list_members",
+      "router.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/companies/{company_id}/members",
+    "handler": "invite_member",
+    "source": "backend/app/routes/companies.py",
+    "line": 135,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "MemberResponse",
+      "_require_owner",
+      "add_member",
+      "db.commit",
+      "db.refresh",
+      "router.post",
+      "str"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/companies/{company_id}/members/{user_id}",
+    "handler": "change_member_role",
+    "source": "backend/app/routes/companies.py",
+    "line": 149,
+    "dependencies": [],
+    "calls": [
+      "(await db.execute(select(U).where(U.id == user_id))).scalar_one",
+      "Depends",
+      "HTTPException",
+      "MemberResponse",
+      "_require_owner",
+      "db.commit",
+      "db.execute",
+      "router.patch",
+      "select",
+      "select(U).where",
+      "update_member_role"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/companies/{company_id}/members/{user_id}",
+    "handler": "kick_member",
+    "source": "backend/app/routes/companies.py",
+    "line": 162,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "_require_owner",
+      "db.commit",
+      "remove_member",
+      "router.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/dashboard/insights",
+    "handler": "get_dashboard_insights",
+    "source": "backend/app/routes/dashboard.py",
+    "line": 463,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "_insight_fraud_spike",
+      "_insight_platform_health",
+      "_insight_return_breakdown",
+      "_insight_risk_summary",
+      "asyncio.gather",
+      "datetime.now",
+      "datetime.now(timezone.utc).isoformat",
+      "insights.sort",
+      "len",
+      "router.get",
+      "x.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/dashboard/metrics",
+    "handler": "get_dashboard_metrics",
+    "source": "backend/app/routes/dashboard.py",
+    "line": 492,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "_compute_metrics",
+      "datetime.now",
+      "datetime.now(timezone.utc).isoformat",
+      "len",
+      "router.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/dashboard/sku-intelligence",
+    "handler": "get_sku_intelligence",
+    "source": "backend/app/routes/dashboard.py",
+    "line": 509,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "compute_sku_intelligence",
+      "datetime.now",
+      "datetime.now(timezone.utc).isoformat",
+      "len",
+      "router.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/dashboard/reconciliation",
+    "handler": "get_reconciliation",
+    "source": "backend/app/routes/dashboard.py",
+    "line": 527,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "compute_reconciliation",
+      "datetime.now",
+      "datetime.now(timezone.utc).isoformat",
+      "len",
+      "router.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/dashboard/action-pipeline",
+    "handler": "get_action_pipeline",
+    "source": "backend/app/routes/dashboard.py",
+    "line": 544,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "compute_action_pipeline",
+      "datetime.now",
+      "datetime.now(timezone.utc).isoformat",
+      "len",
+      "router.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/dashboard/operations",
+    "handler": "get_operations",
+    "source": "backend/app/routes/dashboard.py",
+    "line": 561,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "compute_operations",
+      "datetime.now",
+      "datetime.now(timezone.utc).isoformat",
+      "len",
+      "router.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/entries/upsert-batch",
+    "handler": "upsert_entries_batch",
+    "source": "backend/app/routes/entries.py",
+    "line": 16,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "UpsertBatchResponse",
+      "len",
+      "require_company_role",
+      "router.post",
+      "upsert_batch"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/entries/",
+    "handler": "get_entries",
+    "source": "backend/app/routes/entries.py",
+    "line": 34,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "get_all_entries",
+      "router.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/fraud/overview",
+    "handler": "fraud_overview",
+    "source": "backend/app/routes/fraud.py",
+    "line": 43,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "get_fraud_overview",
+      "router.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/fraud/platform/{platform_id}",
+    "handler": "platform_fraud_view",
+    "source": "backend/app/routes/fraud.py",
+    "line": 55,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "get_platform_fraud_view",
+      "router.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/fraud/alerts",
+    "handler": "list_alerts",
+    "source": "backend/app/routes/fraud.py",
+    "line": 71,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "FraudAlert.company_id.in_",
+      "FraudAlert.created_at.desc",
+      "Query",
+      "a.created_at.isoformat",
+      "db.execute",
+      "len",
+      "q.order_by",
+      "q.where",
+      "result.scalars",
+      "result.scalars().all",
+      "router.get",
+      "select",
+      "select(FraudAlert).where",
+      "severity.upper"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/fraud/settlement",
+    "handler": "settlement_gaps",
+    "source": "backend/app/routes/fraud.py",
+    "line": 118,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "get_settlement_gaps",
+      "router.get"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/fraud/resolve/{alert_id}",
+    "handler": "resolve_alert",
+    "source": "backend/app/routes/fraud.py",
+    "line": 130,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "db.commit",
+      "db.get",
+      "require_company_role",
+      "router.patch"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/fraud/dashboard",
+    "handler": "fraud_dashboard",
+    "source": "backend/app/routes/fraud.py",
+    "line": 148,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "get_fraud_dashboard",
+      "router.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/fraud/sku-risk",
+    "handler": "sku_risk_table",
+    "source": "backend/app/routes/fraud.py",
+    "line": 158,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "get_fraud_dashboard",
+      "router.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/fraud/temporal",
+    "handler": "temporal_trend",
+    "source": "backend/app/routes/fraud.py",
+    "line": 172,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "get_fraud_dashboard",
+      "router.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/fraud/backfill/{report_id}",
+    "handler": "backfill_fraud_for_report",
+    "source": "backend/app/routes/fraud.py",
+    "line": 183,
+    "dependencies": [
+      "require_company_role",
+      "require_role_in_company"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "reprocess_report_for_fraud",
+      "require_company_role",
+      "require_role_in_company",
+      "router.post"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/fraud/actor-overview",
+    "handler": "actor_overview",
+    "source": "backend/app/routes/fraud.py",
+    "line": 204,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "get_actor_overview",
+      "router.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/fraud/actors",
+    "handler": "actor_risk_table",
+    "source": "backend/app/routes/fraud.py",
+    "line": 214,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "get_actor_risk_table",
+      "router.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/fraud/return-reasons",
+    "handler": "return_reason_intelligence",
+    "source": "backend/app/routes/fraud.py",
+    "line": 224,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "get_return_reason_intelligence",
+      "router.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/fraud/states",
+    "handler": "state_risk_intelligence",
+    "source": "backend/app/routes/fraud.py",
+    "line": 234,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "get_state_risk_intelligence",
+      "router.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/settings/",
+    "handler": "list_settings",
+    "source": "backend/app/routes/global_settings.py",
+    "line": 16,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "GlobalSettings.company_id.in_",
+      "db.execute",
+      "result.scalars",
+      "result.scalars().all",
+      "router.get",
+      "select",
+      "select(GlobalSettings).where",
+      "select(GlobalSettings).where(GlobalSettings.company_id.in_(scope.ids)).order_by"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/settings/{key}",
+    "handler": "get_setting",
+    "source": "backend/app/routes/global_settings.py",
+    "line": 26,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "db.execute",
+      "result.scalar_one_or_none",
+      "router.get",
+      "select",
+      "select(GlobalSettings).where"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/settings/{key}",
+    "handler": "update_setting",
+    "source": "backend/app/routes/global_settings.py",
+    "line": 40,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "db.commit",
+      "db.execute",
+      "db.refresh",
+      "float",
+      "math.isfinite",
+      "require_company_role",
+      "result.scalar_one_or_none",
+      "router.patch",
+      "select",
+      "select(GlobalSettings).where"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/hsn/",
+    "handler": "list_hsn",
+    "source": "backend/app/routes/hsn_codes.py",
+    "line": 13,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "db.execute",
+      "result.scalars",
+      "result.scalars().all",
+      "router.get",
+      "select",
+      "select(HsnCode).order_by"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/hsn/search",
+    "handler": "search_hsn",
+    "source": "backend/app/routes/hsn_codes.py",
+    "line": 21,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HsnCode.category.ilike",
+      "HsnCode.code.ilike",
+      "HsnCode.description.ilike",
+      "db.execute",
+      "or_",
+      "result.scalars",
+      "result.scalars().all",
+      "router.get",
+      "select",
+      "select(HsnCode).where",
+      "select(HsnCode).where(or_(HsnCode.code.ilike(f'%{q}%'), HsnCode.description.ilike(f'%{q}%'), HsnCode.category.ilike(f'%{q}%'))).order_by",
+      "select(HsnCode).where(or_(HsnCode.code.ilike(f'%{q}%'), HsnCode.description.ilike(f'%{q}%'), HsnCode.category.ilike(f'%{q}%'))).order_by(HsnCode.code).limit"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/hsn/",
+    "handler": "create_hsn",
+    "source": "backend/app/routes/hsn_codes.py",
+    "line": 38,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "HsnCode",
+      "data.model_dump",
+      "db.add",
+      "db.commit",
+      "db.execute",
+      "db.refresh",
+      "existing.scalar_one_or_none",
+      "router.post",
+      "select",
+      "select(HsnCode).where"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/hsn/{code}",
+    "handler": "get_hsn",
+    "source": "backend/app/routes/hsn_codes.py",
+    "line": 55,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "db.execute",
+      "result.scalar_one_or_none",
+      "router.get",
+      "select",
+      "select(HsnCode).where"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/hsn/{code}",
+    "handler": "update_hsn",
+    "source": "backend/app/routes/hsn_codes.py",
+    "line": 69,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "data.model_dump",
+      "data.model_dump(exclude_none=True).items",
+      "db.commit",
+      "db.execute",
+      "db.refresh",
+      "result.scalar_one_or_none",
+      "router.patch",
+      "select",
+      "select(HsnCode).where",
+      "setattr"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/hsn/{code}",
+    "handler": "delete_hsn",
+    "source": "backend/app/routes/hsn_codes.py",
+    "line": 88,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "db.commit",
+      "db.delete",
+      "db.execute",
+      "result.scalar_one_or_none",
+      "router.delete",
+      "select",
+      "select(HsnCode).where"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ledger/",
+    "handler": "list_entries",
+    "source": "backend/app/routes/ledger.py",
+    "line": 46,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "LedgerEntry.company_id.in_",
+      "LedgerEntry.entry_date.desc",
+      "LedgerEntry.id.desc",
+      "Query",
+      "_company_meta",
+      "_to_response",
+      "and_",
+      "conds.append",
+      "db.execute",
+      "resolve_names",
+      "result.scalars",
+      "result.scalars().all",
+      "router.get",
+      "select",
+      "select(LedgerEntry).where",
+      "select(LedgerEntry).where(and_(*conds)).order_by"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ledger/summary",
+    "handler": "ledger_summary",
+    "source": "backend/app/routes/ledger.py",
+    "line": 76,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "Query",
+      "compute_ledger_summary",
+      "router.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/ledger/",
+    "handler": "create_entry",
+    "source": "backend/app/routes/ledger.py",
+    "line": 88,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "LedgerEntry",
+      "_to_response",
+      "db.add",
+      "db.commit",
+      "db.refresh",
+      "payload.model_dump",
+      "require_company_role",
+      "resolve_names",
+      "router.post",
+      "str",
+      "validate_references"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/ledger/{entry_id}",
+    "handler": "update_entry",
+    "source": "backend/app/routes/ledger.py",
+    "line": 130,
+    "dependencies": [
+      "require_role_in_company"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "_owned",
+      "_require_manual_entry",
+      "_to_response",
+      "db.commit",
+      "db.refresh",
+      "payload.model_dump",
+      "payload.model_dump(exclude_unset=True).items",
+      "require_role_in_company",
+      "resolve_names",
+      "router.patch",
+      "setattr",
+      "str",
+      "validate_references"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/ledger/{entry_id}",
+    "handler": "delete_entry",
+    "source": "backend/app/routes/ledger.py",
+    "line": 153,
+    "dependencies": [
+      "require_role_in_company"
+    ],
+    "calls": [
+      "Depends",
+      "_owned",
+      "_require_manual_entry",
+      "db.commit",
+      "db.delete",
+      "require_role_in_company",
+      "router.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/misc-items/",
+    "handler": "list_misc_items",
+    "source": "backend/app/routes/misc_items.py",
+    "line": 16,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "db.execute",
+      "result.scalars",
+      "result.scalars().all",
+      "router.get",
+      "select",
+      "select(MiscItem).where",
+      "select(MiscItem).where(MiscItem.company_id == company.id).order_by"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/misc-items/total",
+    "handler": "get_misc_total",
+    "source": "backend/app/routes/misc_items.py",
+    "line": 26,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "MiscTotalResponse",
+      "db.execute",
+      "result.scalars",
+      "result.scalars().all",
+      "round",
+      "router.get",
+      "select",
+      "select(MiscItem).where",
+      "sum"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/misc-items/",
+    "handler": "create_misc_item",
+    "source": "backend/app/routes/misc_items.py",
+    "line": 43,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "MiscItem",
+      "db.add",
+      "db.commit",
+      "db.refresh",
+      "require_company_role",
+      "router.post"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/misc-items/{item_id}",
+    "handler": "update_misc_item",
+    "source": "backend/app/routes/misc_items.py",
+    "line": 57,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "db.commit",
+      "db.execute",
+      "db.refresh",
+      "payload.model_dump",
+      "payload.model_dump(exclude_none=True).items",
+      "require_company_role",
+      "result.scalar_one_or_none",
+      "router.patch",
+      "select",
+      "select(MiscItem).where",
+      "setattr"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/misc-items/{item_id}",
+    "handler": "delete_misc_item",
+    "source": "backend/app/routes/misc_items.py",
+    "line": 78,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "db.commit",
+      "db.delete",
+      "db.execute",
+      "require_company_role",
+      "result.scalar_one_or_none",
+      "router.delete",
+      "select",
+      "select(MiscItem).where"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/platforms/",
+    "handler": "list_platforms",
+    "source": "backend/app/routes/platforms.py",
+    "line": 21,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "Platform.company_id.in_",
+      "db.execute",
+      "result.scalars",
+      "result.scalars().all",
+      "router.get",
+      "select",
+      "select(Platform).options",
+      "select(Platform).options(selectinload(Platform.tiers)).where",
+      "select(Platform).options(selectinload(Platform.tiers)).where(Platform.company_id.in_(scope.ids)).order_by",
+      "selectinload"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/platforms/",
+    "handler": "create_platform",
+    "source": "backend/app/routes/platforms.py",
+    "line": 36,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "Platform",
+      "PlatformTier",
+      "db.add",
+      "db.commit",
+      "db.execute",
+      "db.flush",
+      "db.refresh",
+      "existing.scalar_one_or_none",
+      "require_company_role",
+      "result.scalar_one",
+      "router.post",
+      "select",
+      "select(Platform).options",
+      "select(Platform).options(selectinload(Platform.tiers)).where",
+      "select(Platform).where",
+      "selectinload"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/platforms/{platform_id}",
+    "handler": "get_platform",
+    "source": "backend/app/routes/platforms.py",
+    "line": 80,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "db.execute",
+      "result.scalar_one_or_none",
+      "router.get",
+      "select",
+      "select(Platform).options",
+      "select(Platform).options(selectinload(Platform.tiers)).where",
+      "selectinload"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/platforms/{platform_id}",
+    "handler": "update_platform",
+    "source": "backend/app/routes/platforms.py",
+    "line": 98,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "db.commit",
+      "db.execute",
+      "db.refresh",
+      "payload.model_dump",
+      "payload.model_dump(exclude_none=True).items",
+      "require_company_role",
+      "result.scalar_one_or_none",
+      "router.patch",
+      "select",
+      "select(Platform).options",
+      "select(Platform).options(selectinload(Platform.tiers)).where",
+      "selectinload",
+      "setattr"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/platforms/{platform_id}",
+    "handler": "delete_platform",
+    "source": "backend/app/routes/platforms.py",
+    "line": 123,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "db.commit",
+      "db.delete",
+      "db.execute",
+      "db.rollback",
+      "require_company_role",
+      "result.scalar_one_or_none",
+      "router.delete",
+      "select",
+      "select(Platform).where"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/platforms/{platform_id}/tiers",
+    "handler": "add_tier",
+    "source": "backend/app/routes/platforms.py",
+    "line": 156,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "PlatformTier",
+      "_owned_platform",
+      "db.add",
+      "db.commit",
+      "db.refresh",
+      "require_company_role",
+      "router.post"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/platforms/{platform_id}/tiers/{tier_id}",
+    "handler": "update_tier",
+    "source": "backend/app/routes/platforms.py",
+    "line": 179,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "_owned_platform",
+      "db.commit",
+      "db.execute",
+      "db.refresh",
+      "require_company_role",
+      "result.scalar_one_or_none",
+      "router.patch",
+      "select",
+      "select(PlatformTier).where"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/platforms/{platform_id}/tiers/{tier_id}",
+    "handler": "delete_tier",
+    "source": "backend/app/routes/platforms.py",
+    "line": 207,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "_owned_platform",
+      "db.commit",
+      "db.delete",
+      "db.execute",
+      "require_company_role",
+      "result.scalar_one_or_none",
+      "router.delete",
+      "select",
+      "select(PlatformTier).where"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/pnl/upload",
+    "handler": "upload_pnl",
+    "source": "backend/app/routes/pnl.py",
+    "line": 60,
+    "dependencies": [
+      "require_role_in_company"
+    ],
+    "calls": [
+      "CRITICAL_FIELDS.items",
+      "Depends",
+      "File",
+      "Form",
+      "HTTPException",
+      "Path",
+      "UPLOADS_DIR.glob",
+      "_is_snapdeal_cpr",
+      "check_duplicate",
+      "db.commit",
+      "db.execute",
+      "db.get",
+      "db.rollback",
+      "db.scalar",
+      "existing.uploaded_at.isoformat",
+      "extract_period_from_bytes",
+      "extract_period_from_bytes_meesho",
+      "extract_period_from_bytes_snapdeal",
+      "extract_period_from_bytes_snapdeal_cpr",
+      "file.filename.endswith",
+      "file.read",
+      "func.count",
+      "getattr",
+      "getattr(PnlSkuRow, field).is_",
+      "len",
+      "list",
+      "null_count_result.scalar",
+      "old_path.unlink",
+      "parse_and_store",
+      "parse_warnings.append",
+      "plat_obj.name.lower",
+      "pnl_logger.error",
+      "pnl_logger.info",
+      "pnl_logger.warning",
+      "require_role_in_company",
+      "round",
+      "router.post",
+      "saved_path.unlink",
+      "select",
+      "select(Platform).where",
+      "select(func.count()).select_from",
+      "select(func.count()).select_from(PnlSkuRow).where",
+      "staged_path.replace",
+      "staged_path.unlink",
+      "staged_path.write_bytes",
+      "str",
+      "uuid.uuid4"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/pnl/shopdeck-customers",
+    "handler": "upload_shopdeck_customers",
+    "source": "backend/app/routes/pnl.py",
+    "line": 219,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "File",
+      "Form",
+      "HTTPException",
+      "build_customer_fraud",
+      "file.read",
+      "ingest_customer_fraud",
+      "len",
+      "parse_customer_csv",
+      "pnl_logger.info",
+      "raw.decode",
+      "require_company_role",
+      "router.post"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/pnl/statement/{report_id}",
+    "handler": "pnl_statement",
+    "source": "backend/app/routes/pnl.py",
+    "line": 262,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "compute_pnl_statement",
+      "router.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/pnl/rows/{report_id}",
+    "handler": "pnl_rows",
+    "source": "backend/app/routes/pnl.py",
+    "line": 277,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "compute_pnl_rows",
+      "router.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/pnl/trend",
+    "handler": "pnl_trend",
+    "source": "backend/app/routes/pnl.py",
+    "line": 292,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "compute_pnl_trend",
+      "router.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/pnl/consolidated",
+    "handler": "pnl_consolidated",
+    "source": "backend/app/routes/pnl.py",
+    "line": 304,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "compute_pnl_consolidated",
+      "len",
+      "router.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/pnl/unmatched-skus",
+    "handler": "pnl_unmatched_skus",
+    "source": "backend/app/routes/pnl.py",
+    "line": 317,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "compute_unmatched_skus",
+      "router.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/pnl/hidden-skus/add",
+    "handler": "pnl_add_hidden_sku",
+    "source": "backend/app/routes/pnl.py",
+    "line": 329,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "(payload.get('platform_sku_name') or '').strip",
+      "Depends",
+      "HTTPException",
+      "float",
+      "int",
+      "payload.get",
+      "pnl_logger.info",
+      "quick_add_hidden_sku",
+      "require_company_role",
+      "result.get",
+      "router.post",
+      "str",
+      "str(payload['vendor_sku']).strip"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/pnl/rematch/{report_id}",
+    "handler": "pnl_rematch",
+    "source": "backend/app/routes/pnl.py",
+    "line": 389,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "compute_unmatched_skus",
+      "db.commit",
+      "len",
+      "rematch_report",
+      "require_company_role",
+      "router.post"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/pnl/reports",
+    "handler": "list_reports",
+    "source": "backend/app/routes/pnl.py",
+    "line": 406,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "PnlReportSummary",
+      "PnlSkuRow.sku_pricing_id.isnot",
+      "db.get",
+      "db.scalar",
+      "func.count",
+      "get_all_reports",
+      "result.append",
+      "router.get",
+      "select",
+      "select(func.count()).where"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/pnl/reports/{report_id}",
+    "handler": "get_report",
+    "source": "backend/app/routes/pnl.py",
+    "line": 532,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "PnlReportDetail",
+      "_build_sku_row_response",
+      "db.get",
+      "get_report_detail",
+      "len",
+      "router.get",
+      "sum"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/pnl/reports/{report_id}",
+    "handler": "remove_report",
+    "source": "backend/app/routes/pnl.py",
+    "line": 590,
+    "dependencies": [
+      "require_role_in_company"
+    ],
+    "calls": [
+      "(await db.execute(select(PnlReport.company_id).where(PnlReport.id == report_id, PnlReport.company_id.in_(scope.ids)))).scalar_one_or_none",
+      "Depends",
+      "HTTPException",
+      "PnlReport.company_id.in_",
+      "UPLOADS_DIR.glob",
+      "db.execute",
+      "delete_report",
+      "f.unlink",
+      "pnl_logger.info",
+      "pnl_logger.warning",
+      "require_role_in_company",
+      "router.delete",
+      "select",
+      "select(PnlReport.company_id).where"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/pnl/reports/{report_id}/file",
+    "handler": "download_report_file",
+    "source": "backend/app/routes/pnl.py",
+    "line": 624,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "FileResponse",
+      "HTTPException",
+      "UPLOADS_DIR.glob",
+      "get_report_detail",
+      "list",
+      "router.get",
+      "str"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/pnl/dashboard",
+    "handler": "dashboard_summary",
+    "source": "backend/app/routes/pnl.py",
+    "line": 648,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "get_dashboard_summary",
+      "router.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/pnl/platforms-with-reports",
+    "handler": "platforms_with_reports",
+    "source": "backend/app/routes/pnl.py",
+    "line": 658,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "PnlReport.company_id.in_",
+      "db.execute",
+      "result.all",
+      "router.get",
+      "select",
+      "select(Platform.id, Platform.name).join",
+      "select(Platform.id, Platform.name).join(PnlReport, PnlReport.platform_id == Platform.id).where",
+      "select(Platform.id, Platform.name).join(PnlReport, PnlReport.platform_id == Platform.id).where(PnlReport.company_id.in_(scope.ids)).distinct",
+      "select(Platform.id, Platform.name).join(PnlReport, PnlReport.platform_id == Platform.id).where(PnlReport.company_id.in_(scope.ids)).distinct().order_by"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/pnl/upload/fk-orders",
+    "handler": "upload_fk_orders",
+    "source": "backend/app/routes/pnl.py",
+    "line": 681,
+    "dependencies": [
+      "require_role_in_company"
+    ],
+    "calls": [
+      "Depends",
+      "File",
+      "HTTPException",
+      "Platform.name.ilike",
+      "compute_actor_risk_profiles",
+      "compute_return_reason_clusters",
+      "compute_state_risk_profiles",
+      "db.execute",
+      "e.get",
+      "extract_order_events_fk_orders",
+      "file.read",
+      "fk_result.scalars",
+      "fk_result.scalars().first",
+      "len",
+      "require_role_in_company",
+      "router.post",
+      "select",
+      "select(Platform).where",
+      "select(Platform).where(Platform.name.ilike('%flipkart%'), Platform.company_id == company.id).order_by",
+      "store_order_events",
+      "sum"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/skus/",
+    "handler": "list_skus",
+    "source": "backend/app/routes/skus.py",
+    "line": 51,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "Sku.company_id.in_",
+      "db.execute",
+      "result.scalars",
+      "result.scalars().all",
+      "select",
+      "select(Sku).where",
+      "select(Sku).where(Sku.company_id.in_(scope.ids)).order_by",
+      "sku_router.get"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/skus/{sku_id}",
+    "handler": "get_sku",
+    "source": "backend/app/routes/skus.py",
+    "line": 70,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "Sku.company_id.in_",
+      "db.execute",
+      "result.scalar_one_or_none",
+      "select",
+      "select(Sku).where",
+      "sku_router.get"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/skus/",
+    "handler": "create_sku",
+    "source": "backend/app/routes/skus.py",
+    "line": 87,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "Sku",
+      "db.add",
+      "db.commit",
+      "db.execute",
+      "db.refresh",
+      "existing.scalar_one_or_none",
+      "payload.model_dump",
+      "require_company_role",
+      "select",
+      "select(Sku).where",
+      "sku_router.post",
+      "str",
+      "validate_references"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/skus/{sku_id}",
+    "handler": "update_sku",
+    "source": "backend/app/routes/skus.py",
+    "line": 121,
+    "dependencies": [
+      "require_role_in_company"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "Sku.company_id.in_",
+      "db.commit",
+      "db.execute",
+      "db.refresh",
+      "payload.model_dump",
+      "payload.model_dump(exclude_none=True).items",
+      "require_role_in_company",
+      "result.scalar_one_or_none",
+      "select",
+      "select(Sku).where",
+      "setattr",
+      "sku_router.patch",
+      "str",
+      "validate_references"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/skus/{sku_id}",
+    "handler": "delete_sku",
+    "source": "backend/app/routes/skus.py",
+    "line": 150,
+    "dependencies": [
+      "require_role_in_company"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "Sku.company_id.in_",
+      "db.commit",
+      "db.delete",
+      "db.execute",
+      "require_role_in_company",
+      "result.scalar_one_or_none",
+      "select",
+      "select(Sku).where",
+      "sku_router.delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/pricing/sku/{sku_id}",
+    "handler": "list_pricing_for_sku",
+    "source": "backend/app/routes/skus.py",
+    "line": 171,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "SkuPricing.company_id.in_",
+      "db.execute",
+      "pricing_router.get",
+      "result.scalars",
+      "result.scalars().all",
+      "select",
+      "select(SkuPricing).where",
+      "select(SkuPricing).where(SkuPricing.sku_id == sku_id, SkuPricing.company_id.in_(scope.ids)).order_by"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/pricing/",
+    "handler": "create_pricing",
+    "source": "backend/app/routes/skus.py",
+    "line": 187,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "SkuPricing",
+      "calculate_pricing",
+      "db.add",
+      "db.commit",
+      "db.execute",
+      "db.refresh",
+      "existing.scalar_one_or_none",
+      "payload.model_dump",
+      "pricing_router.post",
+      "recover_unpriced_reports",
+      "require_company_role",
+      "resolve_pricing_inputs",
+      "select",
+      "select(SkuPricing).where",
+      "str",
+      "validate_references"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/pricing/{pricing_id}",
+    "handler": "update_pricing",
+    "source": "backend/app/routes/skus.py",
+    "line": 270,
+    "dependencies": [
+      "require_role_in_company"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "SkuPricing.company_id.in_",
+      "calcs.items",
+      "calculate_pricing",
+      "db.commit",
+      "db.execute",
+      "db.refresh",
+      "payload.model_dump",
+      "pricing_router.patch",
+      "recover_unpriced_reports",
+      "require_role_in_company",
+      "resolve_pricing_inputs",
+      "resolved.items",
+      "result.scalar_one_or_none",
+      "select",
+      "select(SkuPricing).where",
+      "setattr",
+      "str",
+      "updates.items",
+      "validate_references"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/pricing/{pricing_id}",
+    "handler": "delete_pricing",
+    "source": "backend/app/routes/skus.py",
+    "line": 344,
+    "dependencies": [
+      "require_role_in_company"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "SkuPricing.company_id.in_",
+      "db.commit",
+      "db.delete",
+      "db.execute",
+      "pricing_router.delete",
+      "require_role_in_company",
+      "result.scalar_one_or_none",
+      "select",
+      "select(SkuPricing).where"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/users/",
+    "handler": "list_users",
+    "source": "backend/app/routes/users.py",
+    "line": 19,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "User.created_at.desc",
+      "db.execute",
+      "result.scalars",
+      "result.scalars().all",
+      "router.get",
+      "select",
+      "select(User).order_by"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/users/",
+    "handler": "create_user",
+    "source": "backend/app/routes/users.py",
+    "line": 28,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "User",
+      "db.add",
+      "db.commit",
+      "db.execute",
+      "db.refresh",
+      "existing.scalar_one_or_none",
+      "hash_password",
+      "router.post",
+      "select",
+      "select(User).where"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/users/{user_id}",
+    "handler": "update_user",
+    "source": "backend/app/routes/users.py",
+    "line": 50,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "db.commit",
+      "db.execute",
+      "db.refresh",
+      "payload.model_dump",
+      "payload.model_dump(exclude_none=True).items",
+      "result.scalar_one_or_none",
+      "router.patch",
+      "select",
+      "select(User).where",
+      "setattr"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/users/{user_id}",
+    "handler": "delete_user",
+    "source": "backend/app/routes/users.py",
+    "line": 71,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "db.commit",
+      "db.delete",
+      "db.execute",
+      "result.scalar_one_or_none",
+      "router.delete",
+      "select",
+      "select(User).where"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/vendors/",
+    "handler": "list_vendors",
+    "source": "backend/app/routes/vendors.py",
+    "line": 16,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "Vendor.company_id.in_",
+      "db.execute",
+      "result.scalars",
+      "result.scalars().all",
+      "router.get",
+      "select",
+      "select(Vendor).where",
+      "select(Vendor).where(Vendor.company_id.in_(scope.ids)).order_by"
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/vendors/",
+    "handler": "create_vendor",
+    "source": "backend/app/routes/vendors.py",
+    "line": 26,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "Vendor",
+      "db.add",
+      "db.commit",
+      "db.execute",
+      "db.refresh",
+      "existing.scalar_one_or_none",
+      "payload.short_code.strip",
+      "payload.short_code.strip().upper",
+      "require_company_role",
+      "router.post",
+      "select",
+      "select(Vendor).where"
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/vendors/{vendor_id}",
+    "handler": "get_vendor",
+    "source": "backend/app/routes/vendors.py",
+    "line": 45,
+    "dependencies": [],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "db.execute",
+      "result.scalar_one_or_none",
+      "router.get",
+      "select",
+      "select(Vendor).where"
+    ]
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/vendors/{vendor_id}",
+    "handler": "update_vendor",
+    "source": "backend/app/routes/vendors.py",
+    "line": 59,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "db.commit",
+      "db.execute",
+      "db.refresh",
+      "payload.model_dump",
+      "payload.model_dump(exclude_none=True).items",
+      "require_company_role",
+      "result.scalar_one_or_none",
+      "router.patch",
+      "select",
+      "select(Vendor).where",
+      "setattr"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/vendors/{vendor_id}",
+    "handler": "delete_vendor",
+    "source": "backend/app/routes/vendors.py",
+    "line": 80,
+    "dependencies": [
+      "require_company_role"
+    ],
+    "calls": [
+      "Depends",
+      "HTTPException",
+      "db.commit",
+      "db.delete",
+      "db.execute",
+      "require_company_role",
+      "result.scalar_one_or_none",
+      "router.delete",
+      "select",
+      "select(Vendor).where"
+    ]
+  }
+]

@@ -1,0 +1,1 @@
+{"result":{"elapsedMs":7936,"requestId":"operator-vendor-category","value":{"buttons":["Unit Economics","Inventory","Categories"],"text":"Unit Economics\nInventory\nCategories"}},"status":"succeeded","transition":{"closedPages":[],"documentGeneration":18,"openedPages":[],"pageCount":1,"targetEpoch":2,"url":"http://localhost:5174/product/categories","urlChanged":true}}

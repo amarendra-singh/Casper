@@ -1,0 +1,1 @@
+{"result":{"elapsedMs":2198,"requestId":"stock-opening-browser","value":{"notices":["Stock movement recorded."],"stock":null}},"status":"succeeded","transition":{"closedPages":[],"documentGeneration":13,"openedPages":[],"pageCount":1,"targetEpoch":2,"url":"http://127.0.0.1:5174/product/catalogue/3","urlChanged":false}}

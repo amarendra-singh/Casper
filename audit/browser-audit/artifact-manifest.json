@@ -1,0 +1,766 @@
+[
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\artifact-manifest.json",
+    "Length": 3986
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\audit-admin.receipt.json",
+    "Length": 8464
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\audit-calculator-check.receipt.json",
+    "Length": 3096
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\audit-complete-evidence.receipt.json",
+    "Length": 991
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\audit-consolidated-recheck.receipt.json",
+    "Length": 6870
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\audit-consolidated.receipt.json",
+    "Length": 1098
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\audit-dashboard-controls.receipt.json",
+    "Length": 10888
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\audit-dashboard.receipt.json",
+    "Length": 12168
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\audit-finance-settled.receipt.json",
+    "Length": 12936
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\audit-finance.receipt.json",
+    "Length": 14893
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\audit-fraud-dom.receipt.json",
+    "Length": 1650
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\audit-fraud-other.receipt.json",
+    "Length": 3742
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\audit-fraud-platform-shot.receipt.json",
+    "Length": 2294
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\audit-fraud-state-inspect.receipt.json",
+    "Length": 4651
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\audit-fraud-tabs.receipt.json",
+    "Length": 634
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\audit-invoice-fixture.receipt.json",
+    "Length": 2702
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\audit-mobile.receipt.json",
+    "Length": 4263
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\audit-pricing-bills.receipt.json",
+    "Length": 7226
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\audit-products.receipt.json",
+    "Length": 488
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\audit-report-details.receipt.json",
+    "Length": 11672
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\audit-report-interactions.receipt.json",
+    "Length": 2553
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\audit-scratch-checks.receipt.json",
+    "Length": 3560
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\calculator-check.js",
+    "Length": 531
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\complete-evidence.js",
+    "Length": 762
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\consolidated.js",
+    "Length": 1937
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\current-business-evidence.json",
+    "Length": 865
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\dashboard-actions.png",
+    "Length": 196529
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\dashboard-controls.js",
+    "Length": 1063
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\dashboard-desktop.png",
+    "Length": 533731
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\dashboard.js",
+    "Length": 225
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\fraud-other.js",
+    "Length": 424
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\fraud-platform-loading.png",
+    "Length": 114366
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\fraud-platform-shot.js",
+    "Length": 105
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\fraud-reprobe.js",
+    "Length": 356
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\fraud-tabs.js",
+    "Length": 458
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\HANDOFF.md",
+    "Length": 6815
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\inspect.js",
+    "Length": 188
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\invoice-fixture.js",
+    "Length": 1483
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\invoice-synthetic-preview.png",
+    "Length": 273115
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\invoke-tabbit.ps1",
+    "Length": 738
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\isolated_checks.py",
+    "Length": 7110
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\isolated-checks.json",
+    "Length": 3880
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\isolated-checks.log",
+    "Length": 3882
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\mobile-navigation.png",
+    "Length": 59627
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\mobile.js",
+    "Length": 1487
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\OPERATOR_UX_REPORT_2026-10-04.md",
+    "Length": 18302
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-account-summary.receipt.json",
+    "Length": 2386
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-account.js",
+    "Length": 367
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-add-cost-controls.receipt.json",
+    "Length": 3189
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-add-cost.js",
+    "Length": 374
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-add-platform-open.receipt.json",
+    "Length": 1768
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-backend.stderr.log",
+    "Length": 82893
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-backend.stdout.log",
+    "Length": 1258336
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-bill-apply-state.receipt.json",
+    "Length": 3081
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-bill-cost-persisted.receipt.json",
+    "Length": 2896
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-bill-link-pack-apply.receipt.json",
+    "Length": 1295
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-bills-apply-settled.js",
+    "Length": 740
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-bills-apply.js",
+    "Length": 1266
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-bills-confirm.js",
+    "Length": 415
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-bills-orders-upload.receipt.json",
+    "Length": 2264
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-bills-upload.js",
+    "Length": 915
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-cancel-ledger-form.receipt.json",
+    "Length": 2119
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-category-form.receipt.json",
+    "Length": 744
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-category-open.js",
+    "Length": 460
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-category-save.js",
+    "Length": 949
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-category-sku-import.receipt.json",
+    "Length": 2758
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-close-page.receipt.json",
+    "Length": 312
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-close.js",
+    "Length": 65
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-company-archive.js",
+    "Length": 1505
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-company-create-form.receipt.json",
+    "Length": 570
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-company-create.js",
+    "Length": 614
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-company-open.js",
+    "Length": 686
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-company-persisted.receipt.json",
+    "Length": 1208
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-company-rename-archive-restore.receipt.json",
+    "Length": 1062
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-complete.js",
+    "Length": 528
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-database-evidence.json",
+    "Length": 14361
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-db-evidence.py",
+    "Length": 997
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-duplicate-replacement.receipt.json",
+    "Length": 2420
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-export-xlsx-csv.receipt.json",
+    "Length": 530
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-export.js",
+    "Length": 498
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-final-evidence.receipt.json",
+    "Length": 5481
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-finish.receipt.json",
+    "Length": 1049
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-fixtures.py",
+    "Length": 1626
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-grid-save-billing.receipt.json",
+    "Length": 1454
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-inspect.js",
+    "Length": 145
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-invoice-continue.js",
+    "Length": 1147
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-invoice-create-paid.receipt.json",
+    "Length": 1039
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-invoice-edit-paid-preview.receipt.json",
+    "Length": 764
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-invoice-state.receipt.json",
+    "Length": 910
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-invoice.js",
+    "Length": 1648
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-keep-existing-state.receipt.json",
+    "Length": 2044
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-ledger-open.js",
+    "Length": 941
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-ledger-save-bills.receipt.json",
+    "Length": 890
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-ledger-save.js",
+    "Length": 1280
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-login.js",
+    "Length": 969
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-main.js",
+    "Length": 288
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-match-duplicate-check.receipt.json",
+    "Length": 955
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-match-open-retry.js",
+    "Length": 370
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-match-open.js",
+    "Length": 417
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-match-save.js",
+    "Length": 1703
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-match-settled.js",
+    "Length": 466
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-meesho-upload-settled.receipt.json",
+    "Length": 1659
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-meesho-upload.receipt.json",
+    "Length": 1157
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-mobile-billing.png",
+    "Length": 43576
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-mobile-invoice-flow.receipt.json",
+    "Length": 2593
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-mobile.js",
+    "Length": 1441
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-open.js",
+    "Length": 422
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-open.receipt.json",
+    "Length": 2169
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-platform-filled-cr.receipt.json",
+    "Length": 1318
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-platform-modules.receipt.json",
+    "Length": 1012
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-platform-result.receipt.json",
+    "Length": 3358
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-platform-retry.js",
+    "Length": 857
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-platform-save.js",
+    "Length": 1501
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-pnl-detail.js",
+    "Length": 575
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-pnl-open.js",
+    "Length": 492
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-pnl-settled.js",
+    "Length": 264
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-pnl-upload.js",
+    "Length": 565
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-pricing-edit.receipt.json",
+    "Length": 1261
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-pricing-persisted-account.receipt.json",
+    "Length": 659
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-pricing-save.js",
+    "Length": 995
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-primary-pricing.js",
+    "Length": 964
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-processes.json",
+    "Length": 54
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-register-retry.js",
+    "Length": 703
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-register-state.receipt.json",
+    "Length": 2398
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-register-valid-email.receipt.json",
+    "Length": 6034
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-register.js",
+    "Length": 1052
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-register.receipt.json",
+    "Length": 1030
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-replace-company-form.receipt.json",
+    "Length": 642
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-replace-current.js",
+    "Length": 1146
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-replace.js",
+    "Length": 1174
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-restore-pricing.js",
+    "Length": 922
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-restored-pricing.receipt.json",
+    "Length": 825
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-server.py",
+    "Length": 946
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-setting-open.js",
+    "Length": 353
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-settings-controls.receipt.json",
+    "Length": 2352
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-settlement-form.receipt.json",
+    "Length": 786
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-signout-signin.receipt.json",
+    "Length": 836
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-sku-correct.js",
+    "Length": 1596
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-sku-preview.receipt.json",
+    "Length": 580
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-sku-save-inventory.receipt.json",
+    "Length": 1603
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-sku-save.js",
+    "Length": 1060
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-sku-state.js",
+    "Length": 321
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-sku-state.receipt.json",
+    "Length": 12904
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-sku-upload.js",
+    "Length": 343
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-suggested-cost-protection.receipt.json",
+    "Length": 1764
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-supplier-bill.png",
+    "Length": 162982
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-tabbit.ps1",
+    "Length": 668
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-tier-controls.receipt.json",
+    "Length": 1528
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-tier-form.js",
+    "Length": 331
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-tier-form.receipt.json",
+    "Length": 1666
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-tier-module-vendor.receipt.json",
+    "Length": 383
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-tier-open.js",
+    "Length": 498
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-tier-save.js",
+    "Length": 1565
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-unmatched-panel-settled.receipt.json",
+    "Length": 2150
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-unmatched-panel.receipt.json",
+    "Length": 2098
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-unmatched-recovery.receipt.json",
+    "Length": 776
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-unmatched-report.png",
+    "Length": 165930
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-upload-warning-detail.receipt.json",
+    "Length": 3693
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-vendor-category.receipt.json",
+    "Length": 370
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-vendor.js",
+    "Length": 824
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-vite.mjs",
+    "Length": 359
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-vite.stderr.log",
+    "Length": 2318
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-vite.stdout.log",
+    "Length": 109
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-xlsx-control.js",
+    "Length": 1179
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator-xlsx-import-control.receipt.json",
+    "Length": 1387
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\pricing-and-bills.js",
+    "Length": 1483
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\products.json",
+    "Length": 22475
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\REPORT_2026-10-04.md",
+    "Length": 30228
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\report-details.js",
+    "Length": 603
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\report-interactions.js",
+    "Length": 754
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\scratch-checks.js",
+    "Length": 2113
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\start.js",
+    "Length": 1021
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\visit-admin.js",
+    "Length": 1197
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\visit-finance-settled.js",
+    "Length": 1406
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\visit-finance.js",
+    "Length": 1260
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\visit-products.js",
+    "Length": 1257
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\visit.js",
+    "Length": 1289
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator\\export-verification.json",
+    "Length": 2722
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator\\exported-skus.csv",
+    "Length": 681
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator\\exported-skus.xlsx",
+    "Length": 18225
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator\\meesho-synthetic.xlsx",
+    "Length": 5205
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator\\operator.sqlite",
+    "Length": 454656
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator\\orders-synthetic.csv",
+    "Length": 236
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator\\sku-control.xlsx",
+    "Length": 5012
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator\\sku-import.csv",
+    "Length": 253
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator\\supplier-synthetic.pdf",
+    "Length": 41736
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator\\logs\\access.log",
+    "Length": 70946
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator\\logs\\app.log",
+    "Length": 175
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator\\logs\\error.log",
+    "Length": 4130
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator\\logs\\pnl.log",
+    "Length": 6321
+  },
+  {
+    "FullName": "C:\\WorkStation\\Projects\\Python\\Casper\\audit\\browser-audit\\operator\\uploads\\2.xlsx",
+    "Length": 5205
+  }
+]

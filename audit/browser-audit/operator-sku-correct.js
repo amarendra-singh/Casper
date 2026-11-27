@@ -1,0 +1,17 @@
+await page.getByLabel('AUDIT-NECKLACE price in rupees',{exact:true}).fill('100');
+await page.getByLabel('AUDIT-NECKLACE packaging in rupees',{exact:true}).fill('10');
+await page.getByLabel('AUDIT-NECKLACE logistics in rupees',{exact:true}).fill('15');
+await page.getByLabel('AUDIT-NECKLACE miscellaneous cost in rupees',{exact:true}).fill('5');
+await page.getByLabel('AUDIT-NECKLACE miscellaneous cost in rupees',{exact:true}).press('Tab');
+await expect(page.getByRole('button',{name:'Save All',exact:true})).toBeEnabled();
+await page.getByRole('button',{name:'Save All',exact:true}).click();
+await page.reload({waitUntil:'domcontentloaded'});
+await expect(page.getByLabel('AUDIT-NECKLACE price in rupees',{exact:true})).toHaveValue('100');
+operatorEvidence.steps.push({flow:'SKU CSV import + grid save',outcome:'UTF-8 currency headers lost numeric costs; entered costs manually, saved and reloaded100'});
+await page.getByRole('link',{name:'Inventory',exact:true}).click();
+await expect(page.locator('main')).toContainText('AUDIT-NECKLACE');
+operatorEvidence.steps.push({flow:'inventory',outcome:'saved SKU shown'});
+await page.locator('a[href="/billing"]').click();
+await expect(page.getByRole('button',{name:'+ New invoice',exact:true}).first()).toBeVisible();
+await page.getByRole('button',{name:'+ New invoice',exact:true}).first().click();
+return {text:(await page.locator('main').innerText()).slice(0,2200),fields:await page.locator('main input').evaluateAll(es=>es.map(e=>({label:e.getAttribute('aria-label'),value:e.value}))),buttons:await page.locator('main button').allTextContents()};

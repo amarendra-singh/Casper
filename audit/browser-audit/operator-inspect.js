@@ -1,0 +1,1 @@
+return {state:await tabbit.observe({frames:"none",maxChars:3000}),responses:operatorEvidence.responses.slice(-8),errors:operatorEvidence.errors};

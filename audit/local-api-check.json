@@ -1,0 +1,10 @@
+{
+  "read_only": true,
+  "health": 200,
+  "entries": 200,
+  "entries_count": 95,
+  "valid_base_references": true,
+  "platforms": 200,
+  "change_history": 200,
+  "recorded_repairs": 95
+}

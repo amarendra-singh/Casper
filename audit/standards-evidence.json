@@ -1,0 +1,80 @@
+{
+  "eslint": {
+    "all": {
+      "files": 77,
+      "errors": 92,
+      "warnings": 656
+    },
+    "production": {
+      "files": 70,
+      "errors": 8,
+      "warnings": 625
+    },
+    "productionErrors": [
+      {
+        "file": "C:\\WorkStation\\Projects\\Python\\Casper\\frontend\\src\\context\\AuthContext.jsx",
+        "line": 46,
+        "rule": "no-empty",
+        "message": "Empty block statement."
+      },
+      {
+        "file": "C:\\WorkStation\\Projects\\Python\\Casper\\frontend\\src\\pages\\SKUs.jsx",
+        "line": 1550,
+        "rule": "no-undef",
+        "message": "'XLSX' is not defined."
+      },
+      {
+        "file": "C:\\WorkStation\\Projects\\Python\\Casper\\frontend\\src\\pages\\SKUs.jsx",
+        "line": 1552,
+        "rule": "no-undef",
+        "message": "'XLSX' is not defined."
+      },
+      {
+        "file": "C:\\WorkStation\\Projects\\Python\\Casper\\frontend\\src\\pages\\SKUs.jsx",
+        "line": 1554,
+        "rule": "no-undef",
+        "message": "'XLSX' is not defined."
+      },
+      {
+        "file": "C:\\WorkStation\\Projects\\Python\\Casper\\frontend\\src\\pages\\SKUs.jsx",
+        "line": 1557,
+        "rule": "no-undef",
+        "message": "'XLSX' is not defined."
+      },
+      {
+        "file": "C:\\WorkStation\\Projects\\Python\\Casper\\frontend\\src\\pages\\SKUs.jsx",
+        "line": 1558,
+        "rule": "no-undef",
+        "message": "'XLSX' is not defined."
+      },
+      {
+        "file": "C:\\WorkStation\\Projects\\Python\\Casper\\frontend\\src\\pages\\SKUs.jsx",
+        "line": 1559,
+        "rule": "no-undef",
+        "message": "'XLSX' is not defined."
+      },
+      {
+        "file": "C:\\WorkStation\\Projects\\Python\\Casper\\frontend\\src\\pages\\Settings.jsx",
+        "line": 25,
+        "rule": "no-empty",
+        "message": "Empty block statement."
+      }
+    ]
+  },
+  "mutedContrastOnWhite": 2.8,
+  "date": {
+    "localInstant": "2026-10-04T01:00:00+05:30",
+    "actualDefault": "2026-10-03",
+    "expectedLocalDate": "2026-10-04"
+  },
+  "csvExamples": [
+    {
+      "input": "ACME, \"North\"",
+      "actual": "\"ACME, \"North\"\""
+    },
+    {
+      "input": "Line 1\nLine 2",
+      "actual": "Line 1\nLine 2"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+
+> casper-frontend@1.0.0 test
+> vitest run --reporter=dot
+
+
+ RUN  v4.1.11 C:/WorkStation/Projects/Python/Casper/frontend
+
+···················································································································
+
+ Test Files  9 passed (9)
+      Tests  115 passed (115)
+   Start at  21:20:33
+   Duration  5.28s (transform 2.60s, setup 1.84s, import 6.59s, tests 3.58s, environment 15.83s)
+

@@ -13,6 +13,13 @@ env/
 # Database — never commit real data
 *.db
 *.sqlite
+backend/*.db.bak*
+audit/backups/
+backend/.pytest_gst*/
+frontend/.test_tmp/
+archive/last chat.txt
+archive/Casper-backup-20260609-055106.zip
+!audit/public-data/*.sqlite
 
 # Frontend build / deps
 node_modules/

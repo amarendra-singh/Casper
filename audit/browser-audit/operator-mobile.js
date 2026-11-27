@@ -1,0 +1,18 @@
+await page.setViewportSize({width:390,height:844});
+await page.goto('http://localhost:5174/billing',{waitUntil:'domcontentloaded'});
+await expect(page.getByRole('button',{name:'+ New invoice',exact:true})).toBeVisible();
+await page.getByRole('button',{name:'+ New invoice',exact:true}).click();
+await page.getByLabel('Customer',{exact:true}).fill('Mobile Audit Customer');
+await page.getByLabel('Item description',{exact:true}).fill('Mobile workflow test');
+await page.getByLabel('Line 1 quantity',{exact:true}).fill('1');
+await page.getByLabel('Line 1 unit price in rupees',{exact:true}).fill('100');
+const layout=await page.evaluate(()=>({viewport:innerWidth,pageWidth:document.documentElement.scrollWidth,mainWidth:document.querySelector('main')?.scrollWidth}));
+const shot=await page.screenshot({fullPage:false});
+await page.getByRole('button',{name:'Create invoice',exact:true}).click();
+await expect(page.getByText('Mobile Audit Customer',{exact:true})).toBeVisible();
+await page.reload({waitUntil:'domcontentloaded'});
+await page.getByRole('button',{name:'Invoices',exact:true}).click();
+await expect(page.getByText('Mobile Audit Customer',{exact:true})).toBeVisible();
+operatorEvidence.steps.push({flow:'mobile billing',outcome:'390px real-input invoice created and persisted',layout});
+await page.setViewportSize({width:1280,height:900});
+return {layout,screenshot:shot,text:(await page.locator('main').innerText()).slice(0,1200)};

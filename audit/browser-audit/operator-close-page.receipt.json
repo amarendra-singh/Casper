@@ -1,0 +1,1 @@
+{"result":{"elapsedMs":40,"requestId":"operator-close-page","value":{"remainingOwnedPages":0}},"status":"succeeded","transition":{"closedPages":[{"id":"p1","url":"http://localhost:5174/product/unit-economics"}],"documentGeneration":59,"openedPages":[],"pageCount":0,"targetEpoch":2,"url":null,"urlChanged":true}}

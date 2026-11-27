@@ -1,0 +1,16 @@
+{
+  "known_sku_absent_from_pricing_lookup": true,
+  "bill_cost_cannot_initialize_pricing": {
+    "ok": false,
+    "error": "That SKU has no pricing row yet \u2014 add it on Unit Economics first"
+  },
+  "pricing_create_does_not_rematch_report": true,
+  "explicit_rematch_recovers_one_row_and_is_idempotent": true,
+  "already_priced_snapshots_unchanged": true,
+  "report_delete_leaves_risk_aggregates_unchanged": {
+    "removed_source_events": 107,
+    "unchanged_risk_rows": 26
+  },
+  "endpoint_count": 116,
+  "live_database_writes": false
+}

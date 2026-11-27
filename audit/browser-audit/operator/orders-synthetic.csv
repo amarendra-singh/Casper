@@ -1,0 +1,2 @@
+Order Id,Ordered On,SKU,Product,Invoice No.,Invoice Date (mm/dd/yy),Invoice Amount,Selling Price Per Item,Quantity,Order State,HSN CODE
+AUDIT-FK-1,2026-09-01,AUDIT-NECKLACE,Audit Necklace,AUDIT-INV-1,09/01/26,500,250,2,Delivered,7117

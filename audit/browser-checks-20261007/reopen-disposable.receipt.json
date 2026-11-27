@@ -1,0 +1,1 @@
+{"result":{"elapsedMs":1000,"requestId":"reopen-disposable","value":{"snapshot":"- main:\n  - status: Loading company access…","url":"http://127.0.0.1:5174/pnl/flipkart/1?view=pnl"}},"status":"succeeded","transition":{"closedPages":[],"documentGeneration":3,"openedPages":[],"pageCount":1,"targetEpoch":2,"url":"http://127.0.0.1:5174/pnl/flipkart/1?view=pnl","urlChanged":true}}
